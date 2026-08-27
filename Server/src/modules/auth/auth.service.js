@@ -4,6 +4,9 @@ import { config } from "../../config.js"
 import { createAccessToken } from "../../utils/jwt.js"
 import * as authRepository from "./auth.repository.js"
 
+// 로컬 파트 + "@" + 도메인 + "." + TLD(2자 이상). 공백 불가.
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
 function serviceError(message, status, code) {
   const error = new Error(message)
   error.status = status
@@ -28,6 +31,9 @@ export async function signup({ email: rawEmail, password, name: rawName }) {
 
   if (!email || !password || !name) {
     throw serviceError("이메일, 비밀번호, 이름은 필수입니다.", 400, "MISSING_FIELD")
+  }
+  if (!EMAIL_REGEX.test(email)) {
+    throw serviceError("올바른 이메일 형식이 아닙니다. (예: name@example.com)", 400, "INVALID_EMAIL")
   }
   if (password.length < 8) {
     throw serviceError("비밀번호는 8자 이상으로 입력해주세요.", 400, "INVALID_PASSWORD")
