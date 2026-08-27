@@ -1,88 +1,116 @@
 import bcrypt from "bcrypt"
-import jwt from "jsonwebtoken"
-import * as repository from "./auth.repository.js"
+import { config } from "../../config.js"
+import { createAccessToken, createRefreshToken, verifyRefreshToken } from "../../utils/jwt.js"
+import * as authRepository from "./auth.repository.js"
 
-// 회원가입
-export async function signup({ name, email, password }) {
-  const existing = await repository.findByEmail(email)
-
-  if (existing) {
-    const err = new Error("이미 가입된 이메일입니다.")
-    err.status = 409
-    err.code = "DUPLICATE_EMAIL"
-    throw err
-  }
-
-  const hashed = await bcrypt.hash(password, 10)
-  const user = await repository.create({ name, email, password: hashed })
-
-  return { id: user.id, email: user.email }
+function serviceError(message, status, code) {
+  const error = new Error(message)
+  error.status = status
+  error.code = code
+  return error
 }
 
-// 로그인
-export async function login({ email, password }) {
-  const user = await repository.findByEmail(email)
-
-  if (!user) {
-    const err = new Error("이메일 또는 비밀번호가 올바르지 않습니다.")
-    err.status = 401
-    err.code = "LOGIN_FAILED"
-    throw err
-  }
-
-  const matched = await bcrypt.compare(password, user.password)
-
-  if (!matched) {
-    const err = new Error("이메일 또는 비밀번호가 올바르지 않습니다.")
-    err.status = 401
-    err.code = "LOGIN_FAILED"
-    throw err
-  }
-
-  // 최종 접속일 갱신 (휴면 계정 판별에 사용)
-  await repository.updateLastLogin(user.id)
-
-  const accessToken = jwt.sign(
-    { id: user.id, email: user.email },
-    process.env.JWT_ACCESS_SECRET,
-    { expiresIn: "15m" }
-  )
-
-  const refreshToken = jwt.sign(
-    { id: user.id },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: "14d" }
-  )
-
-  return {
-    access_token: accessToken,
-    refresh_token: refreshToken,
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      auth_provider: user.provider
-    }
-  }
-}
-
-// 내 정보 조회
-export async function getMe(userId) {
-  const user = await repository.findById(userId)
-
-  if (!user) {
-    const err = new Error("사용자를 찾을 수 없습니다.")
-    err.status = 404
-    err.code = "USER_NOT_FOUND"
-    throw err
-  }
-
+export function toPublicUser(user) {
   return {
     id: user.id,
     email: user.email,
     name: user.name,
-    auth_provider: user.provider,
-    last_login: user.last_login,
-    created_at: user.created_at
+    provider: user.provider,
+    createdAt: user.created_at,
+    lastLogin: user.last_login,
   }
+}
+
+async function createSession(userId) {
+  await authRepository.updateLastLogin(userId)
+  return {
+    accessToken: createAccessToken(userId),
+    refreshToken: createRefreshToken(userId),
+  }
+}
+
+export async function signup({ email: rawEmail, password, name: rawName }) {
+  const email = rawEmail?.trim().toLowerCase()
+  const name = rawName?.trim()
+
+  if (!email || !password || !name) {
+    throw serviceError("이메일, 비밀번호, 이름은 필수입니다.", 400, "MISSING_FIELD")
+  }
+  if (password.length < 8) {
+    throw serviceError("비밀번호는 8자 이상으로 입력해주세요.", 400, "INVALID_PASSWORD")
+  }
+  if (password.length > 72) {
+    throw serviceError("비밀번호는 72자 이하로 입력해주세요.", 400, "INVALID_PASSWORD")
+  }
+  if (await authRepository.findByEmail(email)) {
+    throw serviceError("이미 가입된 이메일입니다.", 409, "DUPLICATE_EMAIL")
+  }
+
+  try {
+    const passwordHash = await bcrypt.hash(password, config.bcrypt.saltRounds)
+    const user = await authRepository.createUser({ email, passwordHash, name })
+    return toPublicUser(user)
+  } catch (error) {
+    if (error.code === "23505") {
+      throw serviceError("이미 사용 중인 회원 정보입니다.", 409, "DUPLICATE_EMAIL")
+    }
+    throw error
+  }
+}
+
+export async function login({ email: rawEmail, password }) {
+  const email = rawEmail?.trim().toLowerCase()
+  if (!email || !password) {
+    throw serviceError("이메일과 비밀번호를 입력해주세요.", 400, "MISSING_FIELD")
+  }
+
+  const user = await authRepository.findByEmail(email)
+  const matches = user?.provider === "LOCAL" && user?.password
+    ? await bcrypt.compare(password, user.password)
+    : false
+
+  if (!user || !matches) {
+    throw serviceError("이메일 또는 비밀번호가 올바르지 않습니다.", 401, "LOGIN_FAILED")
+  }
+
+  return {
+    user: toPublicUser(user),
+    ...(await createSession(user.id)),
+  }
+}
+
+export async function refreshSession(refreshToken) {
+  if (!refreshToken) throw serviceError("로그인이 필요합니다.", 401, "UNAUTHORIZED")
+
+  let payload
+  try {
+    payload = verifyRefreshToken(refreshToken)
+  } catch {
+    throw serviceError("로그인 정보가 만료되었습니다.", 401, "INVALID_REFRESH_TOKEN")
+  }
+
+  const user = await authRepository.findById(payload.userId)
+  if (!user) throw serviceError("로그인 정보가 만료되었습니다.", 401, "INVALID_REFRESH_TOKEN")
+
+  return { accessToken: createAccessToken(user.id), refreshToken: createRefreshToken(user.id) }
+}
+
+export async function getMe(userId) {
+  const user = await authRepository.findById(userId)
+  if (!user) throw serviceError("사용자를 찾을 수 없습니다.", 404, "USER_NOT_FOUND")
+  return toPublicUser(user)
+}
+
+export async function loginWithOAuth({ provider, email, name }) {
+  let user = await authRepository.findByEmail(email)
+  if (!user) {
+    user = await authRepository.createOAuthUser({ email, name, provider })
+  } else if (user.provider !== provider) {
+    throw serviceError(
+      "같은 이메일의 기존 계정이 있습니다. 기존 계정으로 로그인해주세요.",
+      409,
+      "EXISTING_EMAIL",
+    )
+  }
+  return { user: toPublicUser(user), ...(await createSession(user.id)) }
 }

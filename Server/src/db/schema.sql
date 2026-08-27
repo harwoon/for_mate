@@ -12,6 +12,25 @@ CREATE TABLE users (
   created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
+-- users 테이블에 컬럼 추가 (기존 name/provider/last_login은 그대로 유지)
+ALTER TABLE users
+  ADD COLUMN provider_id VARCHAR(100),
+  ADD COLUMN profile_image_url VARCHAR(255),
+  ADD COLUMN introduction TEXT,
+  ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN account_status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE';
+
+-- 리프레시 토큰 저장용
+CREATE TABLE refresh_tokens (
+  id          BIGSERIAL PRIMARY KEY,
+  user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash  VARCHAR(64) NOT NULL UNIQUE,
+  expires_at  TIMESTAMP NOT NULL,
+  created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_refresh_tokens_user ON refresh_tokens (user_id);
+
 -- 품종 마스터 (자동완성용)
 CREATE TABLE breeds (
   id       BIGSERIAL PRIMARY KEY,

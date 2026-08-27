@@ -1,5 +1,6 @@
 import express from "express"
 import cors from "cors"
+import { config } from "./config.js"
 
 import authRouter from "./modules/auth/auth.router.js"
 import catalogRouter from "./modules/catalog/catalog.router.js"
@@ -19,7 +20,7 @@ import { errorHandler } from "./middleware/error.middleware.js"
 
 const app = express()
 
-app.use(cors())
+app.use(cors({ origin: config.frontendUrl, credentials: true }))
 app.use(express.json())
 app.use("/uploads", express.static("uploads"))
 
@@ -27,6 +28,8 @@ app.use("/uploads", express.static("uploads"))
 app.get("/health", (req, res) => {
   res.json({ success: true, data: { status: "ok" } })
 })
+
+
 
 // API 명세서 장 번호와 같은 순서로 연결
 app.use("/api/v1/auth", authRouter)              // 1. 인증
