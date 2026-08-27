@@ -38,3 +38,31 @@ export async function createOAuthUser({ email, name, provider }) {
 export async function updateLastLogin(userId) {
   await query(`UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1`, [userId])
 }
+
+export async function createRefreshToken({ userId, tokenHash, expiresAt }) {
+  const result = await query(
+    `INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+     VALUES ($1, $2, $3)
+     RETURNING id, user_id, expires_at, created_at`,
+    [userId, tokenHash, expiresAt],
+  )
+  return result.rows[0]
+}
+
+export async function consumeRefreshToken(tokenHash) {
+  const result = await query(
+    `DELETE FROM refresh_tokens
+     WHERE token_hash = $1 AND expires_at > CURRENT_TIMESTAMP
+     RETURNING user_id`,
+    [tokenHash],
+  )
+  return result.rows[0]
+}
+
+export async function revokeRefreshToken(tokenHash) {
+  const result = await query(
+    `DELETE FROM refresh_tokens WHERE token_hash = $1 RETURNING id`,
+    [tokenHash],
+  )
+  return result.rowCount > 0
+}

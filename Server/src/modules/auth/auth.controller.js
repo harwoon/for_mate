@@ -49,8 +49,14 @@ export async function refresh(req, res, next) {
   }
 }
 
-export function logout(req, res) {
-  clearAuthCookies(res)
+export async function logout(req, res) {
+  try {
+    await service.logout(getCookie(req, "refresh_token"))
+  } catch (err) {
+    console.error(err)
+  } finally {
+    clearAuthCookies(res)
+  }
   res.sendStatus(204)
 }
 

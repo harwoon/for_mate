@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt"
+import crypto from "node:crypto"
 import { config } from "../../config.js"
 import { createAccessToken, createRefreshToken, verifyRefreshToken } from "../../utils/jwt.js"
 import * as authRepository from "./auth.repository.js"
@@ -18,14 +19,6 @@ export function toPublicUser(user) {
     provider: user.provider,
     createdAt: user.created_at,
     lastLogin: user.last_login,
-  }
-}
-
-async function createSession(userId) {
-  await authRepository.updateLastLogin(userId)
-  return {
-    accessToken: createAccessToken(userId),
-    refreshToken: createRefreshToken(userId),
   }
 }
 
@@ -79,22 +72,6 @@ export async function login({ email: rawEmail, password }) {
   }
 }
 
-export async function refreshSession(refreshToken) {
-  if (!refreshToken) throw serviceError("로그인이 필요합니다.", 401, "UNAUTHORIZED")
-
-  let payload
-  try {
-    payload = verifyRefreshToken(refreshToken)
-  } catch {
-    throw serviceError("로그인 정보가 만료되었습니다.", 401, "INVALID_REFRESH_TOKEN")
-  }
-
-  const user = await authRepository.findById(payload.userId)
-  if (!user) throw serviceError("로그인 정보가 만료되었습니다.", 401, "INVALID_REFRESH_TOKEN")
-
-  return { accessToken: createAccessToken(user.id), refreshToken: createRefreshToken(user.id) }
-}
-
 export async function getMe(userId) {
   const user = await authRepository.findById(userId)
   if (!user) throw serviceError("사용자를 찾을 수 없습니다.", 404, "USER_NOT_FOUND")
@@ -113,4 +90,33 @@ export async function loginWithOAuth({ provider, email, name }) {
     )
   }
   return { user: toPublicUser(user), ...(await createSession(user.id)) }
+}
+
+function hashRefreshToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex")
+}
+
+async function createSession(userId) {
+  const accessToken = createAccessToken(userId)
+  const refreshToken = crypto.randomBytes(48).toString("base64url")
+  const tokenHash = hashRefreshToken(refreshToken)
+  const expiresAt = new Date(Date.now() + config.jwt.refreshExpiresInDays * 24 * 60 * 60 * 1000)
+
+  await authRepository.createRefreshToken({ userId, tokenHash, expiresAt })
+  await authRepository.updateLastLogin(userId)
+  return { accessToken, refreshToken }
+}
+
+export async function refreshSession(refreshToken) {
+  if (!refreshToken) throw serviceError("로그인이 필요합니다.", 401, "UNAUTHORIZED")
+
+  const stored = await authRepository.consumeRefreshToken(hashRefreshToken(refreshToken))
+  if (!stored) throw serviceError("로그인 정보가 만료되었습니다.", 401, "INVALID_REFRESH_TOKEN")
+
+  return createSession(stored.user_id)
+}
+
+export async function logout(refreshToken) {
+  if (!refreshToken) return false
+  return authRepository.revokeRefreshToken(hashRefreshToken(refreshToken))
 }
