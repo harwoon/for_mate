@@ -1,25 +1,26 @@
-import jwt from "jsonwebtoken"
+import * as authRepository from "../modules/auth/auth.repository.js"
+import { getCookie } from "../utils/cookie.js"
+import { verifyAccessToken } from "../utils/jwt.js"
 
-// 로그인이 필요한 API에 사용한다. 통과하면 req.user에 사용자 정보가 담긴다.
-export function requireAuth(req, res, next) {
-  const header = req.headers.authorization
+const AUTH_ERROR = { success: false, error: { code: "UNAUTHORIZED", message: "로그인이 필요합니다." } }
 
-  if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({
-      success: false,
-      error: { code: "UNAUTHORIZED", message: "로그인이 필요합니다." }
-    })
-  }
+export async function requireAuth(req, res, next) {
+  const authHeader = req.get("Authorization")
+  const bearerToken = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length)
+    : undefined
+  const token = bearerToken || getCookie(req, "access_token")
 
-  const token = header.split(" ")[1]
+  if (!token) return res.status(401).json(AUTH_ERROR)
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
-    next()
-  } catch (err) {
-    res.status(401).json({
-      success: false,
-      error: { code: "INVALID_TOKEN", message: "토큰이 만료되었거나 올바르지 않습니다." }
-    })
+    const decoded = verifyAccessToken(token)
+    const user = await authRepository.findById(decoded.userId)
+    if (!user) return res.status(401).json(AUTH_ERROR)
+    req.userId = user.id
+    req.user = user
+    return next()
+  } catch {
+    return res.status(401).json(AUTH_ERROR)
   }
 }

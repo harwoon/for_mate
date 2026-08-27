@@ -12,6 +12,17 @@ CREATE TABLE users (
   created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
+-- 리프레시 토큰 저장용
+CREATE TABLE refresh_tokens (
+  id          BIGSERIAL PRIMARY KEY,
+  user_id     BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash  VARCHAR(64) NOT NULL UNIQUE,
+  expires_at  TIMESTAMP NOT NULL,
+  created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_refresh_tokens_user ON refresh_tokens (user_id);
+
 -- 품종 마스터 (자동완성용)
 CREATE TABLE breeds (
   id       BIGSERIAL PRIMARY KEY,
