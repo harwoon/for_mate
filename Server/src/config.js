@@ -15,7 +15,6 @@ export const config = {
   jwt: {
     secretKey: jwtSecret,
     expiresInSec: Number(required("JWT_EXPIRES_SEC", "900")),
-    refreshSecretKey: required("JWT_REFRESH_SECRET"),
     refreshExpiresInDays: Number(required("REFRESH_TOKEN_EXPIRES_DAYS", "14")),
   },
   bcrypt: {

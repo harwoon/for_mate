@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt"
 import crypto from "node:crypto"
 import { config } from "../../config.js"
-import { createAccessToken, createRefreshToken, verifyRefreshToken } from "../../utils/jwt.js"
+import { createAccessToken } from "../../utils/jwt.js"
 import * as authRepository from "./auth.repository.js"
 
 function serviceError(message, status, code) {
