@@ -24,7 +24,7 @@ export async function login(req, res, next) {
   try {
     const session = await service.login(req.body)
     setAuthCookies(res, session)
-    ok(res, { user: session.user })
+    ok(res, { user: session.user, accessToken: session.accessToken })
   } catch (err) {
     next(err)
   }
