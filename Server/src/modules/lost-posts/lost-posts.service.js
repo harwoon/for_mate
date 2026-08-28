@@ -110,9 +110,32 @@ export async function createPost({ userId, body, imageUrls }) {
   return createdPost
 }
 
+// 3.3 실종 공고 상세 조회
+export async function getPost({ postId, userId }) {
+  // URL 파라미터는 문자열로 들어오므로 양의 정수 ID인지 먼저 검사한다.
+  const id = Number(postId)
+  if (!Number.isInteger(id) || id <= 0) {
+    throw serviceError("공고 ID가 올바르지 않습니다.", 400, "INVALID_POST_ID")
+  }
+
+  const post = await repository.findById(id)
+  if (!post) {
+    throw serviceError("실종 공고를 찾을 수 없습니다.", 404, "LOST_POST_NOT_FOUND")
+  }
+
+  // 작성자 ID는 내부 비교에만 사용하고 API 응답에는 노출하지 않는다.
+  const { user_id: ownerId, ...publicPost } = post
+
+  return {
+    ...publicPost,
+    // 현재 상세 라우트는 공개 조회이므로 userId가 없으면 false이다.
+    // 추후 선택적 인증이 연결되면 로그인 사용자의 소유 여부를 자동으로 계산한다.
+    is_owner: userId != null && String(userId) === String(ownerId),
+  }
+}
+
 // TODO: 아래 함수들은 해당 API 담당 범위에서 구현한다.
 // - getPosts: 3.2 실종 공고 목록 조회 (필터링)
-// - getPost: 3.3 실종 공고 상세 조회
 // - updatePost: 3.4 실종 공고 수정
 // - updateStatus: 3.4 상태 변경 (찾음 처리)
 // - deletePost: 3.4 실종 공고 삭제

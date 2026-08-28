@@ -1,40 +1,104 @@
 import express from "express"
+import crypto from "node:crypto"
+import { mkdirSync } from "node:fs"
+import { unlink } from "node:fs/promises"
+import path from "node:path"
+import multer from "multer"
 import { requireAuth } from "../../middleware/auth.middleware.js"
-import { uploadLostImages } from "../../middleware/upload.middleware.js"
 import * as controller from "./lost-posts.controller.js"
 
 const router = express.Router()
 
-// 공용 업로드 미들웨어는 오류에 HTTP 상태를 지정하지 않으므로,
-// 실종 공고 API 명세에 맞게 이 라우터 안에서만 400/422 오류로 변환한다.
-function uploadLostImagesForCreate(req, res, next) {
-  // uploadLostImages는 images 필드의 파일을 메모리로 받은 뒤 Supabase에 올리고,
-  // 성공하면 URL 배열을 req.imageUrls에 저장한다.
-  uploadLostImages(req, res, (error) => {
-    // 업로드가 성공했으면 다음 단계인 controller.createPost로 이동한다.
-    if (!error) return next()
+// app.js가 /uploads 경로를 정적 파일로 제공하므로 그 하위에 실종 공고 사진을 저장한다.
+// 서버를 처음 실행했을 때 폴더가 없어도 자동으로 생성된다.
+const LOST_IMAGE_DIRECTORY = path.resolve("uploads", "lost-posts")
+mkdirSync(LOST_IMAGE_DIRECTORY, { recursive: true })
 
-    // multer는 허용 개수(8장)를 넘기면 LIMIT_UNEXPECTED_FILE 오류를 전달한다.
-    if (error.code === "LIMIT_UNEXPECTED_FILE") {
+const IMAGE_EXTENSIONS = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+}
+
+// 원본 파일명 대신 UUID를 사용해 한글·공백·중복 파일명 문제를 방지한다.
+const storage = multer.diskStorage({
+  destination(req, file, callback) {
+    callback(null, LOST_IMAGE_DIRECTORY)
+  },
+  filename(req, file, callback) {
+    callback(null, `${crypto.randomUUID()}${IMAGE_EXTENSIONS[file.mimetype]}`)
+  },
+})
+
+// 실종 공고는 이미지 파일만, 한 장당 10MB 이하, 최대 8장까지 받는다.
+const uploadLost = multer({
+  storage,
+  limits: {
+    files: 8,
+    fileSize: 10 * 1024 * 1024,
+  },
+  fileFilter(req, file, callback) {
+    if (!IMAGE_EXTENSIONS[file.mimetype]) {
+      const error = new Error("JPG, PNG, WEBP 이미지만 등록할 수 있습니다.")
+      error.code = "INVALID_IMAGE_TYPE"
+      return callback(error)
+    }
+    return callback(null, true)
+  },
+}).array("images", 8)
+
+// DB 검증이나 저장이 실패했을 때 로컬에 남은 파일을 정리한다.
+async function removeUploadedFiles(files = []) {
+  await Promise.allSettled(files.map((file) => unlink(file.path)))
+}
+
+// Multer로 파일을 로컬에 저장하고, repository가 DB에 저장할 URL을 만든다.
+function uploadLostImagesForCreate(req, res, next) {
+  uploadLost(req, res, async (error) => {
+    if (!error) {
+      // DB에는 운영체제의 실제 경로가 아닌 웹에서 접근할 수 있는 URL 경로를 저장한다.
+      req.imageUrls = req.files.map((file) => `/uploads/lost-posts/${file.filename}`)
+      return next()
+    }
+
+    // 일부 파일이 저장된 뒤 Multer 오류가 발생했다면 먼저 삭제한다.
+    await removeUploadedFiles(req.files)
+
+    if (error.code === "LIMIT_UNEXPECTED_FILE" || error.code === "LIMIT_FILE_COUNT") {
       error.status = 400
       error.code = "TOO_MANY_IMAGES"
       error.message = "이미지는 최대 8장까지 등록할 수 있습니다."
+    } else if (error.code === "LIMIT_FILE_SIZE") {
+      error.status = 400
+      error.code = "IMAGE_TOO_LARGE"
+      error.message = "이미지는 한 장당 10MB 이하여야 합니다."
+    } else if (error.code === "INVALID_IMAGE_TYPE") {
+      error.status = 422
+      error.code = "IMAGE_PROCESSING_FAILED"
     } else {
-      // 그 밖의 오류는 Supabase 업로드 등 이미지 처리 실패로 분류한다.
       error.status = 422
       error.code = "IMAGE_PROCESSING_FAILED"
       error.message = "이미지 처리에 실패했습니다."
     }
 
-    // 상태와 코드가 지정된 오류를 공통 error.middleware로 보낸다.
     return next(error)
   })
 }
 
-// TODO(업로드 정리): Supabase 업로드 후 DB 저장이 실패했을 때 파일을 삭제하려면
-// 공용 upload.middleware.js가 저장 경로 또는 삭제 함수를 제공하도록 팀 협의가 필요하다.
+// controller/service/repository에서 오류가 발생하면 이번 요청에서 저장한 파일만 삭제한다.
+async function cleanupLostImagesOnError(error, req, res, next) {
+  await removeUploadedFiles(req.files)
+  next(error)
+}
+
 // 실행 순서: 로그인 확인 → 이미지 업로드 → 요청 검증 및 DB 저장 → 201 응답
-router.post("/", requireAuth, uploadLostImagesForCreate, controller.createPost) // 3.1 실종 공고 등록
+router.post(
+  "/",
+  requireAuth,
+  uploadLostImagesForCreate,
+  controller.createPost,
+  cleanupLostImagesOnError,
+) // 3.1 실종 공고 등록
 router.get("/", controller.getPosts)                                    // 3.2 실종 공고 목록 조회 (필터링)
 router.get("/:id", controller.getPost)                                  // 3.3 실종 공고 상세 조회
 router.put("/:id", requireAuth, controller.updatePost)                  // 3.4 실종 공고 수정

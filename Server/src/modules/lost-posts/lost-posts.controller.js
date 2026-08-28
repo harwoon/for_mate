@@ -30,8 +30,14 @@ export async function getPosts(req, res, next) {
 // 3.3 실종 공고 상세 조회
 export async function getPost(req, res, next) {
   try {
-    // TODO: 공고 + 사진 목록 조회, 본인 글이면 is_owner true
-    fail(res, 501, "NOT_IMPLEMENTED", "아직 구현되지 않았습니다.")
+    // URL의 공고 ID와 로그인 사용자 ID(존재하는 경우)를 서비스에 전달한다.
+    const post = await service.getPost({
+      postId: req.params.id,
+      userId: req.userId,
+    })
+
+    // 조회한 공고와 사진 목록을 공통 성공 응답 형식으로 반환한다.
+    ok(res, post)
   } catch (err) {
     next(err)
   }

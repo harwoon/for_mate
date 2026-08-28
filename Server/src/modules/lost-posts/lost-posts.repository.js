@@ -73,4 +73,33 @@ export async function createPostWithImages({ userId, post, imageUrls }) {
   }
 }
 
-// TODO(3.2~3.4): 목록/상세/수정/삭제 쿼리는 각 API 구현 시 추가한다.
+// 3.3 실종 공고 상세 조회
+// 공고가 존재하지 않으면 undefined를 반환하고, 존재하면 연결된 사진까지 조회한다.
+export async function findById(id) {
+  // is_owner 계산에 필요한 user_id도 조회하지만 서비스에서 외부 응답 전에 제거한다.
+  const postResult = await pool.query(
+    `SELECT
+       id, user_id, pet_name, species, breed, color, sex, neuter_yn,
+       region, event_date, description, status, created_at
+     FROM lost_posts
+     WHERE id = $1`,
+    [id],
+  )
+
+  const post = postResult.rows[0]
+  if (!post) return undefined
+
+  // 해당 실종 공고에 속한 사진만 조회한다.
+  // 대표 사진을 첫 번째로 보여주고, 나머지는 등록된 순서(id 오름차순)로 정렬한다.
+  const imageResult = await pool.query(
+    `SELECT id, image_url, is_primary
+     FROM images
+     WHERE post_type = 'lost' AND lost_post_id = $1
+     ORDER BY is_primary DESC, id ASC`,
+    [id],
+  )
+
+  return { ...post, images: imageResult.rows }
+}
+
+// TODO(3.2, 3.4): 목록/수정/삭제 쿼리는 각 API 구현 시 추가한다.
