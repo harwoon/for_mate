@@ -2,4 +2,35 @@ import { query } from "../../db/pool.js"
 
 // 사용 테이블: inquiries
 
-// TODO: SQL 쿼리 함수들을 구현한다 (findMany, findById, create, update, remove 등)
+// RETURNING / SELECT에서 공통으로 쓰는 컬럼 목록. auth.repository.js의 USER_COLUMNS와 같은 패턴.
+const INQUIRY_COLUMNS = `id, user_id, type, title, content, status, created_at`
+
+// 문의 1건 INSERT. status/created_at은 넘기지 않고 스키마 DEFAULT('pending', NOW())에 맡긴다.
+// $1~$4 파라미터 바인딩으로 값을 전달해 SQL 인젝션을 방지한다.
+// RETURNING으로 방금 저장된 row(자동 생성된 id/status/created_at 포함)를 그대로 돌려받는다.
+export async function create({ userId, type, title, content }) {
+  const result = await query(
+    `INSERT INTO inquiries (user_id, type, title, content)
+     VALUES ($1, $2, $3, $4)
+     RETURNING ${INQUIRY_COLUMNS}`,
+    [userId, type, title, content],
+  )
+  return result.rows[0] // INSERT는 항상 1건이므로 [0]만 반환
+}
+
+// 로그인한 사용자가 등록한 문의 "목록"을 조회한다. (11.2 내 문의 목록 조회)
+// - WHERE user_id = $1  : 다른 사람 문의는 섞이지 않도록 "내 문의"만 걸러낸다.
+// - ORDER BY created_at DESC : 최근에 등록한 문의가 맨 위로 오도록 최신순 정렬.
+// create()와 달리 여러 행이 나올 수 있으므로 result.rows 전체(배열)를 그대로 반환한다.
+export async function findManyByUserId(userId) {
+  const result = await query(
+    `SELECT ${INQUIRY_COLUMNS}
+     FROM inquiries
+     WHERE user_id = $1
+     ORDER BY created_at DESC`,
+    [userId],
+  )
+  return result.rows
+}
+
+// TODO: 나머지 SQL 쿼리 함수들을 구현한다 (findById 등)
