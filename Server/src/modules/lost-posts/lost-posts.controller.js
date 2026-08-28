@@ -4,8 +4,14 @@ import { ok, created, fail } from "../../utils/response.js"
 // 3.1 실종 공고 등록 (사진 최대 8장)
 export async function createPost(req, res, next) {
   try {
-    // TODO: 공고 저장 후 images 테이블에 사진 저장, 임베딩 추출 요청
-    fail(res, 501, "NOT_IMPLEMENTED", "아직 구현되지 않았습니다.")
+    // TODO: 공고 저장 후 images 테이블에 사진 저장, 
+    // 추후 해야하는 것: 임베딩 추출 요청
+    const post = await service.createPost({
+      userId:req.userId,
+      body:req.body,
+      imageUrls: req.imageUrls
+    })
+    created(res,post)
   } catch (err) {
     next(err)
   }
