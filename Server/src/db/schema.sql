@@ -179,11 +179,14 @@ CREATE TABLE reports (
 
 -- 고객센터 문의
 CREATE TABLE inquiries (
-  id          BIGSERIAL PRIMARY KEY,
-  user_id     BIGINT      NOT NULL REFERENCES users(id),
-  type        VARCHAR(30),
-  title       VARCHAR(200) NOT NULL,
-  content     TEXT         NOT NULL,
-  status      VARCHAR(20)  NOT NULL DEFAULT 'pending',
-  created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
+  id           BIGSERIAL PRIMARY KEY,
+  user_id      BIGINT       NOT NULL REFERENCES users(id),
+  type         VARCHAR(30),
+  title        VARCHAR(200) NOT NULL,
+  content      TEXT         NOT NULL,
+  status       VARCHAR(20)  NOT NULL DEFAULT 'pending',
+  answer       TEXT,                    -- 관리자 답변 내용
+  answered_by  BIGINT       REFERENCES users(id),  -- 답변한 관리자
+  answered_at  TIMESTAMP,               -- 답변 등록 시각
+  created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
 );
