@@ -66,5 +66,56 @@ export async function getInquiries(userId) {
   return inquiries.map(toInquirySummary)
 }
 
-// TODO: 아래 컨트롤러에서 호출할 함수를 구현한다
-// - getInquiry: 11.2 문의 상세 조회
+// DB row(snake_case)를 명세서 11.2 상세 조회 Response의 data 형태로 변환한다.
+// - toInquirySummary()와 다르게 content(문의 내용), answer(답변 내용), answered_at(답변 시각)까지 포함한다.
+//   (목록에서는 굳이 다 안 보여줘도 되지만, 상세 화면에서는 사용자가 본문/답변을 읽어야 하기 때문)
+// - 아직 답변 전이면 DB의 answer/answered_at 컬럼이 NULL이고,
+//   그 NULL이 그대로 JSON의 null로 내려간다. (명세서 안내와 동일: "답변 전에는 answer, answered_at이 null로 응답된다")
+function toInquiryDetail(inquiry) {
+  return {
+    inquiry_id: Number(inquiry.id),
+    type: inquiry.type,
+    title: inquiry.title,
+    content: inquiry.content,
+    status: inquiry.status,       // "pending"(답변 대기) | "answered"(답변 완료)
+    answer: inquiry.answer,       // 답변 전이면 null
+    answered_at: inquiry.answered_at, // 답변 전이면 null
+    created_at: inquiry.created_at,
+  }
+}
+
+// 11.2 문의 상세 조회: 문의 1건의 내용과 답변을 반환한다.
+// userId: requireAuth가 확인해 준 "지금 로그인한 사람"의 PK
+// rawInquiryId: 라우터의 :inquiryId 부분 (예: /inquiries/501 -> "501", 문자열로 들어온다)
+export async function getInquiry(userId, rawInquiryId) {
+  // URL 파라미터는 항상 문자열이므로 숫자로 바꿔준다.
+  // "501" -> 501은 되지만, "abc" -> NaN, "1.5" -> 정수가 아님 이므로 함께 걸러낸다.
+  const inquiryId = Number(rawInquiryId)
+  if (!Number.isInteger(inquiryId) || inquiryId <= 0) {
+    throw serviceError("올바르지 않은 문의 번호입니다.", 400, "INVALID_INQUIRY_ID")
+  }
+
+  // 1) DB에서 해당 id의 문의를 찾는다.
+  const inquiry = await repository.findById(inquiryId)
+
+  // 2) 그런 문의 자체가 없는 경우 -> 404 Not Found
+  if (!inquiry) {
+    throw serviceError("문의를 찾을 수 없습니다.", 404, "INQUIRY_NOT_FOUND")
+  }
+
+  // 3) 문의는 존재하지만, 로그인한 사용자가 등록한 문의가 아닌 경우 -> 403 Forbidden
+  //    (남의 문의 내용/답변을 아무나 볼 수 있으면 안 되므로 반드시 작성자 본인인지 확인한다)
+  //
+  //    주의: pg 드라이버는 BIGINT/BIGSERIAL 컬럼(users.id, inquiries.user_id)을
+  //    정밀도 손실을 막기 위해 "숫자"가 아니라 "문자열"로 돌려준다.
+  //    그래서 auth.middleware.js가 넣어주는 req.userId도 실제로는 "3" 같은 문자열이다.
+  //    inquiry.user_id만 Number()로 바꾸고 userId는 그대로 두면
+  //    3 !== "3" (숫자 vs 문자열) 이 되어 본인 문의인데도 항상 다르다고 판단해버린다.
+  //    -> 양쪽 다 Number()로 바꿔서 "값"만 비교하도록 맞춰준다.
+  if (Number(inquiry.user_id) !== Number(userId)) {
+    throw serviceError("본인이 등록한 문의만 조회할 수 있습니다.", 403, "INQUIRY_FORBIDDEN")
+  }
+
+  // 4) 통과했으면 명세서 형태로 변환해서 반환한다.
+  return toInquiryDetail(inquiry)
+}

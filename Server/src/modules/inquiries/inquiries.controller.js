@@ -37,11 +37,20 @@ export async function getInquiries(req, res, next) {
 }
 
 // 11.2 문의 상세 조회
+// GET /inquiries/:inquiryId  (requireAuth 통과 필수)
 export async function getInquiry(req, res, next) {
   try {
-    // TODO: 문의 내용과 답변 반환
-    fail(res, 501, "NOT_IMPLEMENTED", "아직 구현되지 않았습니다.")
+    // requireAuth 미들웨어가 넣어준 req.userId(로그인 사용자 PK)와
+    // 라우터가 넘겨준 URL 경로 값 req.params.inquiryId(예: "/inquiries/501" -> "501")를
+    // 그대로 서비스에 전달한다. 문자열 -> 숫자 변환, 존재 여부, 본인 소유 여부 확인은
+    // 전부 서비스(inquiries.service.js)가 담당한다. (컨트롤러는 HTTP 입출력만 담당)
+    const inquiry = await service.getInquiry(req.userId, req.params.inquiryId)
+
+    // ok(): 200 + { success: true, data: inquiry } 형태로 응답 (명세 Response 200과 동일)
+    ok(res, inquiry)
   } catch (err) {
+    // 서비스에서 던진 에러(400/404/403 등, status/code 포함)를 공통 에러 핸들러로 전달한다.
+    // 예) 잘못된 id -> 400, 없는 문의 -> 404, 남의 문의 -> 403
     next(err)
   }
 }
