@@ -20,8 +20,9 @@ export async function createPost(req, res, next) {
 // 3.2 실종 공고 목록 조회 (필터링)
 export async function getPosts(req, res, next) {
   try {
-    // TODO: species, breed, color, region, 기간 필터 + 페이지네이션
-    fail(res, 501, "NOT_IMPLEMENTED", "아직 구현되지 않았습니다.")
+    // URL 쿼리의 필터와 페이지 정보를 서비스에서 검증한 뒤 조회한다.
+    const result = await service.getPosts(req.query)
+    ok(res, result)
   } catch (err) {
     next(err)
   }

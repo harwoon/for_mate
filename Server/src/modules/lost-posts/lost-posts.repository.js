@@ -102,4 +102,63 @@ export async function findById(id) {
   return { ...post, images: imageResult.rows }
 }
 
-// TODO(3.2, 3.4): 목록/수정/삭제 쿼리는 각 API 구현 시 추가한다.
+// 3.2 실종 공고 목록 조회
+export async function findMany({ filters, size, offset }) {
+  const conditions = []
+  const params = []
+
+  // 값은 모두 파라미터로 전달해 SQL Injection을 방지한다.
+  function addCondition(sql, value) {
+    params.push(value)
+    conditions.push(sql.replace("?", `$${params.length}`))
+  }
+
+  addCondition("lp.status = ?", filters.status)
+  if (filters.species) addCondition("lp.species = ?", filters.species)
+  if (filters.breed) addCondition("lp.breed = ?", filters.breed)
+  if (filters.color) addCondition("lp.color = ?", filters.color)
+  if (filters.region) addCondition("lp.region ILIKE '%' || ? || '%'", filters.region)
+  if (filters.startDate) addCondition("lp.event_date >= ?", filters.startDate)
+  if (filters.endDate) addCondition("lp.event_date <= ?", filters.endDate)
+
+  const whereClause = `WHERE ${conditions.join(" AND ")}`
+
+  // 필터 결과의 전체 개수를 별도로 조회해 전체 페이지 수를 계산할 수 있게 한다.
+  const countResult = await pool.query(
+    `SELECT COUNT(*)::int AS total
+     FROM lost_posts lp
+     ${whereClause}`,
+    params,
+  )
+
+  // LATERAL JOIN으로 각 공고의 대표 이미지 한 장만 가져온다.
+  // 대표 이미지가 없다면 가장 먼저 등록된 이미지를 사용한다.
+  const listParams = [...params, size, offset]
+  const sizeParam = `$${params.length + 1}`
+  const offsetParam = `$${params.length + 2}`
+  const listResult = await pool.query(
+    `SELECT
+       lp.id, lp.pet_name, lp.species, lp.breed, lp.color,
+       lp.region, lp.event_date, lp.status, lp.created_at,
+       primary_image.image_url AS primary_image_url
+     FROM lost_posts lp
+     LEFT JOIN LATERAL (
+       SELECT image_url
+       FROM images
+       WHERE post_type = 'lost' AND lost_post_id = lp.id
+       ORDER BY is_primary DESC, id ASC
+       LIMIT 1
+     ) primary_image ON TRUE
+     ${whereClause}
+     ORDER BY lp.created_at DESC, lp.id DESC
+     LIMIT ${sizeParam} OFFSET ${offsetParam}`,
+    listParams,
+  )
+
+  return {
+    items: listResult.rows,
+    total: countResult.rows[0].total,
+  }
+}
+
+// TODO(3.4): 수정/삭제 쿼리는 해당 API 구현 시 추가한다.

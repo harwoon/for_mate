@@ -110,6 +110,77 @@ export async function createPost({ userId, body, imageUrls }) {
   return createdPost
 }
 
+// 목록 조회의 page와 size는 양의 정수만 허용하고 과도한 조회를 막기 위해 최대 100개로 제한한다.
+function parsePagingValue(value, defaultValue, fieldName, maxValue) {
+  if (value === undefined || value === "") return defaultValue
+
+  const number = Number(value)
+  if (!Number.isInteger(number) || number <= 0 || number > maxValue) {
+    throw serviceError(
+      `${fieldName} 값이 올바르지 않습니다.`,
+      400,
+      "INVALID_PAGINATION",
+    )
+  }
+  return number
+}
+
+// 날짜 필터가 들어온 경우에만 YYYY-MM-DD 형식과 실제 날짜인지 검사한다.
+function validateFilterDate(value, fieldName) {
+  if (!value) return
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw serviceError(`${fieldName} 형식이 올바르지 않습니다.`, 400, "INVALID_DATE")
+  }
+
+  const date = new Date(`${value}T00:00:00Z`)
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw serviceError(`${fieldName}가 올바른 날짜가 아닙니다.`, 400, "INVALID_DATE")
+  }
+}
+
+// 3.2 실종 공고 목록 조회 (필터링 + 페이지네이션)
+export async function getPosts(query) {
+  const page = parsePagingValue(query.page, 1, "page", Number.MAX_SAFE_INTEGER)
+  const size = parsePagingValue(query.size, 20, "size", 100)
+
+  const species = optionalText(query.species)
+  const breed = optionalText(query.breed)
+  const color = optionalText(query.color)
+  const region = optionalText(query.region)
+  const startDate = optionalText(query.start_date)
+  const endDate = optionalText(query.end_date)
+  const status = optionalText(query.status) ?? "active"
+
+  validateChoice(species, ["개", "고양이"], "species")
+  validateChoice(status, ["active", "closed"], "status")
+  validateFilterDate(startDate, "start_date")
+  validateFilterDate(endDate, "end_date")
+
+  if (startDate && endDate && startDate > endDate) {
+    throw serviceError(
+      "start_date는 end_date보다 늦을 수 없습니다.",
+      400,
+      "INVALID_DATE_RANGE",
+    )
+  }
+
+  const { items, total } = await repository.findMany({
+    filters: { species, breed, color, region, startDate, endDate, status },
+    size,
+    offset: (page - 1) * size,
+  })
+
+  return {
+    items,
+    pagination: {
+      page,
+      size,
+      total,
+      total_pages: Math.ceil(total / size),
+    },
+  }
+}
+
 // 3.3 실종 공고 상세 조회
 export async function getPost({ postId, userId }) {
   // URL 파라미터는 문자열로 들어오므로 양의 정수 ID인지 먼저 검사한다.
@@ -135,7 +206,6 @@ export async function getPost({ postId, userId }) {
 }
 
 // TODO: 아래 함수들은 해당 API 담당 범위에서 구현한다.
-// - getPosts: 3.2 실종 공고 목록 조회 (필터링)
 // - updatePost: 3.4 실종 공고 수정
 // - updateStatus: 3.4 상태 변경 (찾음 처리)
 // - deletePost: 3.4 실종 공고 삭제
