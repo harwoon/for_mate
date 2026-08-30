@@ -1,2 +1,6 @@
 .venv
 ML/processed_animals
+ML/processed_animals_masked
+ML/*.npy
+ML/.env
+ML/*.pt
