@@ -1,0 +1,126 @@
+/* 페이지 뼈대: 헤더, 푸터, 본문 영역 */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.page-body {
+  flex: 1;
+}
+
+/* 가운데 정렬 + 좌우 여백. 거의 모든 페이지에서 사용한다. */
+.container {
+  width: 100%;
+  max-width: var(--container-width);
+  margin: 0 auto;
+  padding: 0 var(--space-md);
+}
+
+/* 헤더 */
+.header {
+  height: var(--header-height);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+}
+
+.header-logo {
+  font-size: var(--font-lg);
+  font-weight: 700;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+.header-nav {
+  display: flex;
+  gap: var(--space-lg);
+}
+
+.header-nav a {
+  color: var(--color-text-sub);
+  font-size: var(--font-sm);
+  padding: var(--space-sm) 0;
+}
+
+.header-nav a:hover,
+.header-nav a.is-active {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* 푸터 */
+.footer {
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-lg) 0;
+  margin-top: var(--space-2xl);
+}
+
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  font-size: var(--font-sm);
+  color: var(--color-text-sub);
+}
+
+.footer-links {
+  display: flex;
+  gap: var(--space-md);
+}
+
+/* 페이지 제목 영역 */
+.page-header {
+  padding: var(--space-xl) 0 var(--space-lg);
+}
+
+.page-title {
+  font-size: var(--font-xl);
+  font-weight: 700;
+}
+
+.page-desc {
+  margin-top: var(--space-xs);
+  color: var(--color-text-sub);
+  font-size: var(--font-sm);
+}
+
+/* 모바일 대응 */
+@media (max-width: 768px) {
+  .header-nav {
+    gap: var(--space-md);
+  }
+
+  .header-nav a {
+    font-size: var(--font-xs);
+  }
+
+  .page-title {
+    font-size: var(--font-lg);
+  }
+
+  .footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

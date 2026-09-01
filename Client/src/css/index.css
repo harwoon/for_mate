@@ -1,0 +1,6 @@
+/* 모든 CSS를 한 곳에서 불러온다. main.jsx는 이 파일 하나만 import 하면 된다.
+   순서 중요: variables(값 정의) → reset(기본값 초기화) → layout → components */
+@import "./variables.css";
+@import "./reset.css";
+@import "./layout.css";
+@import "./components.css";
