@@ -1,0 +1,58 @@
+/* 색상, 여백, 글자 크기 등 프로젝트 전체에서 쓰는 값 모음.
+   값을 바꾸려면 여기만 고치면 모든 화면에 반영된다. */
+:root {
+  /* 색상 */
+  --color-primary: #3d6b47;          /* 메인 초록 (버튼, 강조) */
+  --color-primary-dark: #2f5537;
+  --color-primary-light: #e8f2ea;
+
+  --color-bg: #faf9f5;               /* 페이지 배경 (아이보리) */
+  --color-surface: #ffffff;          /* 카드, 헤더 배경 */
+  --color-border: #e5e3dd;
+
+  --color-text: #1f2320;             /* 기본 글자색 */
+  --color-text-sub: #6b7069;         /* 보조 설명 글자색 */
+  --color-text-light: #9aa096;
+
+  --color-danger: #d94b4b;           /* 오류, 신고 */
+  --color-danger-light: #fdeaea;
+  --color-success: #3d8f5f;
+  --color-success-light: #e6f5eb;
+  --color-warning: #e0a33c;
+  --color-warning-light: #fdf4e3;
+
+  /* 상태 뱃지 색상 */
+  --badge-lost: #d94b4b;             /* 실종 */
+  --badge-rescue: #3d6b47;           /* 보호중 */
+  --badge-ending: #e0a33c;           /* 보호종료 예정 */
+
+  /* 여백 */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+
+  /* 글자 크기 */
+  --font-xs: 12px;
+  --font-sm: 14px;
+  --font-md: 16px;
+  --font-lg: 20px;
+  --font-xl: 28px;
+  --font-2xl: 36px;
+
+  /* 모서리 둥글기 */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+
+  /* 그림자 */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+  /* 레이아웃 */
+  --container-width: 1200px;
+  --header-height: 64px;
+}
