@@ -1,6 +1,15 @@
 .venv
+
+# secrets
+ML/.env
+
+# generated data / artifacts
 ML/processed_animals
 ML/processed_animals_masked
-ML/*.npy
-ML/.env
-ML/*.pt
+ML/processed_animals_faces
+*.npy
+
+# model weights (auto-downloaded)
+*.pt
+ML/petface_pretrained
+ML/petface_repo
