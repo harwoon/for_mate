@@ -9,6 +9,7 @@ router.get("/lost-posts", requireAuth, controller.getLostPosts)           // 실
 router.get("/found-posts", requireAuth, controller.getFoundPosts)         // 발견제보 관리
 router.get("/reports", requireAuth, controller.getReports)                // 신고 목록 조회
 router.patch("/reports/:reportId", requireAuth, controller.updateReport)  // 10.2 신고 처리
-router.get("/inquiries", requireAuth, controller.getInquiries)            // 문의 관리
+router.get("/inquiries", requireAuth, controller.getInquiries)              // 문의 관리
+router.patch("/inquiries/:inquiryId", requireAuth, controller.answerInquiry) // 11.3 문의 답변 등록(관리자)
 
 export default router
