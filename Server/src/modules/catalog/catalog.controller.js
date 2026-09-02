@@ -25,7 +25,7 @@ export async function getColorTags(req, res, next) {
 export async function getRegions(req, res, next) {
   try {
     // TODO: parent가 있으면 시군구, 없으면 시/도 목록 반환
-    fail(res, 501, "NOT_IMPLEMENTED", "아직 구현되지 않았습니다.")
+    ok(res, await service.getRegions(req.query.parent?.trim() || null))
   } catch (err) {
     next(err)
   }

@@ -2,7 +2,7 @@
  * care_addr(보호소 주소) 문자열에서 시/도, 시/군/구를 뽑아낸다.
  * 예)
  *   "경상남도 창원시 성산구 공단로474번길 117 (상복동) 창원동물보호센터"
- *     -> { sido: "경상남도", sigungu: "창원시 성산구" }
+ *     -> { sido: "경상남도", sigungu: "창원시" }
  *   "전북특별자치도 부안군 주산면 주산로 369  부안군 동물보호센터"
  *     -> { sido: "전북특별자치도", sigungu: "부안군" }
  *   "세종특별자치시 조치원읍 ..."   -> { sido: "세종특별자치시", sigungu: null }
@@ -25,6 +25,16 @@ const SIDO_SET = new Set([
     "강원특별자치도", "전북특별자치도", "제주특별자치도", "전남광주통합특별시",
 ])
 
+// 시군구 개편 전 이름 -> regions.json 기준 신 이름. 시도별 구분(중구/서구가 여러 시도에 있음).
+// (인천 2026 개편: 중구·동구 -> 제물포구, 서구 -> 서해구)
+const SIGUNGU_ALIASES = {
+    "인천광역시": {
+        "중구": "제물포구",
+        "동구": "제물포구",
+        "서구": "서해구",
+    },
+}
+
 export function parseRegion(careAddr) {
     const empty = { sido: null, sigungu: null }
     if (!careAddr || typeof careAddr !== "string") return empty
@@ -37,15 +47,8 @@ export function parseRegion(careAddr) {
     if (sido === "세종특별자치시") return { sido, sigungu: null } // 시군구 레벨 없음
 
     const t1 = tokens[1] ?? ""
-    const t2 = tokens[2] ?? ""
-
-    // "창원시 성산구", "성남시 분당구" 처럼 시 + 행정구 조합
-    if (/시$/.test(t1) && /구$/.test(t2)) {
-        return { sido, sigungu: `${t1} ${t2}` }
-    }
-    // "부안군", "제주시", "종로구" 등 단일 시/군/구
     if (/(시|군|구)$/.test(t1)) {
-        return { sido, sigungu: t1 }
+        return { sido, sigungu: SIGUNGU_ALIASES[sido]?.[t1] ?? t1 }
     }
     return { sido, sigungu: null }
 }
