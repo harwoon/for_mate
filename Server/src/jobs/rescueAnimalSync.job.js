@@ -1,11 +1,16 @@
 import "dotenv/config"
 import { pool } from "../db/pool.js"
-import {exec} from "child_process"
-import { createReadStream, readFile } from "fs";
-import path, { parse } from "path";
-import { fileURLToPath } from "url";
-import csv from "csv-parser";
-import { createClient } from "@supabase/supabase-js";
+import { exec } from "child_process"
+import { promisify } from "util"
+import { createReadStream } from "fs"
+import { readFile } from "fs/promises"
+import path from "path"
+import { fileURLToPath } from "url"
+import csv from "csv-parser"
+import { createClient } from "@supabase/supabase-js"
+import { parseRegion } from "./regionParser.js"
+
+const execAsync = promisify(exec)
 
 // 새벽 배치 작업
 // 실행: npm run job:sync (Cron으로 매일 새벽에 실행하도록 등록)
@@ -25,10 +30,10 @@ async function fetchFromApi() {
 }
 */
 
-const SUPABASE_URL="https://xnjcjzfpfjsocrruneph.supabase.co"
-const SUPABASE_SERVICE_KEY="sb_publishable_62KCl8tGkMwFSGUr1dvWYw_GrDDN-lt"
-// const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY,
+)
 
 async function preprocess() {
   
@@ -39,7 +44,7 @@ async function preprocess() {
   // Python 파일 경로
   const pythonFile = path.join(__dirname, "test.py") // 연습용
   // const pythonFile = path.join(__dirname, "pre.py") // 실전용
-  
+
   // 1. Python 파일 실행
   exec(`python ${pythonFile}`, (error, stdout, stderr)=>{
     if(error){
@@ -97,6 +102,7 @@ async function saveAnimals(processed_animals) {
   const color_tags = jsonData
   for (const [index, animal] of animals.entries()){
     const key = Object.keys(animal).find(k => k.includes("desertionNo"));
+    const { sido: regionSido, sigungu: regionSigungu } = parseRegion(animal.careAddr)
     const record = {
       //컬럼매핑
       desertion_no: Number(animal[key]),
@@ -115,6 +121,8 @@ async function saveAnimals(processed_animals) {
       care_nm: animal.careNm,
       care_tel: animal.careTel,
       care_addr: animal.careAddr,
+      region_sido: regionSido,
+      region_sigungu: regionSigungu,
       rfid_cd: animal.rfidCd,
       notice_sdt: animal.noticeSdt,
       notice_edt: animal.noticeEdt,

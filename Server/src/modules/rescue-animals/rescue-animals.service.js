@@ -35,6 +35,8 @@ export async function getAnimals(query) {
         species: query.species || null,
         breed: query.breed || null,
         colors,
+        sido: query.sido?.trim() || null,
+        sigungu: query.sigungu?.trim() || null,
         size,
         offset
     }

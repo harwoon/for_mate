@@ -85,6 +85,8 @@ CREATE TABLE rescue_animals (
   care_nm        VARCHAR(100),
   care_tel       VARCHAR(30),
   care_addr      VARCHAR(200),
+  region_sido    VARCHAR(30),   -- care_addr에서 파싱 (배치가 채움). 지역 필터용
+  region_sigungu VARCHAR(40),   -- 예: "성남시 분당구", "부안군". 세종은 NULL
   rfid_cd        VARCHAR(50),
   notice_sdt     DATE,
   notice_edt     DATE,
@@ -94,6 +96,7 @@ CREATE TABLE rescue_animals (
 CREATE INDEX idx_rescue_filter ON rescue_animals (up_kind_nm, kind_nm, happen_place, happen_dt);
 CREATE INDEX idx_rescue_notice_edt ON rescue_animals (notice_edt);
 CREATE INDEX idx_rescue_color_tags ON rescue_animals USING GIN (color_tags);
+CREATE INDEX idx_rescue_region ON rescue_animals (region_sido, region_sigungu);
 
 -- 사진 (실종/발견/구조동물 공통)
 CREATE TABLE images (

@@ -28,6 +28,8 @@ export async function findMany({
     species,
     breed,
     colors,
+    sido,
+    sigungu,
     size,
     offset
 }) {
@@ -55,7 +57,15 @@ export async function findMany({
         conditions.push(`r.color_tags && $${values.length}::text[]`)
     }
 
-    // 지역 필터링 현규님 부탁드힙니다~!!
+    // 지역 - care_addr에서 파싱해 저장해둔 시/도, 시/군/구(등호 비교)
+    if (sido) {
+        values.push(sido)
+        conditions.push(`r.region_sido = $${values.length}`)
+    }
+    if (sigungu) {
+        values.push(sigungu)
+        conditions.push(`r.region_sigungu = $${values.length}`)
+    }
 
     
     const whereSql = conditions.join(" AND ")
