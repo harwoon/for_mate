@@ -44,6 +44,26 @@
   border: 1px solid var(--color-danger);
 }
 
+/* 소셜 로그인 버튼 (구글/카카오는 브랜드 색상을 그대로 따른다) */
+.btn-google {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.btn-google:hover:not(:disabled) {
+  border-color: var(--color-text-light);
+}
+
+.btn-kakao {
+  background: #fee500;
+  color: #191600;
+}
+
+.btn-kakao:hover:not(:disabled) {
+  background: #f5dc00;
+}
+
 .btn-text {
   color: var(--color-text-sub);
   padding: var(--space-sm);
@@ -214,6 +234,100 @@
   margin-top: var(--space-xs);
   font-size: var(--font-xs);
   color: var(--color-text-sub);
+}
+
+/* ===== 인증 카드 (로그인 / 회원가입 등, 피그마 C-01 로그인 기준) ===== */
+.auth-page {
+  padding-top: var(--space-2xl);
+  padding-bottom: var(--space-2xl);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  box-shadow: var(--shadow-md);
+}
+
+.auth-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  text-align: center;
+  margin-bottom: var(--space-lg);
+}
+
+.auth-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--font-lg);
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.auth-logo-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+}
+
+.auth-links {
+  margin-top: var(--space-lg);
+  text-align: center;
+  font-size: var(--font-sm);
+}
+
+.auth-links a {
+  margin-left: var(--space-xs);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* 이메일/비밀번호 로그인과 소셜 로그인 사이 구분선 ("또는") */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--color-text-light);
+  font-size: var(--font-xs);
+  margin: var(--space-lg) 0 var(--space-md);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.auth-socials {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* 로그인 성공 모달 (C-01-S01). 배경은 기존 .modal-backdrop을 그대로 쓴다. */
+.auth-success-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  width: 100%;
+  max-width: 420px;
+  padding: var(--space-xl) var(--space-lg) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  text-align: center;
+}
+
+.auth-success-title {
+  font-size: var(--font-lg);
+  font-weight: 700;
 }
 
 /* ===== 상태 화면 (로딩 / 비어있음 / 오류) ===== */
