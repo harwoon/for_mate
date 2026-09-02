@@ -1,4 +1,6 @@
 import * as repository from "./lost-posts.repository.js"
+import { unlink } from "node:fs/promises"
+import path from "node:path"
 
 // 공통 error.middleware가 HTTP 상태와 오류 코드를 응답에 사용할 수 있도록
 // 일반 Error 객체에 status와 code를 추가해서 만든다.
@@ -61,9 +63,9 @@ function validateDate(value) {
 // 3.1 실종 공고 등록 (사진 최대 8장)
 export async function createPost({ userId, body, imageUrls }) {
   // upload 미들웨어가 만든 URL 배열을 확인한다.
-  // 등록 API는 최소 1장, 최대 8장의 사진을 요구한다.
-  if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
-    throw serviceError("이미지를 1장 이상 등록해주세요.", 400, "MISSING_IMAGES")
+  // 등록 API는 최소 3장, 최대 8장의 사진을 요구한다.
+  if (!Array.isArray(imageUrls) || imageUrls.length < 3) {
+    throw serviceError("이미지를 3장 이상 등록해주세요.", 400, "MISSING_IMAGES")
   }
   if (imageUrls.length > 8) {
     throw serviceError("이미지는 최대 8장까지 등록할 수 있습니다.", 400, "TOO_MANY_IMAGES")
@@ -84,7 +86,7 @@ export async function createPost({ userId, body, imageUrls }) {
   // DB에 저장하기 전에 명세에서 정한 코드값과 날짜 형식을 검사한다.
   // sex와 neuter_yn은 사용자가 소문자로 보내도 대문자로 바꾼 뒤 검사한다.
   validateChoice(species, ["개", "고양이"], "species")
-  validateChoice(sex, ["M", "F", "U"], "sex")
+  validateChoice(sex, ["M", "F", "Q"], "sex")
   validateChoice(neuterYn, ["Y", "N", "U"], "neuter_yn")
   validateDate(eventDate)
 
@@ -205,7 +207,143 @@ export async function getPost({ postId, userId }) {
   }
 }
 
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key)
+}
+
+// multipart/form-data의 delete_image_ids는 JSON 문자열로 들어온다.
+// 중복을 제거하고 PostgreSQL BIGINT에 안전하게 전달할 양의 정수 문자열로 정리한다.
+function parseDeleteImageIds(value) {
+  if (value === undefined || value === null || value === "") return []
+
+  let parsed = value
+  if (typeof value === "string") {
+    try {
+      parsed = JSON.parse(value)
+    } catch {
+      throw serviceError(
+        "delete_image_ids는 JSON 배열 형식이어야 합니다.",
+        400,
+        "INVALID_IMAGE_IDS",
+      )
+    }
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw serviceError(
+      "delete_image_ids는 JSON 배열 형식이어야 합니다.",
+      400,
+      "INVALID_IMAGE_IDS",
+    )
+  }
+
+  const ids = parsed.map((id) => String(id))
+  if (ids.some((id) => !/^[1-9]\d*$/.test(id))) {
+    throw serviceError(
+      "삭제할 이미지 ID가 올바르지 않습니다.",
+      400,
+      "INVALID_IMAGE_IDS",
+    )
+  }
+  return [...new Set(ids)]
+}
+
+// DB에서 삭제된 이미지 중 로컬 업로드 경로만 실제 디스크에서도 제거한다.
+// 과거 Supabase URL은 로컬 파일이 아니므로 이 함수에서 건드리지 않는다.
+async function removeOldLocalImages(images) {
+  const localPrefix = "/uploads/lost-posts/"
+  for (const image of images) {
+    if (!image.image_url?.startsWith(localPrefix)) continue
+
+    const filename = path.basename(image.image_url)
+    const filePath = path.resolve("uploads", "lost-posts", filename)
+    try {
+      await unlink(filePath)
+    } catch (error) {
+      // DB 수정은 이미 완료됐으므로 파일 정리 실패는 기록만 남긴다.
+      if (error.code !== "ENOENT") console.error("기존 실종 이미지 삭제 실패:", error)
+    }
+  }
+}
+
+// 3.4 실종 공고 및 이미지 수정
+export async function updatePost({ postId, userId, body, imageUrls = [] }) {
+  const id = Number(postId)
+  if (!Number.isInteger(id) || id <= 0) {
+    throw serviceError("공고 ID가 올바르지 않습니다.", 400, "INVALID_POST_ID")
+  }
+
+  const updates = {}
+
+  // 요청에 포함된 필드만 검증하고 수정한다. 선택 필드는 빈 문자열로 보내면 NULL이 된다.
+  if (hasOwn(body, "pet_name")) updates.pet_name = requiredText(body.pet_name, "pet_name")
+  if (hasOwn(body, "species")) updates.species = requiredText(body.species, "species")
+  if (hasOwn(body, "breed")) updates.breed = optionalText(body.breed)
+  if (hasOwn(body, "color")) updates.color = optionalText(body.color)
+  if (hasOwn(body, "sex")) updates.sex = optionalText(body.sex)?.toUpperCase() ?? null
+  if (hasOwn(body, "neuter_yn")) {
+    updates.neuter_yn = optionalText(body.neuter_yn)?.toUpperCase() ?? null
+  }
+  if (hasOwn(body, "region")) updates.region = requiredText(body.region, "region")
+  if (hasOwn(body, "event_date")) {
+    updates.event_date = requiredText(body.event_date, "event_date")
+  }
+  if (hasOwn(body, "description")) updates.description = optionalText(body.description)
+
+  if (updates.species !== undefined) validateChoice(updates.species, ["개", "고양이"], "species")
+  if (updates.sex !== undefined) validateChoice(updates.sex, ["M", "F", "U"], "sex")
+  if (updates.neuter_yn !== undefined) {
+    validateChoice(updates.neuter_yn, ["Y", "N", "U"], "neuter_yn")
+  }
+  if (updates.event_date !== undefined) validateDate(updates.event_date)
+
+  assertMaxLength(updates.pet_name, 50, "pet_name")
+  assertMaxLength(updates.species, 20, "species")
+  assertMaxLength(updates.breed, 50, "breed")
+  assertMaxLength(updates.color, 30, "color")
+  assertMaxLength(updates.region, 100, "region")
+
+  const deleteImageIds = parseDeleteImageIds(body.delete_image_ids)
+  if (Object.keys(updates).length === 0 && deleteImageIds.length === 0 && imageUrls.length === 0) {
+    throw serviceError("수정할 내용을 입력해주세요.", 400, "NO_CHANGES")
+  }
+
+  const result = await repository.updatePostWithImages({
+    id,
+    userId,
+    updates,
+    deleteImageIds,
+    imageUrls,
+  })
+
+  if (result.outcome === "not_found") {
+    throw serviceError("실종 공고를 찾을 수 없습니다.", 404, "LOST_POST_NOT_FOUND")
+  }
+  if (result.outcome === "forbidden") {
+    throw serviceError("공고 작성자만 수정할 수 있습니다.", 403, "FORBIDDEN")
+  }
+  if (result.outcome === "invalid_image_ids") {
+    throw serviceError(
+      "현재 공고에 속하지 않은 이미지 ID가 포함되어 있습니다.",
+      400,
+      "INVALID_IMAGE_IDS",
+    )
+  }
+  if (result.outcome === "invalid_image_count") {
+    throw serviceError(
+      "수정 완료 후 이미지는 1장 이상 8장 이하여야 합니다.",
+      400,
+      "INVALID_IMAGE_COUNT",
+    )
+  }
+
+  // DB 트랜잭션이 성공한 후에만 삭제 대상 기존 로컬 파일을 제거한다.
+  await removeOldLocalImages(result.deletedImages)
+
+  const { user_id, ...publicPost } = result.post
+  return publicPost
+}
+
 // TODO: 아래 함수들은 해당 API 담당 범위에서 구현한다.
-// - updatePost: 3.4 실종 공고 수정
 // - updateStatus: 3.4 상태 변경 (찾음 처리)
 // - deletePost: 3.4 실종 공고 삭제

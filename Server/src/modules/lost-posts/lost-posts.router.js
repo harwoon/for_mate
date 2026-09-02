@@ -53,7 +53,8 @@ async function removeUploadedFiles(files = []) {
 }
 
 // Multer로 파일을 로컬에 저장하고, repository가 DB에 저장할 URL을 만든다.
-function uploadLostImagesForCreate(req, res, next) {
+// 등록과 수정 요청에서 함께 사용하며, 수정 요청은 새 이미지가 없어도 통과한다.
+function uploadLostImagesLocally(req, res, next) {
   uploadLost(req, res, async (error) => {
     if (!error) {
       // DB에는 운영체제의 실제 경로가 아닌 웹에서 접근할 수 있는 URL 경로를 저장한다.
@@ -95,13 +96,19 @@ async function cleanupLostImagesOnError(error, req, res, next) {
 router.post(
   "/",
   requireAuth,
-  uploadLostImagesForCreate,
+  uploadLostImagesLocally,
   controller.createPost,
   cleanupLostImagesOnError,
 ) // 3.1 실종 공고 등록
 router.get("/", controller.getPosts)                                    // 3.2 실종 공고 목록 조회 (필터링)
 router.get("/:id", controller.getPost)                                  // 3.3 실종 공고 상세 조회
-router.put("/:id", requireAuth, controller.updatePost)                  // 3.4 실종 공고 수정
+router.put(
+  "/:id",
+  requireAuth,
+  uploadLostImagesLocally,
+  controller.updatePost,
+  cleanupLostImagesOnError,
+) // 3.4 실종 공고 및 이미지 수정
 router.patch("/:id/status", requireAuth, controller.updateStatus)       // 3.4 상태 변경 (찾음 처리)
 router.delete("/:id", requireAuth, controller.deletePost)               // 3.4 실종 공고 삭제
 
