@@ -116,7 +116,10 @@ export async function findMany({ filters, size, offset }) {
   addCondition("lp.status = ?", filters.status)
   if (filters.species) addCondition("lp.species = ?", filters.species)
   if (filters.breed) addCondition("lp.breed = ?", filters.breed)
-  if (filters.color) addCondition("lp.color = ?", filters.color)
+  // 선택한 색상 중 하나와 일치하는 공고를 조회한다.
+  if (filters.colors.length > 0) {
+    addCondition("lp.color = ANY(?::text[])", filters.colors)
+  }
   if (filters.region) addCondition("lp.region ILIKE '%' || ? || '%'", filters.region)
   if (filters.startDate) addCondition("lp.event_date >= ?", filters.startDate)
   if (filters.endDate) addCondition("lp.event_date <= ?", filters.endDate)

@@ -28,6 +28,24 @@ function optionalText(value) {
   return text || null
 }
 
+// 목록의 다중 색상 필터를 문자열 배열로 정리한다.
+// colors=갈색,검은색 형식과 colors=갈색&colors=검은색 형식을 모두 허용한다.
+// 기존 클라이언트의 color=갈색 요청도 호환성을 위해 함께 지원한다.
+function parseColorFilters(colorsValue, legacyColorValue) {
+  const values = colorsValue ?? legacyColorValue
+  if (values === undefined || values === null || values === "") return []
+
+  const entries = Array.isArray(values) ? values : [values]
+  return [
+    ...new Set(
+      entries
+        .flatMap((value) => String(value).split(","))
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ]
+}
+
 // DB의 VARCHAR 길이를 넘긴 요청이 DB 오류(500)로 처리되지 않도록 사전에 검사한다.
 function assertMaxLength(value, maxLength, fieldName) {
   if (value && value.length > maxLength) {
@@ -147,7 +165,7 @@ export async function getPosts(query) {
 
   const species = optionalText(query.species)
   const breed = optionalText(query.breed)
-  const color = optionalText(query.color)
+  const colors = parseColorFilters(query.colors, query.color)
   const region = optionalText(query.region)
   const startDate = optionalText(query.start_date)
   const endDate = optionalText(query.end_date)
@@ -167,7 +185,7 @@ export async function getPosts(query) {
   }
 
   const { items, total } = await repository.findMany({
-    filters: { species, breed, color, region, startDate, endDate, status },
+    filters: { species, breed, colors, region, startDate, endDate, status },
     size,
     offset: (page - 1) * size,
   })
