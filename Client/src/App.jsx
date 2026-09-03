@@ -52,9 +52,15 @@ export default function App() {
         <Route path="/found-posts" element={<FoundListPage />} />
         <Route path="/found-posts/:id" element={<FoundDetailPage />} />
 
-        <Route path="/pages/terms" element={<TermsPage />} />
-        <Route path="/pages/privacy" element={<PrivacyPage />} />
-        <Route path="/pages/about" element={<AboutPage />} />
+        {/* 주의: 이 세 페이지의 주소를 /pages/terms 처럼 만들지 않는다.
+            vite.config.js의 proxy 설정이 "/pages"로 시작하는 모든 요청(새 탭으로 직접 열 때 브라우저가
+            보내는 요청 포함)을 백엔드(4000번 포트)로 그대로 넘겨버리기 때문에, 그렇게 하면 React가 렌더링한
+            화면 대신 백엔드가 돌려주는 raw JSON이 그대로 보여버린다. (백엔드 API 주소인 GET /pages/terms 등은
+            Client/src/api/pages.api.js가 fetch로 호출하는 용도로만 쓰이고, 화면 주소와는 겹치면 안 된다)
+            그래서 화면 주소는 /terms, /privacy, /about처럼 "/pages" 접두어 없이 만든다. */}
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/about" element={<AboutPage />} />
 
         {/* 로그인해야 볼 수 있는 페이지 */}
         <Route element={<ProtectedRoute />}>
