@@ -4,7 +4,7 @@ import { mkdirSync } from "node:fs"
 import { unlink } from "node:fs/promises"
 import path from "node:path"
 import multer from "multer"
-import { requireAuth } from "../../middleware/auth.middleware.js"
+import { requireAuth, optionalAuth } from "../../middleware/auth.middleware.js"
 import * as controller from "./lost-posts.controller.js"
 
 const router = express.Router()
@@ -101,7 +101,7 @@ router.post(
   cleanupLostImagesOnError,
 ) // 3.1 실종 공고 등록
 router.get("/", controller.getPosts)                                    // 3.2 실종 공고 목록 조회 (필터링)
-router.get("/:id", controller.getPost)                                  // 3.3 실종 공고 상세 조회
+router.get("/:id", optionalAuth, controller.getPost)                                  // 3.3 실종 공고 상세 조회
 router.put(
   "/:id",
   requireAuth,
