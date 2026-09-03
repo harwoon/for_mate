@@ -1,11 +1,14 @@
 import * as service from "./catalog.service.js"
-import { ok, created, fail } from "../../utils/response.js"
+import { ok } from "../../utils/response.js"
 
 // 2.1 품종 목록 조회 (자동완성)
 export async function getBreeds(req, res, next) {
   try {
-    // TODO: species, keyword로 breeds 테이블 검색
-    fail(res, 501, "NOT_IMPLEMENTED", "아직 구현되지 않았습니다.")
+    // species와 keyword는 선택값이며, 앞뒤 공백을 제거한 뒤 서비스로 전달한다.
+    const species = req.query.species?.trim() || null
+    const keyword = req.query.keyword?.trim() || null
+
+    ok(res, await service.getBreeds({ species, keyword }))
   } catch (err) {
     next(err)
   }
@@ -14,8 +17,8 @@ export async function getBreeds(req, res, next) {
 // 2.2 색상 태그 목록 조회
 export async function getColorTags(req, res, next) {
   try {
-    // TODO: constants의 COLOR_TAGS 반환
-    fail(res, 501, "NOT_IMPLEMENTED", "아직 구현되지 않았습니다.")
+    // 카탈로그에서 선택 가능한 표준 색상 목록을 반환한다.
+    ok(res, await service.getColorTags())
   } catch (err) {
     next(err)
   }
