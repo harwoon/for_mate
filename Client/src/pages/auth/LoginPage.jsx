@@ -48,7 +48,14 @@ export default function LoginPage() {
 
   // 이미 로그인되어 있는 사용자가 로그인 페이지로 들어오면 홈으로 돌려보낸다.
   // (AuthContext가 새로고침 시 getMe()로 로그인 여부를 확인해 채워주는 값)
-  if (user) return <Navigate to="/" replace />
+  //
+  // 주의: 조건에 반드시 "!showSuccess"를 같이 넣어야 한다. handleSubmit()이 로그인에 성공하면
+  // login()이 AuthContext의 user를 채우자마자 이 컴포넌트가 다시 렌더링되는데, 그 순간 이 줄만 보면
+  // user가 이미 true라서 showSuccess를 true로 바꾸기도 전에(또는 같은 렌더링에서) 곧장 홈으로
+  // Navigate 되어버려 C-01-S01 성공 모달이 뜰 틈이 없어진다. showSuccess가 true인 동안에는
+  // "로그인은 됐지만 아직 모달을 보여주는 중"이라는 뜻이므로 이 자동 리다이렉트를 잠깐 멈춰야 하고,
+  // 모달의 "메인으로" 버튼(goHome)이 그때 가서 직접 navigate("/")로 이동시킨다.
+  if (user && !showSuccess) return <Navigate to="/" replace />
 
   // 제출 시점에 이메일/비밀번호를 검사해서 필드별 오류 메시지를 만든다.
   // 문제가 없는 필드는 빈 문자열을 넣는다.
