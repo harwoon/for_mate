@@ -47,8 +47,15 @@ export async function getPost(req, res, next) {
 // 3.4 실종 공고 수정
 export async function updatePost(req, res, next) {
   try {
-    // TODO: 작성자 본인인지 확인 후 수정
-    fail(res, 501, "NOT_IMPLEMENTED", "아직 구현되지 않았습니다.")
+    // 공고 ID, 로그인 사용자, 수정 필드, 삭제할 이미지 ID와 새 이미지 URL을 전달한다.
+    const post = await service.updatePost({
+      postId: req.params.id,
+      userId: req.userId,
+      body: req.body,
+      imageUrls: req.imageUrls,
+    })
+
+    ok(res, post)
   } catch (err) {
     next(err)
   }

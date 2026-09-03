@@ -48,12 +48,12 @@ export async function createPostWithImages({ userId, post, imageUrls }) {
 
     // Supabase에 업로드된 URL을 images 테이블에 순서대로 저장한다.
     // entries()의 index가 0인 첫 번째 사진만 대표 이미지로 지정한다.
-    for (const [index, imageUrl] of imageUrls.entries()) {
+    for (const imageUrl of imageUrls) {
       const imageResult = await client.query(
-        `INSERT INTO images (post_type, lost_post_id, image_url, is_primary)
-         VALUES ('lost', $1, $2, $3)
-         RETURNING id, image_url, is_primary`,
-        [createdPost.id, imageUrl, index === 0],
+        `INSERT INTO images (post_type, lost_post_id, image_url)
+         VALUES ('lost', $1, $2)
+         RETURNING id, image_url, created_at`,
+        [createdPost.id, imageUrl],
       )
       images.push(imageResult.rows[0])
     }
@@ -92,10 +92,10 @@ export async function findById(id) {
   // 해당 실종 공고에 속한 사진만 조회한다.
   // 대표 사진을 첫 번째로 보여주고, 나머지는 등록된 순서(id 오름차순)로 정렬한다.
   const imageResult = await pool.query(
-    `SELECT id, image_url, is_primary
+    `SELECT id, image_url,created_at
      FROM images
      WHERE post_type = 'lost' AND lost_post_id = $1
-     ORDER BY is_primary DESC, id ASC`,
+     ORDER BY id ASC`,
     [id],
   )
 
@@ -140,15 +140,15 @@ export async function findMany({ filters, size, offset }) {
     `SELECT
        lp.id, lp.pet_name, lp.species, lp.breed, lp.color,
        lp.region, lp.event_date, lp.status, lp.created_at,
-       primary_image.image_url AS primary_image_url
+       first_image.image_url AS first_image_url
      FROM lost_posts lp
      LEFT JOIN LATERAL (
        SELECT image_url
        FROM images
        WHERE post_type = 'lost' AND lost_post_id = lp.id
-       ORDER BY is_primary DESC, id ASC
+       ORDER BY id ASC
        LIMIT 1
-     ) primary_image ON TRUE
+     ) first_image ON TRUE
      ${whereClause}
      ORDER BY lp.created_at DESC, lp.id DESC
      LIMIT ${sizeParam} OFFSET ${offsetParam}`,
@@ -161,4 +161,121 @@ export async function findMany({ filters, size, offset }) {
   }
 }
 
-// TODO(3.4): 수정/삭제 쿼리는 해당 API 구현 시 추가한다.
+// 3.4 공고 정보, 기존 이미지 삭제, 새 이미지 추가를 하나의 트랜잭션으로 처리한다.
+export async function updatePostWithImages({ id, userId, updates, deleteImageIds, imageUrls }) {
+  const client = await pool.connect()
+
+  try {
+    await client.query("BEGIN")
+
+    // 수정 중 공고가 삭제되거나 동시에 변경되지 않도록 행 잠금을 건다.
+    const ownerResult = await client.query(
+      `SELECT user_id FROM lost_posts WHERE id = $1 FOR UPDATE`,
+      [id],
+    )
+    const owner = ownerResult.rows[0]
+
+    if (!owner) {
+      await client.query("ROLLBACK")
+      return { outcome: "not_found" }
+    }
+    if (String(owner.user_id) !== String(userId)) {
+      await client.query("ROLLBACK")
+      return { outcome: "forbidden" }
+    }
+
+    const currentImageResult = await client.query(
+      `SELECT id, image_url, created_at
+       FROM images
+       WHERE post_type = 'lost' AND lost_post_id = $1
+       ORDER BY id ASC
+       FOR UPDATE`,
+      [id],
+    )
+    const currentImages = currentImageResult.rows
+    const currentIds = new Set(currentImages.map((image) => String(image.id)))
+
+    if (deleteImageIds.some((imageId) => !currentIds.has(String(imageId)))) {
+      await client.query("ROLLBACK")
+      return { outcome: "invalid_image_ids" }
+    }
+
+    const finalImageCount = currentImages.length - deleteImageIds.length + imageUrls.length
+    if (finalImageCount < 1 || finalImageCount > 8) {
+      await client.query("ROLLBACK")
+      return { outcome: "invalid_image_count" }
+    }
+
+    // 전달된 공고 필드만 동적으로 UPDATE한다. 컬럼명은 서비스가 만든 허용 목록만 사용한다.
+    const updateEntries = Object.entries(updates)
+    if (updateEntries.length > 0) {
+      const values = updateEntries.map(([, value]) => value)
+      const assignments = updateEntries.map(
+        ([column], index) => `${column} = $${index + 1}`,
+      )
+      values.push(id)
+      await client.query(
+        `UPDATE lost_posts
+         SET ${assignments.join(", ")}
+         WHERE id = $${values.length}`,
+        values,
+      )
+    }
+
+    let deletedImages = []
+    if (deleteImageIds.length > 0) {
+      const deletedResult = await client.query(
+        `DELETE FROM images
+         WHERE post_type = 'lost'
+           AND lost_post_id = $1
+           AND id = ANY($2::bigint[])
+         RETURNING id, image_url`,
+        [id, deleteImageIds],
+      )
+      deletedImages = deletedResult.rows
+    }
+
+    // 새 파일은 기존 이미지 뒤에 등록되며 대표 이미지는 마지막에 일괄 재지정한다.
+    for (const imageUrl of imageUrls) {
+      await client.query(
+        `INSERT INTO images (
+        post_type,
+        lost_post_id,
+        image_url
+        )
+         VALUES ('lost', $1, $2)`,
+        [id, imageUrl],
+      )
+    }
+
+    const postResult = await client.query(
+      `SELECT
+         id, user_id, pet_name, species, breed, color, sex, neuter_yn,
+         region, event_date, description, status, created_at
+       FROM lost_posts
+       WHERE id = $1`,
+      [id],
+    )
+    const imageResult = await client.query(
+      `SELECT id, image_url, created_at
+       FROM images
+       WHERE post_type = 'lost' AND lost_post_id = $1
+       ORDER BY id ASC`,
+      [id],
+    )
+
+    await client.query("COMMIT")
+    return {
+      outcome: "ok",
+      post: { ...postResult.rows[0], images: imageResult.rows },
+      deletedImages,
+    }
+  } catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+// TODO(3.4): 상태 변경/삭제 쿼리는 해당 API 구현 시 추가한다.

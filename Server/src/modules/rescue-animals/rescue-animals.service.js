@@ -29,14 +29,14 @@ export async function getAnimals(query) {
         }
     }
 
-
-    // 현규님 여기에 위치 파라미터 추가해주세용~
+    const sido = typeof query.sido === "string" ? (query.sido.trim() || null) : null
+    const sigungu = typeof query.sigungu === "string" ? (query.sigungu.trim() || null) : null
     const filters = {
         species: query.species || null,
         breed: query.breed || null,
         colors,
-        sido: query.sido?.trim() || null,
-        sigungu: query.sigungu?.trim() || null,
+        sido,
+        sigungu: sido ? sigungu : null,
         size,
         offset
     }
