@@ -7,7 +7,7 @@ ML/.env
 ML/processed_animals
 ML/processed_animals_masked
 ML/processed_animals_faces
-ML/dataset
+ML/dataset/Multi-pose dog dataset
 *.npy
 
 # model weights (auto-downloaded)
