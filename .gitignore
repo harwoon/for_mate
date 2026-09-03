@@ -10,7 +10,9 @@ ML/processed_animals_faces
 ML/dataset/Multi-pose dog dataset
 *.npy
 
-# model weights (auto-downloaded)
+# model weights / checkpoints
 *.pt
+*.pth
+*.ckpt
 ML/petface_pretrained
 ML/petface_repo
