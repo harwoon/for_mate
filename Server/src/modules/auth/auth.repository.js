@@ -1,6 +1,6 @@
 import { query } from "../../db/pool.js"
 
-const USER_COLUMNS = `id, email, password, name, provider, created_at, last_login`
+const USER_COLUMNS = `id, email, password, name, provider, is_admin, created_at, last_login`
 
 export async function findByEmail(email) {
   const result = await query(
