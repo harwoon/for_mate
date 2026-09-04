@@ -706,3 +706,113 @@
 .about-cta {
   margin-top: var(--space-lg);
 }
+
+/* ===== 고객센터 (피그마 C-05) =====
+   왼쪽 문의 작성 폼 + 오른쪽 FAQ, 두 칸짜리 레이아웃이라 about-hero처럼 이 페이지 전용
+   클래스를 새로 추가했다. 폼 안의 input/select/textarea, 카드, 버튼, 결과 모달은 전부
+   기존 클래스(.card, .form-*, .btn, .auth-success-card 등)를 그대로 재사용한다. */
+.support-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px; /* 피그마의 760:496 비율(약 3:2)에 맞춘 값 */
+  gap: var(--space-lg);
+  align-items: start;
+  padding-bottom: var(--space-2xl);
+}
+
+@media (max-width: 900px) {
+  .support-grid {
+    grid-template-columns: 1fr; /* 좁은 화면에서는 폼이 위, FAQ가 아래로 쌓인다 */
+  }
+}
+
+/* 오른쪽 "자주 묻는 질문" 아코디언 (피그마 C-05-O01).
+   한때 이 자리를 "내 문의 내역"(문의 상세 + 답변)으로 바꿔봤던 적이 있어서, 그때는
+   .inquiry-* 라는 전용 이름을 썼었다. 다시 FAQ로 되돌리면서, 이 아코디언 모양 자체는
+   두 기능(문의 내역 / FAQ) 모두에 그대로 어울리는 범용 패턴이라는 게 분명해졌으므로
+   .accordion-* 라는 일반적인 이름으로 바꿔서, 나중에 또 다른 목록(예: 알림, 공지사항)에
+   같은 모양이 필요해지면 그대로 재사용할 수 있게 했다. */
+.accordion-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.accordion-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+}
+
+.accordion-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  width: 100%;
+  text-align: left;
+}
+
+.accordion-title {
+  font-size: var(--font-sm);
+  font-weight: 700;
+}
+
+.row-chevron {
+  flex-shrink: 0;
+  color: var(--color-text-light);
+  transition: transform 0.15s;
+}
+
+/* 펼쳐진 항목의 화살표를 180도 돌려서 "닫으려면 누르세요"라는 느낌을 준다.
+   피그마에는 이 애니메이션이 없지만(정적 디자인이라 펼침/접힘 상태만 보여준다),
+   실제 아코디언에서는 흔히 쓰이는 상호작용이라 자연스럽게 추가했다. */
+.row-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.accordion-answer {
+  margin-top: var(--space-sm);
+  font-size: var(--font-xs);
+  color: var(--color-text-sub);
+  line-height: 1.6;
+}
+
+/* ===== 404 / 오류 (피그마 C-06) =====
+   사이트 전체에서 쓰는 공용 화면이라 다른 페이지 전용 클래스와 이름이 겹치지 않도록
+   notfound- 접두어를 붙였다. */
+.notfound-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-xl);
+  padding: var(--space-2xl) var(--space-md);
+}
+
+.notfound-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 140px;
+  height: 140px;
+  border-radius: var(--radius-full);
+  /* 피그마 원래 색은 올리브 계열(#A9B782)을 20% 투명도로 깐 배경이지만, 프로젝트에는
+     그 색상 토큰이 없다. 아이콘 뒤에 옅은 초록 배경을 까는 같은 용도로 이미 쓰이고 있는
+     --color-primary-light를 대신 사용했다 (about-banner에서와 같은 결정). */
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.notfound-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.notfound-title {
+  /* 피그마 44px에 해당하는 토큰이 없어 about-hero-title과 같은 이유로 가장 가까운
+     --font-2xl(36px)을 사용했다. */
+  font-size: var(--font-2xl);
+  font-weight: 800;
+}

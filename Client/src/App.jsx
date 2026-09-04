@@ -62,6 +62,16 @@ export default function App() {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/about" element={<AboutPage />} />
 
+        {/* 고객센터(/support)는 원래 아래 <ProtectedRoute> 안에 있어서, 비회원이 메인화면의
+            "고객센터" 버튼을 누르면 문의를 써보기도 전에 곧바로 로그인 페이지로 넘어갔다.
+            "비회원도 문의 작성 화면 자체는 볼 수 있어야 한다"는 요청에 따라 여기(누구나
+            볼 수 있는 구역)로 옮겼다. 대신 실제 "문의 등록"은 로그인한 사람만 할 수 있어야
+            하므로, 그 판단은 페이지 진입 시점이 아니라 SupportPage.jsx 안에서 등록 버튼을
+            눌렀을 때(handleSubmit)로 옮겨뒀다 — 백엔드 inquiries.router.js도 여전히
+            requireAuth로 POST /inquiries를 막고 있어서, 실제 등록 자체는 그대로 로그인한
+            사람만 가능하다 (SupportPage.jsx 상단 주석 참고). */}
+        <Route path="/support" element={<SupportPage />} />
+
         {/* 로그인해야 볼 수 있는 페이지 */}
         <Route element={<ProtectedRoute />}>
           <Route path="/lost-posts/new" element={<LostCreatePage />} />
@@ -73,7 +83,6 @@ export default function App() {
 
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/notifications" element={<NotificationPage />} />
-          <Route path="/support" element={<SupportPage />} />
 
           <Route path="/admin" element={<AdminPage />} />
         </Route>

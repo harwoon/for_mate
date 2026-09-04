@@ -15,7 +15,7 @@
 // 있어(디자인 미확정) 이번 화면에는 넣지 않았다. 디자인이 확정되면 링크만 추가하면 된다.
 
 import { useState } from "react"
-import { Link, Navigate, useNavigate } from "react-router-dom"
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext.jsx"
 import { goGoogleLogin, goKakaoLogin } from "../../api/auth.api.js"
 
@@ -26,7 +26,14 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, login } = useAuth()
+
+  // 로그인을 마친 뒤 돌아갈 주소. ProtectedRoute.jsx(보호된 페이지 진입 시)나
+  // SupportPage.jsx(비회원이 문의 등록을 시도했을 때)가 로그인 페이지로 보낼 때
+  // navigate("/login", { state: { from: "..." } })로 "원래 있던 주소"를 실어서 보내준다.
+  // 그 값이 없으면(예: 사용자가 그냥 /login으로 직접 들어온 경우) 예전처럼 홈으로 보낸다.
+  const redirectTo = location.state?.from || "/"
 
   // 입력값
   const [email, setEmail] = useState("")
@@ -46,16 +53,16 @@ export default function LoginPage() {
   // 로그인 성공 모달 노출 여부 (C-01-S01)
   const [showSuccess, setShowSuccess] = useState(false)
 
-  // 이미 로그인되어 있는 사용자가 로그인 페이지로 들어오면 홈으로 돌려보낸다.
+  // 이미 로그인되어 있는 사용자가 로그인 페이지로 들어오면 redirectTo로 돌려보낸다.
   // (AuthContext가 새로고침 시 getMe()로 로그인 여부를 확인해 채워주는 값)
   //
   // 주의: 조건에 반드시 "!showSuccess"를 같이 넣어야 한다. handleSubmit()이 로그인에 성공하면
   // login()이 AuthContext의 user를 채우자마자 이 컴포넌트가 다시 렌더링되는데, 그 순간 이 줄만 보면
-  // user가 이미 true라서 showSuccess를 true로 바꾸기도 전에(또는 같은 렌더링에서) 곧장 홈으로
+  // user가 이미 true라서 showSuccess를 true로 바꾸기도 전에(또는 같은 렌더링에서) 곧장 redirectTo로
   // Navigate 되어버려 C-01-S01 성공 모달이 뜰 틈이 없어진다. showSuccess가 true인 동안에는
   // "로그인은 됐지만 아직 모달을 보여주는 중"이라는 뜻이므로 이 자동 리다이렉트를 잠깐 멈춰야 하고,
-  // 모달의 "메인으로" 버튼(goHome)이 그때 가서 직접 navigate("/")로 이동시킨다.
-  if (user && !showSuccess) return <Navigate to="/" replace />
+  // 모달의 버튼(goHome)이 그때 가서 직접 navigate(redirectTo)로 이동시킨다.
+  if (user && !showSuccess) return <Navigate to={redirectTo} replace />
 
   // 제출 시점에 이메일/비밀번호를 검사해서 필드별 오류 메시지를 만든다.
   // 문제가 없는 필드는 빈 문자열을 넣는다.
@@ -111,9 +118,10 @@ export default function LoginPage() {
     if (submitError) setSubmitError("")
   }
 
-  // 성공 모달의 "메인으로" 버튼 클릭 시 홈으로 이동
+  // 성공 모달의 버튼 클릭 시 redirectTo로 이동 (보통은 홈, 다른 페이지에서 로그인하러
+  // 온 경우엔 그 페이지로 돌아간다 — 위 redirectTo 선언부 주석 참고)
   function goHome() {
-    navigate("/")
+    navigate(redirectTo)
   }
 
   return (
@@ -191,7 +199,12 @@ export default function LoginPage() {
           <div className="auth-success-card">
             <p className="auth-success-title">로그인에 성공했습니다.</p>
             <p className="text-sub">For Mate와 함께 가족을 찾아주세요.</p>
-            <button className="btn btn-primary btn-block" onClick={goHome}>메인으로</button>
+            {/* redirectTo가 홈이 아니면(다른 페이지에서 로그인하러 왔으면) 버튼 문구도
+                "메인으로"라고 하면 실제로 하는 일과 달라 사용자가 헷갈린다. 그래서
+                실제로 이동할 곳에 맞춰 문구를 바꿔준다. */}
+            <button className="btn btn-primary btn-block" onClick={goHome}>
+              {redirectTo === "/" ? "메인으로" : "이전 페이지로"}
+            </button>
           </div>
         </div>
       )}
