@@ -16,3 +16,6 @@ ML/dataset/Multi-pose dog dataset
 *.ckpt
 ML/petface_pretrained
 ML/petface_repo
+
+# 외부 레포 클론 (드라이버 노트북만 추적)
+ML/clip_reid/CLIP-ReID/
