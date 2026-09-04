@@ -281,4 +281,57 @@ export async function updatePostWithImages({ id, userId, updates, deleteImageIds
   }
 }
 
-// TODO(3.4): 상태 변경/삭제 쿼리는 해당 API 구현 시 추가한다.
+// 실종 공고와 연결된 이미지 DB 행을 하나의 트랜잭션으로 삭제한다.
+// images.lost_post_id의 ON DELETE CASCADE가 이미지 행을 자동으로 제거한다.
+export async function deletePost({ id, userId }) {
+  const client = await pool.connect()
+
+  try {
+    await client.query("BEGIN")
+
+    // 삭제 도중 공고가 동시에 수정되지 않도록 행을 잠그고 작성자를 확인한다.
+    const postResult = await client.query(
+      `SELECT user_id
+       FROM lost_posts
+       WHERE id = $1
+       FOR UPDATE`,
+      [id],
+    )
+    const post = postResult.rows[0]
+
+    if (!post) {
+      await client.query("ROLLBACK")
+      return { outcome: "not_found", images: [] }
+    }
+    if (String(post.user_id) !== String(userId)) {
+      await client.query("ROLLBACK")
+      return { outcome: "forbidden", images: [] }
+    }
+
+    // DB 삭제가 끝난 다음 실제 로컬 파일을 정리할 수 있도록 URL을 미리 확보한다.
+    const imageResult = await client.query(
+      `SELECT id, image_url
+       FROM images
+       WHERE post_type = 'lost' AND lost_post_id = $1
+       ORDER BY id ASC`,
+      [id],
+    )
+
+    // 공고 삭제 시 외래 키 CASCADE에 의해 연결된 images 행도 함께 삭제된다.
+    await client.query(
+      `DELETE FROM lost_posts
+       WHERE id = $1`,
+      [id],
+    )
+
+    await client.query("COMMIT")
+    return { outcome: "ok", images: imageResult.rows }
+  } catch (error) {
+    await client.query("ROLLBACK")
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+// TODO(3.4): 상태 변경 쿼리는 해당 API 구현 시 추가한다.
