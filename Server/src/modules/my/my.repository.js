@@ -21,7 +21,13 @@ export async function findSummary(userId) {
                                 WHERE latest.source_post_id = m.source_post_id
                             )
                     ) AS matches,
-                    (SELECT COUNT(*)::int FROM bookmarks WHERE user_id = $1) AS bookmarks`,
+                    (SELECT COUNT(*)::int FROM bookmarks WHERE user_id = $1) AS bookmarks,
+                    (SELECT COUNT(*)::int FROM inquiries WHERE user_id = $1) AS inquiries,
+                    (
+                        SELECT COUNT(*)::int
+                        FROM inquiries
+                        WHERE user_id = $1 AND status = 'answered'
+                    ) AS answered_inquiries`,
                 [userId]
             ),
             query(
