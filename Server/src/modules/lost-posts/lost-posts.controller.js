@@ -74,8 +74,14 @@ export async function updateStatus(req, res, next) {
 // 3.4 실종 공고 삭제
 export async function deletePost(req, res, next) {
   try {
-    // TODO: 작성자 본인인지 확인 후 삭제
-    fail(res, 501, "NOT_IMPLEMENTED", "아직 구현되지 않았습니다.")
+    // 인증된 사용자와 공고 ID를 서비스에 전달해 작성자 본인인지 확인한 뒤 삭제한다.
+    await service.deletePost({
+      postId: req.params.id,
+      userId: req.userId,
+    })
+
+    // 삭제 성공 응답은 반환할 본문이 없으므로 204로 응답한다.
+    res.status(204).send()
   } catch (err) {
     next(err)
   }

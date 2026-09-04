@@ -28,6 +28,24 @@ function optionalText(value) {
   return text || null
 }
 
+// 목록의 다중 색상 필터를 문자열 배열로 정리한다.
+// colors=갈색,검은색 형식과 colors=갈색&colors=검은색 형식을 모두 허용한다.
+// 기존 클라이언트의 color=갈색 요청도 호환성을 위해 함께 지원한다.
+function parseColorFilters(colorsValue, legacyColorValue) {
+  const values = colorsValue ?? legacyColorValue
+  if (values === undefined || values === null || values === "") return []
+
+  const entries = Array.isArray(values) ? values : [values]
+  return [
+    ...new Set(
+      entries
+        .flatMap((value) => String(value).split(","))
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ]
+}
+
 // DB의 VARCHAR 길이를 넘긴 요청이 DB 오류(500)로 처리되지 않도록 사전에 검사한다.
 function assertMaxLength(value, maxLength, fieldName) {
   if (value && value.length > maxLength) {
@@ -147,7 +165,7 @@ export async function getPosts(query) {
 
   const species = optionalText(query.species)
   const breed = optionalText(query.breed)
-  const color = optionalText(query.color)
+  const colors = parseColorFilters(query.colors, query.color)
   const region = optionalText(query.region)
   const startDate = optionalText(query.start_date)
   const endDate = optionalText(query.end_date)
@@ -167,7 +185,7 @@ export async function getPosts(query) {
   }
 
   const { items, total } = await repository.findMany({
-    filters: { species, breed, color, region, startDate, endDate, status },
+    filters: { species, breed, colors, region, startDate, endDate, status },
     size,
     offset: (page - 1) * size,
   })
@@ -344,6 +362,25 @@ export async function updatePost({ postId, userId, body, imageUrls = [] }) {
   return publicPost
 }
 
-// TODO: 아래 함수들은 해당 API 담당 범위에서 구현한다.
-// - updateStatus: 3.4 상태 변경 (찾음 처리)
-// - deletePost: 3.4 실종 공고 삭제
+// 3.4 실종 공고 삭제
+export async function deletePost({ postId, userId }) {
+  const id = Number(postId)
+  if (!Number.isInteger(id) || id <= 0) {
+    throw serviceError("공고 ID가 올바르지 않습니다.", 400, "INVALID_POST_ID")
+  }
+
+  const result = await repository.deletePost({ id, userId })
+
+  if (result.outcome === "not_found") {
+    throw serviceError("실종 공고를 찾을 수 없습니다.", 404, "LOST_POST_NOT_FOUND")
+  }
+  if (result.outcome === "forbidden") {
+    throw serviceError("공고 작성자만 삭제할 수 있습니다.", 403, "FORBIDDEN")
+  }
+
+  // DB 트랜잭션이 성공한 뒤에만 연결됐던 로컬 이미지 파일을 삭제한다.
+  // Supabase URL이나 이미 사라진 파일은 removeOldLocalImages에서 안전하게 건너뛴다.
+  await removeOldLocalImages(result.images)
+}
+
+// TODO: updateStatus(3.4 상태 변경)는 해당 API 구현 시 추가한다.
