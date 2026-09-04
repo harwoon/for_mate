@@ -42,20 +42,15 @@ async function preprocess() {
   const __dirname = path.dirname(__filename);
 
   // Python 파일 경로
-  const pythonFile = path.join(__dirname, "test.py") // 연습용
-  // const pythonFile = path.join(__dirname, "pre.py") // 실전용
+  // const pythonFile = path.join(__dirname, "test.py") // 연습용
+  const pythonFile = path.join(__dirname, "pre.py") // 실전용
 
   // 1. Python 파일 실행
-  exec(`python ${pythonFile}`, (error, stdout, stderr)=>{
-    if(error){
-      console.error(`Python 실행 에러: ${error.message}`)
-      return
-    }
-    if(stderr){
-      console.error(`Python stderr: ${stderr}`)
-    }
-    console.log(`Python stdout:\n${stdout}`)
-  })
+  const { stdout, stderr } = await execAsync(`python ${pythonFile}`, { cwd: __dirname })
+  if (stderr) {
+    console.error(`Python stderr: ${stderr}`)
+  }
+  console.log(`Python stdout:\n${stdout}`)
 
   // 2. CSV 읽기
   const csvFile = path.join(__dirname, "abandonment_animals.csv")

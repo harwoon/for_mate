@@ -286,6 +286,102 @@
   color: var(--color-text);
 }
 
+/* 회원가입 카드 상단 타이틀 (로그인 카드의 가운데 정렬 auth-intro와 달리 왼쪽 정렬) */
+.auth-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xs);
+}
+
+.auth-card-title {
+  font-size: var(--font-lg);
+  font-weight: 800;
+}
+
+/* 약관 동의 박스 (피그마 C-02 consent-box). 체크박스 2개를 감싸는 카드형 영역 */
+.auth-consent-box {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+/* 필수 약관에 동의하지 않은 채 제출했을 때 (C-02-V07, C-02-V08) */
+.auth-consent-box.is-error {
+  border-color: var(--color-danger);
+}
+
+.auth-consent-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.auth-consent-item label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-consent-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.auth-consent-item a {
+  font-size: var(--font-xs);
+  color: var(--color-text-light);
+  white-space: nowrap;
+}
+
+/* 약관/개인정보처리방침 같은 정적 법률 문서 페이지 (피그마 C-03, C-04) */
+.legal-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg); /* 조항(section)과 조항 사이 간격. 피그마에선 20px지만, 프로젝트에 20px 토큰이 없어 가장 가까운 --space-lg(24px)로 맞추었다 */
+  width: 100%;
+  /* 피그마에서는 카드 전체(card-header / text-content / 버튼)가 gap-24로 똑같이 띄어져 있다.
+     .auth-card-header는 회원가입 카드에서도 따로 쓰이고 있어 그쪽 margin을 건드릴 수 없므로,
+     이 요소 자체에 위아래 24px씩 margin을 줘서 헤더/버튼과의 간격을 맞추었다(margin collapsing으로 위는 헤더의 4px와 겹쳐져도 큰 값인 24px가 적용된다). */
+  margin: var(--space-lg) 0;
+}
+
+.legal-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.legal-section h2 {
+  font-size: var(--font-md);
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+/* 조항 하나의 본문이 여러 줄(배열 body)이어도, 그 줄들끼리는 피그마에서도 단순 줄바꿈일 뿐 별도 문단이 아니다.
+   그래서 이 래퍼 안에서는 별도 줄 간격을 주지 않고(reset.css가 이미 모든 margin을 0으로 만들어둬서 <p> 여러 개가 자연스럽게 붙어 쌓인다),
+   제목과의 간격(8px)만 .legal-section의 flex gap으로 준다. */
+.legal-section-body {
+  width: 100%;
+}
+
+.legal-section p {
+  font-size: var(--font-sm);
+  color: var(--color-text-sub);
+  line-height: 1.6;
+}
+
 /* 이메일/비밀번호 로그인과 소셜 로그인 사이 구분선 ("또는") */
 .auth-divider {
   display: flex;
@@ -476,4 +572,247 @@
 .text-sub {
   color: var(--color-text-sub);
   font-size: var(--font-sm);
+}
+
+/* ===== 서비스소개 (피그마 C-07) =====
+   로그인/회원가입/약관 페이지처럼 좁은 카드 하나가 아니라, 폭 전체를 쓰는 랜딩 페이지 형태다.
+   그래서 .auth-card 계열 클래스를 재사용하지 않고 이 페이지 전용 클래스를 새로 만들었다. */
+
+/* 맨 위 히어로 영역: 큰 제목 2줄 + 설명 + 버튼 2개, 전부 가운데 정렬 */
+.about-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  text-align: center;
+  padding: var(--space-2xl) 0 var(--space-lg);
+}
+
+.about-hero-title {
+  /* 피그마 원본은 44px인데, 프로젝트 폰트 크기 토큰 중 가장 큰 값이 --font-2xl(36px)이라
+     새 픽셀값을 추가하는 대신 기존 토큰 스케일 안에서 가장 가까운 값을 그대로 썼다. */
+  font-size: var(--font-2xl);
+  font-weight: 800;
+  color: var(--color-text);
+  line-height: 1.3;
+}
+
+.about-hero-subtitle {
+  max-width: 640px;
+  color: var(--color-text-sub);
+  font-size: var(--font-md);
+  line-height: 1.6;
+}
+
+.about-hero-actions {
+  display: flex;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 480px;
+  margin-top: var(--space-sm);
+}
+
+.about-hero-actions .btn {
+  flex: 1;
+}
+
+/* "서비스 흐름" 영역: 제목 + 3단 카드 */
+.about-steps {
+  margin-top: var(--space-2xl);
+}
+
+.about-steps-title {
+  font-size: var(--font-lg);
+  font-weight: 800;
+  color: var(--color-text);
+  margin-bottom: var(--space-md);
+}
+
+.about-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+}
+
+.step-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+}
+
+/* 1 / 2 / 3 숫자가 들어가는 동그란 뱃지 */
+.step-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-weight: 800;
+  font-size: var(--font-md);
+}
+
+.step-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.step-title {
+  font-weight: 800;
+  font-size: var(--font-md);
+  color: var(--color-text);
+}
+
+.step-desc {
+  font-size: var(--font-sm);
+  color: var(--color-text-sub);
+  line-height: 1.5;
+}
+
+/* "전국 공공 보호동물 연동 데이터 적용" 배너: 옅은 초록 배경 박스 */
+.about-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  background: var(--color-primary-light);
+}
+
+.about-banner-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--color-primary);
+  font-weight: 800;
+  font-size: var(--font-md);
+}
+
+.about-banner-desc {
+  color: var(--color-primary);
+  font-size: var(--font-sm);
+  line-height: 1.6;
+}
+
+.about-cta {
+  margin-top: var(--space-lg);
+}
+
+/* ===== 고객센터 (피그마 C-05) =====
+   왼쪽 문의 작성 폼 + 오른쪽 FAQ, 두 칸짜리 레이아웃이라 about-hero처럼 이 페이지 전용
+   클래스를 새로 추가했다. 폼 안의 input/select/textarea, 카드, 버튼, 결과 모달은 전부
+   기존 클래스(.card, .form-*, .btn, .auth-success-card 등)를 그대로 재사용한다. */
+.support-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px; /* 피그마의 760:496 비율(약 3:2)에 맞춘 값 */
+  gap: var(--space-lg);
+  align-items: start;
+  padding-bottom: var(--space-2xl);
+}
+
+@media (max-width: 900px) {
+  .support-grid {
+    grid-template-columns: 1fr; /* 좁은 화면에서는 폼이 위, FAQ가 아래로 쌓인다 */
+  }
+}
+
+/* 오른쪽 "자주 묻는 질문" 아코디언 (피그마 C-05-O01).
+   한때 이 자리를 "내 문의 내역"(문의 상세 + 답변)으로 바꿔봤던 적이 있어서, 그때는
+   .inquiry-* 라는 전용 이름을 썼었다. 다시 FAQ로 되돌리면서, 이 아코디언 모양 자체는
+   두 기능(문의 내역 / FAQ) 모두에 그대로 어울리는 범용 패턴이라는 게 분명해졌으므로
+   .accordion-* 라는 일반적인 이름으로 바꿔서, 나중에 또 다른 목록(예: 알림, 공지사항)에
+   같은 모양이 필요해지면 그대로 재사용할 수 있게 했다. */
+.accordion-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.accordion-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+}
+
+.accordion-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  width: 100%;
+  text-align: left;
+}
+
+.accordion-title {
+  font-size: var(--font-sm);
+  font-weight: 700;
+}
+
+.row-chevron {
+  flex-shrink: 0;
+  color: var(--color-text-light);
+  transition: transform 0.15s;
+}
+
+/* 펼쳐진 항목의 화살표를 180도 돌려서 "닫으려면 누르세요"라는 느낌을 준다.
+   피그마에는 이 애니메이션이 없지만(정적 디자인이라 펼침/접힘 상태만 보여준다),
+   실제 아코디언에서는 흔히 쓰이는 상호작용이라 자연스럽게 추가했다. */
+.row-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.accordion-answer {
+  margin-top: var(--space-sm);
+  font-size: var(--font-xs);
+  color: var(--color-text-sub);
+  line-height: 1.6;
+}
+
+/* ===== 404 / 오류 (피그마 C-06) =====
+   사이트 전체에서 쓰는 공용 화면이라 다른 페이지 전용 클래스와 이름이 겹치지 않도록
+   notfound- 접두어를 붙였다. */
+.notfound-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-xl);
+  padding: var(--space-2xl) var(--space-md);
+}
+
+.notfound-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 140px;
+  height: 140px;
+  border-radius: var(--radius-full);
+  /* 피그마 원래 색은 올리브 계열(#A9B782)을 20% 투명도로 깐 배경이지만, 프로젝트에는
+     그 색상 토큰이 없다. 아이콘 뒤에 옅은 초록 배경을 까는 같은 용도로 이미 쓰이고 있는
+     --color-primary-light를 대신 사용했다 (about-banner에서와 같은 결정). */
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.notfound-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.notfound-title {
+  /* 피그마 44px에 해당하는 토큰이 없어 about-hero-title과 같은 이유로 가장 가까운
+     --font-2xl(36px)을 사용했다. */
+  font-size: var(--font-2xl);
+  font-weight: 800;
 }
