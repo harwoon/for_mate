@@ -27,3 +27,16 @@ export async function create({ userId, postId, postType, reason, detail }) {
 
     return result.rows[0]
 }
+
+export async function findTargetPost(postType, postId) {
+    const table = postType === "lost" ? "lost_posts" : "found_posts"
+
+    const result = await query(
+        `SELECT id
+        FROM ${table}
+        WHERE id = $1`,
+        [postId]
+    )
+
+    return result.rows[0] ?? null
+}

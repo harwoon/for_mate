@@ -34,6 +34,11 @@ export async function createReport(userId, body) {
         throw serviceError("신고 사유가 올바르지 않습니다.", 400, "INVALID_REASON")
     }
 
+    const targetPost = await repository.findTargetPost(postType, postId)
+    if (!targetPost) {
+        throw serviceError("신고 대상 게시글을 찾을 수 없습니다.", 404, "POST_NOT_FOUND")
+    }
+
     const duplicate = await repository.findDuplicate({
         userId,
         postId,
