@@ -22,7 +22,7 @@ const execAsync = promisify(exec)
 // 4. 기존 매칭 결과와 알림을 초기화한다
 // 5. 유사도가 높은 신규 공고에 대해 알림을 새로 만든다
 
-/* 
+/*
 async function fetchFromApi() {
   // TODO: 공공데이터 API 호출
   // desertionNo는 숫자로 변환해서 저장한다 (숫자가 아니면 로그 남기고 건너뛰기)
@@ -36,7 +36,7 @@ const supabase = createClient(
 )
 
 async function preprocess() {
-  
+
   // __dirname 대체 (ESM 환경)
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
@@ -67,23 +67,13 @@ async function preprocess() {
     })
     .on("error", reject)
   })
- 
-  
 
-     // 3. JSON 읽기
+  // 3. JSON 읽기
   const jsonFile = path.join(__dirname, "color_tags.json")
-  let jsonData = await new Promise((resolve,reject)=>{
-    readFile(jsonFile, "utf-8", (err, data) => {
-        if (err) {
-          console.error("JSON 읽기 에러:", err)
-          return
-        }
-        data = data.replace(/^\uFEFF/, "")
-        const parsed = JSON.parse(data)
-        console.log("JSON 데이터 로드 완료")
-        resolve(parsed)
-      })
-  })
+  const BOM_CHAR = String.fromCharCode(65279) // U+FEFF byte order mark
+  const rawJson = (await readFile(jsonFile, "utf-8")).replace(new RegExp("^" + BOM_CHAR), "")
+  const jsonData = JSON.parse(rawJson)
+  console.log("JSON 데이터 로드 완료")
   // console.log('results', results.slice(0,2))
   // console.log('jsonData', jsonData.slice(0,2))
   return {results, jsonData}
@@ -91,7 +81,7 @@ async function preprocess() {
 
 async function saveAnimals(processed_animals) {
   // TODO: desertion_no 기준으로 upsert
-  
+
   const {results, jsonData} = processed_animals
   const animals=results
   const color_tags = jsonData
