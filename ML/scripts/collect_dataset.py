@@ -18,10 +18,14 @@ import cv2
 import numpy as np
 import pandas as pd
 import requests
+import torch
 from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
+from torchvision.models.detection import (
+    FasterRCNN_ResNet50_FPN_V2_Weights,
+    fasterrcnn_resnet50_fpn_v2,
+)
 from tqdm import tqdm
-from ultralytics import YOLO
 from urllib3.util.retry import Retry
 
 ML_DIR = Path(__file__).resolve().parent.parent  # ML/  (이 파일은 ML/scripts/ 안에 있음)
@@ -44,7 +48,16 @@ ANIMAL_CLASSES = {"bird", "cat", "dog", "horse", "sheep",
                   "cow", "elephant", "bear", "zebra", "giraffe"}
 
 OUT_DIR.mkdir(parents=True, exist_ok=True)
-model = YOLO(str(ML_DIR / "checkpoints" / "yolo11n.pt"))
+
+# 탐지기: torchvision (BSD-3). ultralytics YOLO(AGPL-3.0) 대체.
+#   가볍게 쓰려면 fasterrcnn 대신 ssdlite320_mobilenet_v3_large / fcos_resnet50_fpn.
+#   가중치는 최초 1회 torch hub 캐시로 자동 다운로드됨.
+DET_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+_DET_WEIGHTS = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
+_det_model = fasterrcnn_resnet50_fpn_v2(weights=_DET_WEIGHTS, box_score_thresh=0.5)
+_det_model.eval().to(DET_DEVICE)
+_det_preprocess = _DET_WEIGHTS.transforms()      # ObjectDetection(): uint8 CxHxW -> float[0,1], 리사이즈는 모델 내부에서
+_COCO_CATEGORIES = _DET_WEIGHTS.meta["categories"]  # label(int) -> 클래스명, 예: 18 -> "dog"
 
 sess = requests.Session()
 sess.mount("https://", HTTPAdapter(max_retries=Retry(
@@ -104,21 +117,28 @@ def resize_with_padding(img, size=TARGET_SIZE):
     return canvas
 
 
+@torch.no_grad()
+def _detect_animals(img_bgr):
+    """img_bgr: HxWx3 uint8 (cv2 BGR). -> [(x1, y1, x2, y2, score), ...] (동물 클래스만)."""
+    rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    t = torch.from_numpy(rgb).permute(2, 0, 1).contiguous()  # uint8 CxHxW
+    out = _det_model([_det_preprocess(t).to(DET_DEVICE)])[0]
+    dets = []
+    for box, label, score in zip(out["boxes"], out["labels"], out["scores"]):
+        if _COCO_CATEGORIES[int(label)] in ANIMAL_CLASSES:
+            x1, y1, x2, y2 = box.tolist()
+            dets.append((x1, y1, x2, y2, float(score)))
+    return dets
+
+
 def crop(img):
-    best, area = None, 0
-    for res in model(img, verbose=False):
-        for b in res.boxes:
-            if model.names[int(b.cls[0])] not in ANIMAL_CLASSES:
-                continue
-            x1, y1, x2, y2 = map(int, b.xyxy[0])
-            a = (x2 - x1) * (y2 - y1)
-            if a > area:
-                area, best = a, b
-    if best is None:
+    dets = _detect_animals(img)
+    if not dets:
         return None
-    x1, y1, x2, y2 = map(int, best.xyxy[0])
+    x1, y1, x2, y2, _ = max(dets, key=lambda d: (d[2] - d[0]) * (d[3] - d[1]))  # 면적 최대 박스
     h, w = img.shape[:2]
-    x1, y1, x2, y2 = max(0, x1), max(0, y1), min(w, x2), min(h, y2)
+    x1, y1 = max(0, int(x1)), max(0, int(y1))
+    x2, y2 = min(w, int(x2)), min(h, int(y2))
     c = img[y1:y2, x1:x2]
     return resize_with_padding(c) if c.size else None
 
