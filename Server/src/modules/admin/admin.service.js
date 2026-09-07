@@ -102,6 +102,10 @@ export async function answerInquiry(adminUserId, rawInquiryId, rawAnswer) {
 		throw serviceError("문의를 찾을 수 없습니다.", 404, "INQUIRY_NOT_FOUND")
 	}
 
+	if (inquiry.status === "answered") {
+		throw serviceError("이미 답변이 등록된 문의입니다.", 409, "INQUIRY_ALREADY_ANSWERED")
+	}
+
 	// 4) answer 저장 + status를 'answered'로 변경 + answered_at을 지금 시각으로 기록.
 	//    UPDATE 결과 row(갱신된 status/answered_at 포함)를 그대로 받아온다.
 	const answered = await repository.answerInquiry(inquiryId, answer, adminUserId)
@@ -234,4 +238,33 @@ export async function getFoundPosts(query) {
 
     const posts = await repository.findAllFoundPosts(status)
     return posts.map(toFoundPostListItem)
+}
+
+
+export async function getDashboard() {
+    const stats = await repository.getDashboardStats()
+
+    return {
+        lost_posts: {
+            total: Number(stats.lost_total),
+            active: Number(stats.lost_active),
+            blind: Number(stats.lost_blind)
+        },
+        found_posts: {
+            total: Number(stats.found_total),
+            active: Number(stats.found_active),
+            blind: Number(stats.found_blind)
+        },
+        reports: {
+            total: Number(stats.reports_total),
+            pending: Number(stats.reports_pending),
+            resolved: Number(stats.reports_resolved),
+            rejected: Number(stats.reports_rejected)
+        },
+        inquiries: {
+            total: Number(stats.inquiries_total),
+            pending: Number(stats.inquiries_pending),
+            answered: Number(stats.inquiries_answered)
+        }
+    }
 }

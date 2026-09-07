@@ -190,3 +190,28 @@ export async function findAllFoundPosts(status) {
 
     return result.rows
 }
+
+
+export async function getDashboardStats() {
+    const result = await query(
+        `SELECT
+            (SELECT COUNT(*) FROM lost_posts) AS lost_total,
+            (SELECT COUNT(*) FROM lost_posts WHERE status = 'active') AS lost_active,
+            (SELECT COUNT(*) FROM lost_posts WHERE status = 'blind') AS lost_blind,
+
+            (SELECT COUNT(*) FROM found_posts) AS found_total,
+            (SELECT COUNT(*) FROM found_posts WHERE status = 'active') AS found_active,
+            (SELECT COUNT(*) FROM found_posts WHERE status = 'blind') AS found_blind,
+
+            (SELECT COUNT(*) FROM reports) AS reports_total,
+            (SELECT COUNT(*) FROM reports WHERE status = 'pending') AS reports_pending,
+            (SELECT COUNT(*) FROM reports WHERE status = 'resolved') AS reports_resolved,
+            (SELECT COUNT(*) FROM reports WHERE status = 'rejected') AS reports_rejected,
+
+            (SELECT COUNT(*) FROM inquiries) AS inquiries_total,
+            (SELECT COUNT(*) FROM inquiries WHERE status = 'pending') AS inquiries_pending,
+            (SELECT COUNT(*) FROM inquiries WHERE status = 'answered') AS inquiries_answered`
+    )
+
+    return result.rows[0]
+}
