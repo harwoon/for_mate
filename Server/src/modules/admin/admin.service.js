@@ -102,6 +102,10 @@ export async function answerInquiry(adminUserId, rawInquiryId, rawAnswer) {
 		throw serviceError("문의를 찾을 수 없습니다.", 404, "INQUIRY_NOT_FOUND")
 	}
 
+	if (inquiry.status === "answered") {
+		throw serviceError("이미 답변이 등록된 문의입니다.", 409, "INQUIRY_ALREADY_ANSWERED")
+	}
+
 	// 4) answer 저장 + status를 'answered'로 변경 + answered_at을 지금 시각으로 기록.
 	//    UPDATE 결과 row(갱신된 status/answered_at 포함)를 그대로 받아온다.
 	const answered = await repository.answerInquiry(inquiryId, answer, adminUserId)
@@ -179,4 +183,88 @@ export async function updateReport(rawReportId, rawStatus) {
 		status: updated.status,
 		updated_at: updated.updated_at
 	}
+}
+
+
+function validatePostStatus(status) {
+    if (status && !["active", "blind"].includes(status)) {
+        throw serviceError("status 값이 올바르지 않습니다.", 400, "INVALID_STATUS")
+    }
+}
+
+function toLostPostListItem(post) {
+    return {
+        id: Number(post.id),
+        user_id: Number(post.user_id),
+        pet_name: post.pet_name,
+        species: post.species,
+        breed: post.breed,
+        region: post.region,
+        event_date: post.event_date,
+        status: post.status,
+        primary_image_url: post.primary_image_url,
+        created_at: post.created_at
+    }
+}
+
+function toFoundPostListItem(post) {
+    return {
+        id: Number(post.id),
+        user_id: Number(post.user_id),
+        title: post.title,
+        species: post.species,
+        breed: post.breed,
+        region: post.region,
+        find_date: post.find_date,
+        status: post.status,
+        primary_image_url: post.primary_image_url,
+        created_at: post.created_at
+    }
+}
+
+export async function getLostPosts(query) {
+    const status = query.status?.trim() || null
+
+    validatePostStatus(status)
+
+    const posts = await repository.findAllLostPosts(status)
+    return posts.map(toLostPostListItem)
+}
+
+export async function getFoundPosts(query) {
+    const status = query.status?.trim() || null
+
+    validatePostStatus(status)
+
+    const posts = await repository.findAllFoundPosts(status)
+    return posts.map(toFoundPostListItem)
+}
+
+
+export async function getDashboard() {
+    const stats = await repository.getDashboardStats()
+
+    return {
+        lost_posts: {
+            total: Number(stats.lost_total),
+            active: Number(stats.lost_active),
+            blind: Number(stats.lost_blind)
+        },
+        found_posts: {
+            total: Number(stats.found_total),
+            active: Number(stats.found_active),
+            blind: Number(stats.found_blind)
+        },
+        reports: {
+            total: Number(stats.reports_total),
+            pending: Number(stats.reports_pending),
+            resolved: Number(stats.reports_resolved),
+            rejected: Number(stats.reports_rejected)
+        },
+        inquiries: {
+            total: Number(stats.inquiries_total),
+            pending: Number(stats.inquiries_pending),
+            answered: Number(stats.inquiries_answered)
+        }
+    }
 }

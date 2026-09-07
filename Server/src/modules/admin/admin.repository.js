@@ -113,3 +113,105 @@ export async function blindPost(postType, postId) {
 
     return result.rows[0] ?? null
 }
+
+
+// 실종 공고 관리 목록 조회
+export async function findAllLostPosts(status) {
+    const params = []
+    let statusCondition = ""
+
+    if (status) {
+        params.push(status)
+        statusCondition = "WHERE lp.status = $1"
+    }
+
+    const result = await query(
+        `SELECT
+            lp.id,
+            lp.user_id,
+            lp.pet_name,
+            lp.species,
+            lp.breed,
+            lp.region,
+            TO_CHAR(lp.event_date, 'YYYY-MM-DD') AS event_date,
+            lp.status,
+            lp.created_at,
+            first_image.image_url AS primary_image_url
+        FROM lost_posts lp
+        LEFT JOIN LATERAL (
+            SELECT image_url
+            FROM images
+            WHERE post_type = 'lost' AND lost_post_id = lp.id
+            ORDER BY created_at ASC, id ASC
+            LIMIT 1
+        ) first_image ON TRUE
+        ${statusCondition}
+        ORDER BY lp.created_at DESC, lp.id DESC`,
+        params
+    )
+
+    return result.rows
+}
+
+// 발견제보 관리 목록 조회
+export async function findAllFoundPosts(status) {
+    const params = []
+    let statusCondition = ""
+
+    if (status) {
+        params.push(status)
+        statusCondition = "WHERE fp.status = $1"
+    }
+
+    const result = await query(
+        `SELECT
+            fp.id,
+            fp.user_id,
+            fp.title,
+            fp.species,
+            fp.breed,
+            fp.region,
+            TO_CHAR(fp.find_date, 'YYYY-MM-DD') AS find_date,
+            fp.status,
+            fp.created_at,
+            first_image.image_url AS primary_image_url
+        FROM found_posts fp
+        LEFT JOIN LATERAL (
+            SELECT image_url
+            FROM images
+            WHERE post_type = 'found' AND found_post_id = fp.id
+            ORDER BY created_at ASC, id ASC
+            LIMIT 1
+        ) first_image ON TRUE
+        ${statusCondition}
+        ORDER BY fp.created_at DESC, fp.id DESC`,
+        params
+    )
+
+    return result.rows
+}
+
+
+export async function getDashboardStats() {
+    const result = await query(
+        `SELECT
+            (SELECT COUNT(*) FROM lost_posts) AS lost_total,
+            (SELECT COUNT(*) FROM lost_posts WHERE status = 'active') AS lost_active,
+            (SELECT COUNT(*) FROM lost_posts WHERE status = 'blind') AS lost_blind,
+
+            (SELECT COUNT(*) FROM found_posts) AS found_total,
+            (SELECT COUNT(*) FROM found_posts WHERE status = 'active') AS found_active,
+            (SELECT COUNT(*) FROM found_posts WHERE status = 'blind') AS found_blind,
+
+            (SELECT COUNT(*) FROM reports) AS reports_total,
+            (SELECT COUNT(*) FROM reports WHERE status = 'pending') AS reports_pending,
+            (SELECT COUNT(*) FROM reports WHERE status = 'resolved') AS reports_resolved,
+            (SELECT COUNT(*) FROM reports WHERE status = 'rejected') AS reports_rejected,
+
+            (SELECT COUNT(*) FROM inquiries) AS inquiries_total,
+            (SELECT COUNT(*) FROM inquiries WHERE status = 'pending') AS inquiries_pending,
+            (SELECT COUNT(*) FROM inquiries WHERE status = 'answered') AS inquiries_answered`
+    )
+
+    return result.rows[0]
+}
