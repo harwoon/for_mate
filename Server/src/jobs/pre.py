@@ -10,13 +10,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OEPNAI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # SERVICE_KEY = "rVRpoVnTdNeMrWNNUDsSnnhS%2FvGPUAIxURXK58dvIKYJO0ffmx8z8xAyZM6a8d%2BoB0mzr0YRZYwdkRmEaZVcrg%3D%3D"
 SERVICE_KEY = os.getenv("APIS_KEY")
 # BASE_URL = "https://apis.data.go.kr/1543061/abandonmentPublicService_v2/abandonmentPublic_v2"
 BASE_URL = os.getenv("APIS_URL")
 NUM_OF_ROWS = 1000
+COLOR_CACHE_FILE = "color_tag_cache.json"
 
 def fetch_page(page_no: int, num_of_rows: int = NUM_OF_ROWS) -> dict:
     url = (
@@ -104,20 +105,31 @@ def preprocess():
         
     )
     
+    # 색상 코드 -> 분류된 색상태그 캐시 (동일한 색상코드는 재호출하지 않고 재사용)
+    color_cache = {}
+    if os.path.exists(COLOR_CACHE_FILE):
+        with open(COLOR_CACHE_FILE, "r", encoding="utf-8-sig") as f:
+            color_cache = json.load(f)
+
     color_tags = []
     processed_colors = []
-    response=""
     for color in colors:
         processed_colors.append(preprocess_color(color))
-    for idx, color in enumerate(processed_colors): 
+
+    cache_hits = 0
+    for idx, color in enumerate(processed_colors):
+        if color in color_cache:
+            cache_hits += 1
+            color_tags.append(color_cache[color])
+            continue
+
         print(f"llm 생성중... {idx}\n{color}")
-        # if idx == 10: break
         messages = [
             {"role":"developer", "content":system_instruction},
             *fewshots,
             {"role":"user","content":color}
         ]
-        
+
         try:
             response = client.responses.create(
                 # model="gpt-5-nano",
@@ -126,15 +138,20 @@ def preprocess():
                 # reasoning={"effort":"low"}
                 # max_output_tokens=500
                 )
-            # print(f"openai response :{response}")
-            color_tags.append(response.output_text.strip())
-            print(response.output_text.strip(), '\n')
+            tag = response.output_text.strip()
+            print(tag, '\n')
+            color_cache[color] = tag
+            color_tags.append(tag)
         except Exception as e:
             print("### ERROR: 결과 생성 실패", e)
-        
-        
-    
-    
+            # 실패한 색상은 캐시에 남기지 않고(다음 실행에서 재시도), 이번 실행에서는 "기타"로 처리
+            color_tags.append("기타")
+
+    print(f"색상 캐시 적중: {cache_hits}/{len(processed_colors)}건")
+
+    with open(COLOR_CACHE_FILE, "w", encoding="utf-8-sig") as f:
+        json.dump(color_cache, f, ensure_ascii=False, indent=2)
+
     with open("color_tags.json","w", encoding="utf-8-sig") as f:
             json.dump(color_tags, f, ensure_ascii=False)
 

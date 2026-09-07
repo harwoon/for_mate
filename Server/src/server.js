@@ -1,6 +1,7 @@
 import "dotenv/config"
 import app from "./app.js"
 import { pool } from "./db/pool.js"
+import { startScheduler } from "./jobs/scheduler.js"
 
 const PORT = process.env.PORT || 4000
 
@@ -12,6 +13,8 @@ async function start() {
   app.listen(PORT, () => {
     console.log(`서버 실행 중: http://localhost:${PORT}`)
   })
+
+  startScheduler()
 }
 
 start().catch((err) => {
