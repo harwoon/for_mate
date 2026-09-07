@@ -122,7 +122,7 @@ CREATE TABLE images (
 CREATE TABLE embeddings (
   id             BIGSERIAL PRIMARY KEY,
   image_id       BIGINT      NOT NULL UNIQUE REFERENCES images(id) ON DELETE CASCADE,
-  embedding      VECTOR(2048) NOT NULL,
+  embedding      VECTOR(1024) NOT NULL,
   model_version  VARCHAR(30)  NOT NULL,
   created_at     TIMESTAMP    NOT NULL DEFAULT NOW()
 );
