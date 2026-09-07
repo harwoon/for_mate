@@ -1,10 +1,10 @@
 """
 유기동물 API 히스토리 수집 -> re-ID 파인튜닝용 데이터셋.
 
-- ML/ 에서 실행:  python collect_dataset.py
+- 어디서 실행하든 무관 (경로는 이 파일 위치 기준 ML/ 로 고정):  python scripts/collect_dataset.py
 - 반복 실행 가능: desertionNo 폴더가 이미 있으면 건너뜀 (재개 가능)
-- 결과: processed_animals/<desertionNo>/N.jpg  +  dataset_manifest.csv
-- 필요: ML/.env (SERVICE_KEY, BASE_URL),  yolo11n.pt
+- 결과: dataset/raw/processed_animals/<desertionNo>/N.jpg  +  dataset/raw/dataset_manifest.csv
+- 필요: ML/.env (SERVICE_KEY, BASE_URL),  checkpoints/yolo11n.pt
 """
 import calendar
 import hashlib
@@ -24,7 +24,8 @@ from tqdm import tqdm
 from ultralytics import YOLO
 from urllib3.util.retry import Retry
 
-load_dotenv()
+ML_DIR = Path(__file__).resolve().parent.parent  # ML/  (이 파일은 ML/scripts/ 안에 있음)
+load_dotenv(ML_DIR / ".env")
 
 # ── 설정 (여기만 만지면 됨) ───────────────────────────────
 SERVICE_KEY = os.environ.get("SERVICE_KEY") or os.environ["APIS_KEY"]   # data.go.kr 일반 인증키 (URL 인코딩된 문자열)
@@ -33,8 +34,8 @@ START_YM    = (2024, 9)                                   # 수집 시작 (년, 
 END_YM      = (date.today().year, date.today().month)
 NUM_ROWS    = 1000
 SPECIES_OK  = {"개", "고양이"}                             # 개만 하려면 {"개"}
-OUT_DIR     = Path("processed_animals")
-MANIFEST    = Path("dataset_manifest.csv")
+OUT_DIR     = ML_DIR / "dataset" / "raw" / "processed_animals"
+MANIFEST    = ML_DIR / "dataset" / "raw" / "dataset_manifest.csv"
 TARGET_SIZE = (224, 224)
 # ─────────────────────────────────────────────────────────
 
@@ -42,8 +43,8 @@ POPFILES = [f"popfile{i}" for i in range(1, 9)]
 ANIMAL_CLASSES = {"bird", "cat", "dog", "horse", "sheep",
                   "cow", "elephant", "bear", "zebra", "giraffe"}
 
-OUT_DIR.mkdir(exist_ok=True)
-model = YOLO("yolo11n.pt")
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+model = YOLO(str(ML_DIR / "checkpoints" / "yolo11n.pt"))
 
 sess = requests.Session()
 sess.mount("https://", HTTPAdapter(max_retries=Retry(

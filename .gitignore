@@ -1,21 +1,24 @@
 .venv
 
+# python
+__pycache__/
+*.pyc
+
 # secrets
 ML/.env
 
-# generated data / artifacts
-ML/processed_animals
-ML/processed_animals_masked
-ML/processed_animals_faces
-ML/dataset/Multi-pose dog dataset
+# 데이터 (원본 raw/ 도 재생성되는 derived/ 도 커밋 안 함)
+ML/dataset/raw/
+ML/dataset/derived/
 *.npy
 
-# model weights / checkpoints
+# 모델 가중치 / 체크포인트 / 임베딩 캐시
 *.pt
 *.pth
 *.ckpt
-ML/petface_pretrained
-ML/petface_repo
+ML/checkpoints/
+ML/embeddings/
 
 # 외부 레포 클론 (드라이버 노트북만 추적)
-ML/clip_reid/CLIP-ReID/
+ML/external/CLIP-ReID/
+ML/external/petface_repo/
