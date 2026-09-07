@@ -180,3 +180,58 @@ export async function updateReport(rawReportId, rawStatus) {
 		updated_at: updated.updated_at
 	}
 }
+
+
+function validatePostStatus(status) {
+    if (status && !["active", "blind"].includes(status)) {
+        throw serviceError("status 값이 올바르지 않습니다.", 400, "INVALID_STATUS")
+    }
+}
+
+function toLostPostListItem(post) {
+    return {
+        id: Number(post.id),
+        user_id: Number(post.user_id),
+        pet_name: post.pet_name,
+        species: post.species,
+        breed: post.breed,
+        region: post.region,
+        event_date: post.event_date,
+        status: post.status,
+        primary_image_url: post.primary_image_url,
+        created_at: post.created_at
+    }
+}
+
+function toFoundPostListItem(post) {
+    return {
+        id: Number(post.id),
+        user_id: Number(post.user_id),
+        title: post.title,
+        species: post.species,
+        breed: post.breed,
+        region: post.region,
+        find_date: post.find_date,
+        status: post.status,
+        primary_image_url: post.primary_image_url,
+        created_at: post.created_at
+    }
+}
+
+export async function getLostPosts(query) {
+    const status = query.status?.trim() || null
+
+    validatePostStatus(status)
+
+    const posts = await repository.findAllLostPosts(status)
+    return posts.map(toLostPostListItem)
+}
+
+export async function getFoundPosts(query) {
+    const status = query.status?.trim() || null
+
+    validatePostStatus(status)
+
+    const posts = await repository.findAllFoundPosts(status)
+    return posts.map(toFoundPostListItem)
+}

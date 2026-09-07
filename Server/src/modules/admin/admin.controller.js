@@ -13,22 +13,24 @@ export async function getDashboard(req, res, next) {
 
 // 실종 공고 관리
 export async function getLostPosts(req, res, next) {
-	try {
-		// TODO: 전체 실종 공고 목록 조회
-		fail(res, 501, "NOT_IMPLEMENTED", "아직 구현되지 않았습니다.")
-	} catch (err) {
-		next(err)
-	}
+    try {
+        const posts = await service.getLostPosts(req.query)
+
+        ok(res, posts)
+    } catch (err) {
+        next(err)
+    }
 }
 
 // 발견제보 관리
 export async function getFoundPosts(req, res, next) {
-	try {
-		// TODO: 전체 발견제보 목록 조회
-		fail(res, 501, "NOT_IMPLEMENTED", "아직 구현되지 않았습니다.")
-	} catch (err) {
-		next(err)
-	}
+    try {
+        const posts = await service.getFoundPosts(req.query)
+
+        ok(res, posts)
+    } catch (err) {
+        next(err)
+    }
 }
 
 // 신고 목록 조회
