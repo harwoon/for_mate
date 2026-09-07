@@ -72,6 +72,18 @@ export async function getInquiries(req, res, next) {
 	}
 }
 
+// 문의 상세 조회
+export async function getInquiry(req, res, next) {
+    try {
+        const inquiry = await service.getInquiry(req.params.inquiryId)
+
+        ok(res, inquiry)
+    } catch (err) {
+        next(err)
+    }
+}
+
+
 // 11.3 문의 답변 등록(관리자)
 // PATCH /admin/inquiries/:inquiryId  (requireAuth 통과 필수 - TODO: 관리자 권한 확인 추가)
 export async function answerInquiry(req, res, next) {

@@ -1,7 +1,5 @@
 import * as repository from "./admin.repository.js"
 
-// TODO: 관리자 권한 확인 미들웨어(requireAdmin)를 추가해야 한다
-
 // TODO: 아래 컨트롤러에서 호출할 함수들은 아직 구현 전이다 (컨트롤러에서 바로 501 응답 중)
 // - getDashboard: 관리자 대시보드 통계
 // - getLostPosts: 실종 공고 관리
@@ -24,13 +22,27 @@ function serviceError(message, status, code) {
 //   (필요하면 상세 조회 API를 별도로 만들어서 그때 content/answer를 내려주면 된다)
 function toInquiryListItem(inquiry) {
 	return {
-		inquiry_id: Number(inquiry.id),
-		user_id: Number(inquiry.user_id),
-		type: inquiry.type,
-		title: inquiry.title,
-		status: inquiry.status,
-		created_at: inquiry.created_at,
+        inquiry_id: Number(inquiry.id),
+        user_id: Number(inquiry.user_id),
+        type: inquiry.type,
+        title: inquiry.title,
+        status: inquiry.status,
+        created_at: inquiry.created_at
 	}
+}
+
+function toInquiryDetail(inquiry) {
+    return {
+        inquiry_id: Number(inquiry.id),
+        user_id: Number(inquiry.user_id),
+        type: inquiry.type,
+        title: inquiry.title,
+        content: inquiry.content,
+        status: inquiry.status,
+        answer: inquiry.answer,
+        answered_at: inquiry.answered_at,
+        created_at: inquiry.created_at
+    }
 }
 
 // DB row를 11.3 답변 등록 Response 200의 data 형태로 변환한다. (명세: inquiry_id, status, answered_at만 내려줌)
@@ -48,6 +60,22 @@ function toAnswerResult(inquiry) {
 export async function getInquiries() {
 	const inquiries = await repository.findAllInquiries()
 	return inquiries.map(toInquiryListItem)
+}
+
+export async function getInquiry(rawInquiryId) {
+    const inquiryId = Number(rawInquiryId)
+
+    if (!Number.isInteger(inquiryId) || inquiryId <= 0) {
+        throw serviceError("올바르지 않은 문의 번호입니다.", 400, "INVALID_INQUIRY_ID")
+    }
+
+    const inquiry = await repository.findInquiryById(inquiryId)
+
+    if (!inquiry) {
+        throw serviceError("문의를 찾을 수 없습니다.", 404, "INQUIRY_NOT_FOUND")
+    }
+
+    return toInquiryDetail(inquiry)
 }
 
 // 11.3 문의 답변 등록(관리자): 문의 1건에 답변을 등록하고 상태를 answered로 바꾼다.
