@@ -194,3 +194,19 @@ CREATE TABLE inquiries (
   answered_at  TIMESTAMP,               -- 답변 등록 시각
   created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
 );
+
+-- 자주 묻는 질문 / 답변
+CREATE TABLE faqs (
+    id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    question        VARCHAR(200)    NOT NULL,
+    answer          TEXT            NOT NULL,
+    display_order   INT             NOT NULL DEFAULT 0,
+    status          VARCHAR(20)     NOT NULL DEFAULT 'published', -- published / draft
+    created_by      BIGINT          NULL REFERENCES users(id),
+    updated_by      BIGINT          NULL REFERENCES users(id),
+    created_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMP       NOT NULL DEFAULT NOW()
+);
+
+-- 노출 순서로 정렬 조회할 때 쓸 인덱스
+CREATE INDEX idx_faqs_status_order ON faqs (status, display_order);
