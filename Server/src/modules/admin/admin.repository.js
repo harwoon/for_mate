@@ -1,4 +1,4 @@
-import { query } from "../../db/pool.js"
+import { pool, query } from "../../db/pool.js"
 
 // 사용 테이블: inquiries
 // inquiries.repository.js의 INQUIRY_COLUMNS와 같은 패턴. (관리자 화면이라 answer/answered_at도 함께 조회)
@@ -39,6 +39,7 @@ export async function answerInquiry(inquiryId, answer, adminUserId) {
 			answered_by = $2,
 			answered_at = NOW()
 		WHERE id = $3
+            AND status = 'pending'
 		RETURNING ${INQUIRY_COLUMNS}`,
 		[answer, adminUserId, inquiryId],
 	)
@@ -100,19 +101,19 @@ export async function updateReportStatus(reportId, status) {
 }
 
 // 신고 대상 게시글 블라인드 처리
-export async function blindPost(postType, postId) {
-    const table = postType === "lost" ? "lost_posts" : "found_posts"
+// export async function blindPost(postType, postId) {
+//     const table = postType === "lost" ? "lost_posts" : "found_posts"
 
-    const result = await query(
-        `UPDATE ${table}
-        SET status = 'blind'
-        WHERE id = $1
-        RETURNING id`,
-        [postId]
-    )
+//     const result = await query(
+//         `UPDATE ${table}
+//         SET status = 'blind'
+//         WHERE id = $1
+//         RETURNING id`,
+//         [postId]
+//     )
 
-    return result.rows[0] ?? null
-}
+//     return result.rows[0] ?? null
+// }
 
 
 // 실종 공고 관리 목록 조회
@@ -214,4 +215,63 @@ export async function getDashboardStats() {
     )
 
     return result.rows[0]
+}
+
+
+// 신고 승인 시 게시글 블라인드 + 신고 상태 변경 = 트랜젝션 하나로 처리
+// >> 두개 중 하나라도 실패하면 전체 작업을 롤백 = 데이터 불일치 막음
+export async function resolveReportWithBlind(reportId, postType, postId) {
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+
+        // 1. 신고 게시글 블라인드 처리
+        const table = postType === "lost" ? "lost_posts" : "found_posts"
+
+        const postResult = await client.query(
+            `UPDATE ${table}
+            SET status = 'blind',
+                blind_report_id = CASE
+                    WHEN status = 'active' THEN $2
+                    ELSE blind_report_id
+                END
+            WHERE id = $1
+            RETURNING id`,
+            [postId, reportId]
+        )
+
+        if (!postResult.rows[0]) {
+            const error = new Error("POST_NOT_FOUND")
+            error.code = "POST_NOT_FOUND"
+            throw error
+        }
+
+        // 2. 신고상태변경
+        const reportResult = await client.query(
+            `UPDATE reports
+            SET status = 'resolved',
+                updated_at = NOW()
+            WHERE id = $1
+                AND status = 'pending'
+            RETURNING id, post_id, post_type, status, updated_at`,
+            [reportId]
+        )
+
+        if (!reportResult.rows[0]) {
+            const error = new Error("REPORT_ALREADY_PROCESSED")
+            error.code = "REPORT_ALREADY_PROCESSED"
+            throw error
+        }
+
+        // 3. 두개모두 성공하면 DB 반영
+        await client.query("COMMIT")
+
+        return reportResult.rows[0]
+    } catch (error) {
+        await client.query("ROLLBACK")
+        throw error
+    } finally {
+        client.release()
+    }
 }

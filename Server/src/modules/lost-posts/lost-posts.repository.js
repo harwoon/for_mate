@@ -76,23 +76,25 @@ export async function createPostWithImages({ userId, post, imageUrls }) {
 // 3.3 실종 공고 상세 조회
 // 공고가 존재하지 않으면 undefined를 반환하고, 존재하면 연결된 사진까지 조회한다.
 export async function findById(id) {
-  // is_owner 계산에 필요한 user_id도 조회하지만 서비스에서 외부 응답 전에 제거한다.
+  // 작성자 확인과 블라인드 사유 표시에 필요한 정보까지 함께 조회한다.
   const postResult = await pool.query(
     `SELECT
-       id, user_id, pet_name, species, breed, color, sex, neuter_yn,
-       region, event_date, description, status, created_at
-     FROM lost_posts
-     WHERE id = $1`,
+       lp.id, lp.user_id, lp.pet_name, lp.species, lp.breed, lp.color,
+       lp.sex, lp.neuter_yn, lp.region, lp.event_date, lp.description,
+       lp.status, lp.created_at,
+       r.reason AS blind_reason
+     FROM lost_posts lp
+     LEFT JOIN reports r
+       ON r.id = lp.blind_report_id
+     WHERE lp.id = $1`,
     [id],
   )
 
   const post = postResult.rows[0]
   if (!post) return undefined
 
-  // 해당 실종 공고에 속한 사진만 조회한다.
-  // 대표 사진을 첫 번째로 보여주고, 나머지는 등록된 순서(id 오름차순)로 정렬한다.
   const imageResult = await pool.query(
-    `SELECT id, image_url,created_at
+    `SELECT id, image_url, created_at
      FROM images
      WHERE post_type = 'lost' AND lost_post_id = $1
      ORDER BY id ASC`,
@@ -113,13 +115,16 @@ export async function findMany({ filters, size, offset }) {
     conditions.push(sql.replace("?", `$${params.length}`))
   }
 
-  addCondition("lp.status = ?", filters.status)
+  conditions.push("lp.status = 'active'")
+
   if (filters.species) addCondition("lp.species = ?", filters.species)
   if (filters.breed) addCondition("lp.breed = ?", filters.breed)
+
   // 선택한 색상 중 하나와 일치하는 공고를 조회한다.
   if (filters.colors.length > 0) {
     addCondition("lp.color = ANY(?::text[])", filters.colors)
   }
+
   if (filters.region) addCondition("lp.region ILIKE '%' || ? || '%'", filters.region)
   if (filters.startDate) addCondition("lp.event_date >= ?", filters.startDate)
   if (filters.endDate) addCondition("lp.event_date <= ?", filters.endDate)
@@ -173,9 +178,13 @@ export async function updatePostWithImages({ id, userId, updates, deleteImageIds
 
     // 수정 중 공고가 삭제되거나 동시에 변경되지 않도록 행 잠금을 건다.
     const ownerResult = await client.query(
-      `SELECT user_id FROM lost_posts WHERE id = $1 FOR UPDATE`,
+      `SELECT user_id, status
+      FROM lost_posts
+      WHERE id = $1
+      FOR UPDATE`,
       [id],
     )
+
     const owner = ownerResult.rows[0]
 
     if (!owner) {
@@ -185,6 +194,10 @@ export async function updatePostWithImages({ id, userId, updates, deleteImageIds
     if (String(owner.user_id) !== String(userId)) {
       await client.query("ROLLBACK")
       return { outcome: "forbidden" }
+    }
+    if (owner.status === "blind") {
+      await client.query("ROLLBACK")
+      return { outcome: "blinded" }
     }
 
     const currentImageResult = await client.query(
@@ -291,7 +304,7 @@ export async function deletePost({ id, userId }) {
 
     // 삭제 도중 공고가 동시에 수정되지 않도록 행을 잠그고 작성자를 확인한다.
     const postResult = await client.query(
-      `SELECT user_id
+      `SELECT user_id, status
        FROM lost_posts
        WHERE id = $1
        FOR UPDATE`,
@@ -306,6 +319,10 @@ export async function deletePost({ id, userId }) {
     if (String(post.user_id) !== String(userId)) {
       await client.query("ROLLBACK")
       return { outcome: "forbidden", images: [] }
+    }
+    if (post.status === "blind") {
+      await client.query("ROLLBACK")
+      return { outcome: "blinded", images: [] }
     }
 
     // DB 삭제가 끝난 다음 실제 로컬 파일을 정리할 수 있도록 URL을 미리 확보한다.
@@ -333,5 +350,3 @@ export async function deletePost({ id, userId }) {
     client.release()
   }
 }
-
-// TODO(3.4): 상태 변경 쿼리는 해당 API 구현 시 추가한다.

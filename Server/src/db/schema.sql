@@ -13,6 +13,19 @@ CREATE TABLE users (
   created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
+-- 신고
+CREATE TABLE reports (
+  id          BIGSERIAL PRIMARY KEY,
+  post_id     BIGINT      NOT NULL,
+  post_type   VARCHAR(10) NOT NULL,
+  user_id     BIGINT      NOT NULL REFERENCES users(id),
+  reason      VARCHAR(50) NOT NULL,
+  detail      TEXT,
+  status      VARCHAR(20) NOT NULL DEFAULT 'pending',
+  created_at  TIMESTAMP   NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMP   NOT NULL DEFAULT NOW()
+);
+
 -- 리프레시 토큰 저장용
 CREATE TABLE refresh_tokens (
   id          BIGSERIAL PRIMARY KEY,
@@ -46,6 +59,7 @@ CREATE TABLE lost_posts (
   event_date   DATE         NOT NULL,
   description  TEXT,
   status       VARCHAR(10)  NOT NULL DEFAULT 'active',
+  blind_report_id  BIGINT REFERENCES reports(id),
   created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
@@ -63,6 +77,7 @@ CREATE TABLE found_posts (
   find_date    DATE         NOT NULL,
   description  TEXT,
   status       VARCHAR(10)  NOT NULL DEFAULT 'active',
+  blind_report_id  BIGINT REFERENCES reports(id),
   created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
@@ -122,7 +137,7 @@ CREATE TABLE images (
 CREATE TABLE embeddings (
   id             BIGSERIAL PRIMARY KEY,
   image_id       BIGINT      NOT NULL UNIQUE REFERENCES images(id) ON DELETE CASCADE,
-  vector_id      VARCHAR(100) NOT NULL,
+  embedding      VECTOR(1024) NOT NULL,
   model_version  VARCHAR(30)  NOT NULL,
   created_at     TIMESTAMP    NOT NULL DEFAULT NOW()
 );
@@ -168,19 +183,6 @@ CREATE TABLE notifications (
   created_at        TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
--- 신고
-CREATE TABLE reports (
-  id          BIGSERIAL PRIMARY KEY,
-  post_id     BIGINT      NOT NULL,
-  post_type   VARCHAR(10) NOT NULL,
-  user_id     BIGINT      NOT NULL REFERENCES users(id),
-  reason      VARCHAR(50) NOT NULL,
-  detail      TEXT,
-  status      VARCHAR(20) NOT NULL DEFAULT 'pending',
-  created_at  TIMESTAMP   NOT NULL DEFAULT NOW(),
-  updated_at  TIMESTAMP   NOT NULL DEFAULT NOW()
-);
-
 -- 고객센터 문의
 CREATE TABLE inquiries (
   id           BIGSERIAL PRIMARY KEY,
@@ -194,3 +196,19 @@ CREATE TABLE inquiries (
   answered_at  TIMESTAMP,               -- 답변 등록 시각
   created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
 );
+
+-- 자주 묻는 질문 / 답변
+CREATE TABLE faqs (
+    id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    question        VARCHAR(200)    NOT NULL,
+    answer          TEXT            NOT NULL,
+    display_order   INT             NOT NULL DEFAULT 0,
+    status          VARCHAR(20)     NOT NULL DEFAULT 'published', -- published / draft
+    created_by      BIGINT          NULL REFERENCES users(id),
+    updated_by      BIGINT          NULL REFERENCES users(id),
+    created_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMP       NOT NULL DEFAULT NOW()
+);
+
+-- 노출 순서로 정렬 조회할 때 쓸 인덱스
+CREATE INDEX idx_faqs_status_order ON faqs (status, display_order);

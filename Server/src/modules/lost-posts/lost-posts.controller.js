@@ -1,5 +1,5 @@
 import * as service from "./lost-posts.service.js"
-import { ok, created, fail } from "../../utils/response.js"
+import { ok, created } from "../../utils/response.js"
 
 // 3.1 실종 공고 등록 (사진 최대 8장)
 export async function createPost(req, res, next) {
@@ -61,15 +61,6 @@ export async function updatePost(req, res, next) {
   }
 }
 
-// 3.4 상태 변경 (찾음 처리)
-export async function updateStatus(req, res, next) {
-  try {
-    // TODO: status를 active/closed로 변경
-    fail(res, 501, "NOT_IMPLEMENTED", "아직 구현되지 않았습니다.")
-  } catch (err) {
-    next(err)
-  }
-}
 
 // 3.4 실종 공고 삭제
 export async function deletePost(req, res, next) {

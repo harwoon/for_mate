@@ -169,10 +169,8 @@ export async function getPosts(query) {
   const region = optionalText(query.region)
   const startDate = optionalText(query.start_date)
   const endDate = optionalText(query.end_date)
-  const status = optionalText(query.status) ?? "active"
 
   validateChoice(species, ["개", "고양이"], "species")
-  validateChoice(status, ["active", "closed"], "status")
   validateFilterDate(startDate, "start_date")
   validateFilterDate(endDate, "end_date")
 
@@ -185,7 +183,7 @@ export async function getPosts(query) {
   }
 
   const { items, total } = await repository.findMany({
-    filters: { species, breed, colors, region, startDate, endDate, status },
+    filters: { species, breed, colors, region, startDate, endDate },
     size,
     offset: (page - 1) * size,
   })
@@ -203,7 +201,6 @@ export async function getPosts(query) {
 
 // 3.3 실종 공고 상세 조회
 export async function getPost({ postId, userId }) {
-  // URL 파라미터는 문자열로 들어오므로 양의 정수 ID인지 먼저 검사한다.
   const id = Number(postId)
   if (!Number.isInteger(id) || id <= 0) {
     throw serviceError("공고 ID가 올바르지 않습니다.", 400, "INVALID_POST_ID")
@@ -214,14 +211,20 @@ export async function getPost({ postId, userId }) {
     throw serviceError("실종 공고를 찾을 수 없습니다.", 404, "LOST_POST_NOT_FOUND")
   }
 
-  // 작성자 ID는 내부 비교에만 사용하고 API 응답에는 노출하지 않는다.
-  const { user_id: ownerId, ...publicPost } = post
+  const isOwner =
+    userId != null &&
+    String(userId) === String(post.user_id)
+
+  // 블라인드 공고는 작성자 본인만 열람할 수 있다.
+  if (post.status === "blind" && !isOwner) {
+    throw serviceError("실종 공고를 찾을 수 없습니다.", 404, "LOST_POST_NOT_FOUND")
+  }
+
+  const { user_id, ...publicPost } = post
 
   return {
     ...publicPost,
-    // 현재 상세 라우트는 공개 조회이므로 userId가 없으면 false이다.
-    // 추후 선택적 인증이 연결되면 로그인 사용자의 소유 여부를 자동으로 계산한다.
-    is_owner: userId != null && String(userId) === String(ownerId),
+    is_owner: isOwner,
   }
 }
 
@@ -309,7 +312,9 @@ export async function updatePost({ postId, userId, body, imageUrls = [] }) {
   if (hasOwn(body, "description")) updates.description = optionalText(body.description)
 
   if (updates.species !== undefined) validateChoice(updates.species, ["개", "고양이"], "species")
-  if (updates.sex !== undefined) validateChoice(updates.sex, ["M", "F", "U"], "sex")
+  if (updates.sex !== undefined) {
+    validateChoice(updates.sex, ["M", "F", "Q"], "sex")
+  }
   if (updates.neuter_yn !== undefined) {
     validateChoice(updates.neuter_yn, ["Y", "N", "U"], "neuter_yn")
   }
@@ -339,6 +344,13 @@ export async function updatePost({ postId, userId, body, imageUrls = [] }) {
   }
   if (result.outcome === "forbidden") {
     throw serviceError("공고 작성자만 수정할 수 있습니다.", 403, "FORBIDDEN")
+  }
+  if (result.outcome === "blinded") {
+    throw serviceError(
+      "블라인드 처리된 공고는 수정할 수 없습니다.",
+      403,
+      "BLINDED_POST",
+    )
   }
   if (result.outcome === "invalid_image_ids") {
     throw serviceError(
@@ -377,10 +389,15 @@ export async function deletePost({ postId, userId }) {
   if (result.outcome === "forbidden") {
     throw serviceError("공고 작성자만 삭제할 수 있습니다.", 403, "FORBIDDEN")
   }
+  if (result.outcome === "blinded") {
+    throw serviceError(
+      "블라인드 처리된 공고는 삭제할 수 없습니다.",
+      403,
+      "BLINDED_POST",
+    )
+  }
 
   // DB 트랜잭션이 성공한 뒤에만 연결됐던 로컬 이미지 파일을 삭제한다.
   // Supabase URL이나 이미 사라진 파일은 removeOldLocalImages에서 안전하게 건너뛴다.
   await removeOldLocalImages(result.images)
 }
-
-// TODO: updateStatus(3.4 상태 변경)는 해당 API 구현 시 추가한다.

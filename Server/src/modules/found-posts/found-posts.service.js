@@ -284,11 +284,9 @@ export async function getPosts(query) {
     const region = optionalText(query.region)
     const startDate = optionalText(query.start_date)
     const endDate = optionalText(query.end_date)
-    const status = optionalText(query.status) ?? "active"
     const sort = optionalText(query.sort) ?? "latest"
 
     validateChoice(species, ["개", "고양이"], "species")
-    validateChoice(status, ["active", "blind"], "status")
     validateChoice(sort, ["latest"], "sort")
 
     if (startDate) {
@@ -320,8 +318,7 @@ export async function getPosts(query) {
             colors,
             region,
             startDate,
-            endDate,
-            status
+            endDate
         },
         size,
         offset
@@ -355,6 +352,17 @@ export async function getPost({ postId, userId }) {
         )
     }
 
+    const isOwner = userId != null && String(userId) === String(post.user_id)
+
+    // 블라인드 게시글 작성자만 열람
+    if (post.status === "blind" && !isOwner) {
+        throw serviceError(
+            "발견제보 게시글을 찾을 수 없습니다.",
+            404,
+            "FOUND_POST_NOT_FOUND"
+        )
+    }
+
     // API 명세 상세 Response 구조
     return {
         id: post.id,
@@ -366,9 +374,9 @@ export async function getPost({ postId, userId }) {
         region: post.region,
         find_date: formatDateOnly(post.find_date),
         description: post.description,
-        is_owner:
-            userId != null &&
-            String(userId) === String(post.user_id),
+        status: post.status,
+        blind_reason: post.blind_reason,
+        is_owner: isOwner,
         author: {
             name: post.author_name
         },
@@ -376,14 +384,8 @@ export async function getPost({ postId, userId }) {
     }
 }
 
-// 4.4 발견제보 수정
-export async function updatePost({
-    postId,
-    userId,
-    body,
-    imageUrls = []
-}) {
-    const id = parsePostId(postId)
+// 수정 권한 검증
+async function validateUpdatePermission(id, userId) {
     const owner = await repository.findOwnerById(id)
 
     if (!owner) {
@@ -402,6 +404,17 @@ export async function updatePost({
         )
     }
 
+    if (owner.status === "blind") {
+        throw serviceError(
+            "블라인드 처리된 게시글은 수정할 수 없습니다.",
+            403,
+            "BLINDED_POST"
+        )
+    }
+}
+
+// 전달된 수정 필드만 검증 후 구성
+function buildUpdateFields(body) {
     const fields = {}
 
     if (Object.hasOwn(body, "title")) {
@@ -438,8 +451,11 @@ export async function updatePost({
         fields.description = optionalText(body.description)
     }
 
-    const deleteImageUrls = parseDeleteImageUrls(body.delete_image_urls)
+    return fields
+}
 
+// 삭제 이미지 소유 여부 + 수정 후 이미지 개수 검증
+async function validateImageUpdate(id, deleteImageUrls, newImageUrls) {
     const currentImages = await repository.findImagesByPostId(id)
 
     const currentUrlSet = new Set(
@@ -460,7 +476,7 @@ export async function updatePost({
     const finalImageCount =
         currentImages.length -
         deleteImageUrls.length +
-        imageUrls.length
+        newImageUrls.length
 
     if (finalImageCount > 3) {
         throw serviceError(
@@ -469,12 +485,15 @@ export async function updatePost({
             "TOO_MANY_IMAGES"
         )
     }
+}
 
+// 필드 or 이미지 중 하나 이상의 수정값 있는지 검증
+function validateHasUpdate(fields, deleteImageUrls, newImageUrls) {
     const hasFieldUpdate = Object.keys(fields).length > 0
 
     const hasImageUpdate =
         deleteImageUrls.length > 0 ||
-        imageUrls.length > 0
+        newImageUrls.length > 0
 
     if (!hasFieldUpdate && !hasImageUpdate) {
         throw serviceError(
@@ -483,6 +502,25 @@ export async function updatePost({
             "MISSING_UPDATE_FIELD"
         )
     }
+}
+
+
+// 4.4 발견제보 수정
+// 권한, 필드, 이미지 검증은 각각 분리하고 수정 흐름만 관리
+export async function updatePost({
+    postId, userId, body, imageUrls = []
+}) {
+    const id = parsePostId(postId)
+
+    await validateUpdatePermission(id, userId)
+
+    const fields = buildUpdateFields(body)
+
+    const deleteImageUrls = parseDeleteImageUrls(body.delete_image_urls)
+
+    await validateImageUpdate(id, deleteImageUrls, imageUrls)
+
+    validateHasUpdate(fields, deleteImageUrls, imageUrls)
 
     const result = await repository.updatePostWithImages({
         id,
@@ -490,6 +528,22 @@ export async function updatePost({
         deleteImageUrls,
         newImageUrls: imageUrls
     })
+
+    if (result.outcome === "not_found") {
+        throw serviceError(
+            "발견제보 게시글을 찾을 수 없습니다.",
+            404,
+            "FOUND_POST_NOT_FOUND"
+        )
+    }
+
+    if (result.outcome === "blinded") {
+        throw serviceError(
+            "블라인드 처리된 게시글은 수정할 수 없습니다.",
+            403,
+            "BLINDED_POST"
+        )
+    }
 
     try {
         // DB 삭제 성공 후 실제 로컬 파일 삭제
@@ -528,7 +582,31 @@ export async function deletePost({ postId, userId }) {
         )
     }
 
+    if (owner.status === "blind") {
+        throw serviceError(
+            "블라인드 처리된 게시글은 삭제할 수 없습니다.",
+            403,
+            "BLINDED_POST"
+        )
+    }
+
     const result = await repository.remove(id)
+
+    if (result.outcome === "not_found") {
+        throw serviceError(
+            "발견제보 게시글을 찾을 수 없습니다.",
+            404,
+            "FOUND_POST_NOT_FOUND"
+        )
+    }
+
+    if (result.outcome === "blinded") {
+        throw serviceError(
+            "블라인드 처리된 게시글은 삭제할 수 없습니다.",
+            403,
+            "BLINDED_POST"
+        )
+    }
 
     await removeFoundImageFiles(result.imageUrls)
 

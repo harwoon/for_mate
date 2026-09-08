@@ -109,7 +109,16 @@ export async function answerInquiry(adminUserId, rawInquiryId, rawAnswer) {
 	// 4) answer 저장 + status를 'answered'로 변경 + answered_at을 지금 시각으로 기록.
 	//    UPDATE 결과 row(갱신된 status/answered_at 포함)를 그대로 받아온다.
 	const answered = await repository.answerInquiry(inquiryId, answer, adminUserId)
-	return toAnswerResult(answered)
+
+    if (!answered) {
+        throw serviceError(
+            "이미 답변이 등록된 문의입니다.",
+            409,
+            "INQUIRY_ALREADY_ANSWERED"
+        )
+    }
+
+    return toAnswerResult(answered)
 }
 
 
@@ -168,15 +177,38 @@ export async function updateReport(rawReportId, rawStatus) {
 		throw serviceError("이미 처리된 신고입니다.", 409, "REPORT_ALREADY_PROCESSED")
 	}
 
-	if (status === "resolved") {
-		const post = await repository.blindPost(report.post_type, report.post_id)
+	let updated
 
-		if (!post) {
-			throw serviceError("신고 대상 게시글을 찾을 수 없습니다.", 404, "POST_NOT_FOUND")
-		}
-	}
+    // 승인 시 게시글 블라인드 + 신고 상태 변경 = 트랜잭션으로 처리
+    if (status === "resolved") {
+        try {
+            updated = await repository.resolveReportWithBlind(
+                reportId,
+                report.post_type,
+                report.post_id
+            )
+        } catch (error) {
+            if (error.code === "POST_NOT_FOUND") {
+                throw serviceError(
+                    "신고 대상 게시글을 찾을 수 없습니다.",
+                    404,
+                    "POST_NOT_FOUND"
+                )
+            }
 
-	const updated = await repository.updateReportStatus(reportId, status)
+            if (error.code === "REPORT_ALREADY_PROCESSED") {
+                throw serviceError(
+                    "이미 처리된 신고입니다.",
+                    409,
+                    "REPORT_ALREADY_PROCESSED"
+                )
+            }
+
+            throw error
+        }
+    } else {
+        updated = await repository.updateReportStatus(reportId, status)
+    }
 
 	return {
 		report_id: Number(updated.id),
