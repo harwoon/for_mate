@@ -86,7 +86,8 @@ export default function FilterModal({
     return () => { cancelled = true }
   }, [draftFilters.sido])
 
-  // 동물 종류나 품종 검색어가 바뀔 때 자동완성 후보를 다시 조회한다.
+  // 동물 종류나 품종 검색어가 바뀌면 잠시 기다린 뒤 자동완성 후보를 조회한다.
+  // 입력마다 즉시 요청하지 않는 디바운스로 빠른 연속 입력의 불필요한 호출을 줄인다.
   useEffect(() => {
     let cancelled = false
 
@@ -102,8 +103,11 @@ export default function FilterModal({
       }
     }
 
-    loadBreeds()
-    return () => { cancelled = true }
+    const timer = setTimeout(loadBreeds, 250)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
   }, [draftFilters.species, breedKeyword])
 
   function handleSpeciesChange(species) {
