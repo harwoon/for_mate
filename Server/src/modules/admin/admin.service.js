@@ -208,6 +208,14 @@ export async function updateReport(rawReportId, rawStatus) {
         }
     } else {
         updated = await repository.updateReportStatus(reportId, status)
+
+        if (!updated) {
+            throw serviceError(
+                "이미 처리된 신고입니다.",
+                409,
+                "REPORT_ALREADY_PROCESSED"
+            )
+        }
     }
 
 	return {
