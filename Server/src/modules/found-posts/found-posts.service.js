@@ -376,14 +376,8 @@ export async function getPost({ postId, userId }) {
     }
 }
 
-// 4.4 발견제보 수정
-export async function updatePost({
-    postId,
-    userId,
-    body,
-    imageUrls = []
-}) {
-    const id = parsePostId(postId)
+// 수정 권한 검증
+async function validateUpdatePermission(id, userId) {
     const owner = await repository.findOwnerById(id)
 
     if (!owner) {
@@ -401,7 +395,10 @@ export async function updatePost({
             "FORBIDDEN"
         )
     }
+}
 
+// 전달된 수정 필드만 검증 후 구성
+function buildUpdateFields(body) {
     const fields = {}
 
     if (Object.hasOwn(body, "title")) {
@@ -438,8 +435,11 @@ export async function updatePost({
         fields.description = optionalText(body.description)
     }
 
-    const deleteImageUrls = parseDeleteImageUrls(body.delete_image_urls)
+    return fields
+}
 
+// 삭제 이미지 소유 여부 + 수정 후 이미지 개수 검증
+async function validateImageUpdate(id, deleteImageUrls, newImageUrls) {
     const currentImages = await repository.findImagesByPostId(id)
 
     const currentUrlSet = new Set(
@@ -460,7 +460,7 @@ export async function updatePost({
     const finalImageCount =
         currentImages.length -
         deleteImageUrls.length +
-        imageUrls.length
+        newImageUrls.length
 
     if (finalImageCount > 3) {
         throw serviceError(
@@ -469,12 +469,15 @@ export async function updatePost({
             "TOO_MANY_IMAGES"
         )
     }
+}
 
+// 필드 or 이미지 중 하나 이상의 수정값 있는지 검증
+function validateHasUpdate(fields, deleteImageUrls, newImageUrls) {
     const hasFieldUpdate = Object.keys(fields).length > 0
 
     const hasImageUpdate =
         deleteImageUrls.length > 0 ||
-        imageUrls.length > 0
+        newImageUrls.length > 0
 
     if (!hasFieldUpdate && !hasImageUpdate) {
         throw serviceError(
@@ -483,6 +486,25 @@ export async function updatePost({
             "MISSING_UPDATE_FIELD"
         )
     }
+}
+
+
+// 4.4 발견제보 수정
+// 권한, 필드, 이미지 검증은 각각 분리하고 수정 흐름만 관리
+export async function updatePost({
+    postId, userId, body, imageUrls = []
+}) {
+    const id = parsePostId(postId)
+
+    await validateUpdatePermission(id, userId)
+
+    const fields = buildUpdateFields(body)
+
+    const deleteImageUrls = parseDeleteImageUrls(body.delete_image_urls)
+
+    await validateImageUpdate(id, deleteImageUrls, imageUrls)
+
+    validateHasUpdate(fields, deleteImageUrls, imageUrls)
 
     const result = await repository.updatePostWithImages({
         id,
