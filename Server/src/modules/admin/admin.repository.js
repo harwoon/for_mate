@@ -229,13 +229,16 @@ export async function resolveReportWithBlind(reportId, postType, postId) {
         // 1. 신고 게시글 블라인드 처리
         const table = postType === "lost" ? "lost_posts" : "found_posts"
 
-        // 2. 신고상태변경
         const postResult = await client.query(
             `UPDATE ${table}
-            SET status = 'blind'
+            SET status = 'blind',
+                blind_report_id = CASE
+                    WHEN status = 'active' THEN $2
+                    ELSE blind_report_id
+                END
             WHERE id = $1
             RETURNING id`,
-            [postId]
+            [postId, reportId]
         )
 
         if (!postResult.rows[0]) {
@@ -244,6 +247,7 @@ export async function resolveReportWithBlind(reportId, postType, postId) {
             throw error
         }
 
+        // 2. 신고상태변경
         const reportResult = await client.query(
             `UPDATE reports
             SET status = 'resolved',

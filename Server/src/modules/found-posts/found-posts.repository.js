@@ -86,7 +86,7 @@ export async function findMany({ filters, size, offset }) {
         conditions.push(sql.replace("?", `$${params.length}`))
     }
 
-    addCondition("fp.status = ?", filters.status)
+    conditions.push("fp.status = 'active'")
 
     if (filters.species) {
         addCondition("fp.species = ?", filters.species)
@@ -169,10 +169,13 @@ export async function findById(id) {
                 fp.description,
                 fp.status,
                 fp.created_at,
+                r.reason AS blind_reason,
                 u.name AS author_name
             FROM found_posts fp
             JOIN users u
                 ON u.id = fp.user_id
+            LEFT JOIN reports r
+                ON r.id = fp.blind_report_id
             WHERE fp.id = $1
         `,
         [id]
@@ -208,7 +211,7 @@ export async function findById(id) {
 export async function findOwnerById(id) {
     const result = await pool.query(
         `
-            SELECT user_id
+            SELECT user_id, status
             FROM found_posts
             WHERE id = $1
         `,
@@ -243,6 +246,29 @@ export async function updatePostWithImages({ id, fields, deleteImageUrls, newIma
 
     try {
         await client.query("BEGIN")
+
+        // 수정 직전 게시글을 잠그고 블라인드 상태인지 다시 확인
+        const postResult = await client.query(
+            `
+                SELECT status
+                FROM found_posts
+                WHERE id = $1
+                FOR UPDATE
+            `,
+            [id]
+        )
+
+        const post = postResult.rows[0]
+
+        if (!post) {
+            await client.query("ROLLBACK")
+            return { outcome: "not_found" }
+        }
+
+        if (post.status === "blind") {
+            await client.query("ROLLBACK")
+            return { outcome: "blinded" }
+        }
 
         // 일반 게시글 필드 수정
         const columnMap = {
@@ -318,6 +344,7 @@ export async function updatePostWithImages({ id, fields, deleteImageUrls, newIma
         await client.query("COMMIT")
 
         return {
+            outcome: "ok",
             deletedImages
         }
     } catch (error) {
@@ -335,6 +362,29 @@ export async function remove(id) {
 
     try {
         await client.query("BEGIN")
+
+        // 삭제 직전 게시글을 잠그고 블라인드 상태인지 다시 확인
+        const statusResult = await client.query(
+            `
+                SELECT status
+                FROM found_posts
+                WHERE id = $1
+                FOR UPDATE
+            `,
+            [id]
+        )
+
+        const post = statusResult.rows[0]
+
+        if (!post) {
+            await client.query("ROLLBACK")
+            return { outcome: "not_found", imageUrls: [] }
+        }
+
+        if (post.status === "blind") {
+            await client.query("ROLLBACK")
+            return { outcome: "blinded", imageUrls: [] }
+        }
 
         // 실제 파일 삭제를 위해 URL 먼저 확보
         const imageResult = await client.query(
@@ -368,6 +418,7 @@ export async function remove(id) {
         await client.query("COMMIT")
 
         return {
+            outcome: "ok",
             post: postResult.rows[0],
             imageUrls: imageResult.rows.map((image) => image.image_url)
         }

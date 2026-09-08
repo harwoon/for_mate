@@ -284,11 +284,9 @@ export async function getPosts(query) {
     const region = optionalText(query.region)
     const startDate = optionalText(query.start_date)
     const endDate = optionalText(query.end_date)
-    const status = optionalText(query.status) ?? "active"
     const sort = optionalText(query.sort) ?? "latest"
 
     validateChoice(species, ["개", "고양이"], "species")
-    validateChoice(status, ["active", "blind"], "status")
     validateChoice(sort, ["latest"], "sort")
 
     if (startDate) {
@@ -320,8 +318,7 @@ export async function getPosts(query) {
             colors,
             region,
             startDate,
-            endDate,
-            status
+            endDate
         },
         size,
         offset
@@ -355,6 +352,17 @@ export async function getPost({ postId, userId }) {
         )
     }
 
+    const isOwner = userId != null && String(userId) === String(post.user_id)
+
+    // 블라인드 게시글 작성자만 열람
+    if (post.status === "blind" && !isOwner) {
+        throw serviceError(
+            "발견제보 게시글을 찾을 수 없습니다.",
+            404,
+            "FOUND_POST_NOT_FOUND"
+        )
+    }
+
     // API 명세 상세 Response 구조
     return {
         id: post.id,
@@ -366,9 +374,9 @@ export async function getPost({ postId, userId }) {
         region: post.region,
         find_date: formatDateOnly(post.find_date),
         description: post.description,
-        is_owner:
-            userId != null &&
-            String(userId) === String(post.user_id),
+        status: post.status,
+        blind_reason: post.blind_reason,
+        is_owner: isOwner,
         author: {
             name: post.author_name
         },
@@ -393,6 +401,14 @@ async function validateUpdatePermission(id, userId) {
             "작성자 본인만 수정할 수 있습니다.",
             403,
             "FORBIDDEN"
+        )
+    }
+
+    if (owner.status === "blind") {
+        throw serviceError(
+            "블라인드 처리된 게시글은 수정할 수 없습니다.",
+            403,
+            "BLINDED_POST"
         )
     }
 }
@@ -513,6 +529,22 @@ export async function updatePost({
         newImageUrls: imageUrls
     })
 
+    if (result.outcome === "not_found") {
+        throw serviceError(
+            "발견제보 게시글을 찾을 수 없습니다.",
+            404,
+            "FOUND_POST_NOT_FOUND"
+        )
+    }
+
+    if (result.outcome === "blinded") {
+        throw serviceError(
+            "블라인드 처리된 게시글은 수정할 수 없습니다.",
+            403,
+            "BLINDED_POST"
+        )
+    }
+
     try {
         // DB 삭제 성공 후 실제 로컬 파일 삭제
         await removeFoundImageFiles(
@@ -550,7 +582,31 @@ export async function deletePost({ postId, userId }) {
         )
     }
 
+    if (owner.status === "blind") {
+        throw serviceError(
+            "블라인드 처리된 게시글은 삭제할 수 없습니다.",
+            403,
+            "BLINDED_POST"
+        )
+    }
+
     const result = await repository.remove(id)
+
+    if (result.outcome === "not_found") {
+        throw serviceError(
+            "발견제보 게시글을 찾을 수 없습니다.",
+            404,
+            "FOUND_POST_NOT_FOUND"
+        )
+    }
+
+    if (result.outcome === "blinded") {
+        throw serviceError(
+            "블라인드 처리된 게시글은 삭제할 수 없습니다.",
+            403,
+            "BLINDED_POST"
+        )
+    }
 
     await removeFoundImageFiles(result.imageUrls)
 

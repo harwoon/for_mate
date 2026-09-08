@@ -13,6 +13,19 @@ CREATE TABLE users (
   created_at  TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
+-- 신고
+CREATE TABLE reports (
+  id          BIGSERIAL PRIMARY KEY,
+  post_id     BIGINT      NOT NULL,
+  post_type   VARCHAR(10) NOT NULL,
+  user_id     BIGINT      NOT NULL REFERENCES users(id),
+  reason      VARCHAR(50) NOT NULL,
+  detail      TEXT,
+  status      VARCHAR(20) NOT NULL DEFAULT 'pending',
+  created_at  TIMESTAMP   NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMP   NOT NULL DEFAULT NOW()
+);
+
 -- 리프레시 토큰 저장용
 CREATE TABLE refresh_tokens (
   id          BIGSERIAL PRIMARY KEY,
@@ -46,6 +59,7 @@ CREATE TABLE lost_posts (
   event_date   DATE         NOT NULL,
   description  TEXT,
   status       VARCHAR(10)  NOT NULL DEFAULT 'active',
+  blind_report_id  BIGINT REFERENCES reports(id),
   created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
@@ -63,6 +77,7 @@ CREATE TABLE found_posts (
   find_date    DATE         NOT NULL,
   description  TEXT,
   status       VARCHAR(10)  NOT NULL DEFAULT 'active',
+  blind_report_id  BIGINT REFERENCES reports(id),
   created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
@@ -166,19 +181,6 @@ CREATE TABLE notifications (
   similarity_score  REAL      NOT NULL,
   is_read           BOOLEAN   NOT NULL DEFAULT FALSE,
   created_at        TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
--- 신고
-CREATE TABLE reports (
-  id          BIGSERIAL PRIMARY KEY,
-  post_id     BIGINT      NOT NULL,
-  post_type   VARCHAR(10) NOT NULL,
-  user_id     BIGINT      NOT NULL REFERENCES users(id),
-  reason      VARCHAR(50) NOT NULL,
-  detail      TEXT,
-  status      VARCHAR(20) NOT NULL DEFAULT 'pending',
-  created_at  TIMESTAMP   NOT NULL DEFAULT NOW(),
-  updated_at  TIMESTAMP   NOT NULL DEFAULT NOW()
 );
 
 -- 고객센터 문의
