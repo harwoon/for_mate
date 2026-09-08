@@ -60,7 +60,6 @@ export async function updateReport(req, res, next) {
 }
 
 // 문의 관리
-// GET /admin/inquiries  (requireAuth 통과 필수 - TODO: 관리자 권한 확인 추가)
 export async function getInquiries(req, res, next) {
 	try {
 		// 일반 회원용 getInquiries(inquiries.controller.js)는 "내 문의"만 보여줬지만,
@@ -88,7 +87,6 @@ export async function getInquiry(req, res, next) {
 
 
 // 11.3 문의 답변 등록(관리자)
-// PATCH /admin/inquiries/:inquiryId  (requireAuth 통과 필수 - TODO: 관리자 권한 확인 추가)
 export async function answerInquiry(req, res, next) {
 	try {
 		// req.userId: 답변을 등록하는 관리자 본인의 PK (누가 답변했는지 기록용)

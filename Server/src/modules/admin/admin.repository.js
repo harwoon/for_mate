@@ -101,21 +101,6 @@ export async function updateReportStatus(reportId, status) {
     return result.rows[0]
 }
 
-// 신고 대상 게시글 블라인드 처리
-// export async function blindPost(postType, postId) {
-//     const table = postType === "lost" ? "lost_posts" : "found_posts"
-
-//     const result = await query(
-//         `UPDATE ${table}
-//         SET status = 'blind'
-//         WHERE id = $1
-//         RETURNING id`,
-//         [postId]
-//     )
-
-//     return result.rows[0] ?? null
-// }
-
 
 // 실종 공고 관리 목록 조회
 export async function findAllLostPosts(status) {

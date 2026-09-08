@@ -1,5 +1,5 @@
 import * as service from "./inquiries.service.js"
-import { ok, created, fail } from "../../utils/response.js"
+import { ok, created } from "../../utils/response.js"
 
 // 11.1 문의 등록
 // POST /inquiries  (requireAuth 통과 필수)

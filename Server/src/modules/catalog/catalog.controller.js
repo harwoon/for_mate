@@ -27,7 +27,6 @@ export async function getColorTags(req, res, next) {
 // 2.3 지역 목록 조회
 export async function getRegions(req, res, next) {
   try {
-    // TODO: parent가 있으면 시군구, 없으면 시/도 목록 반환
     ok(res, await service.getRegions(req.query.parent?.trim() || null))
   } catch (err) {
     next(err)

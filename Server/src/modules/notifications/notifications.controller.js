@@ -1,5 +1,5 @@
 import * as service from "./notifications.service.js"
-import { ok, fail } from "../../utils/response.js"
+import { ok } from "../../utils/response.js"
 
 // 9.1 알림 목록 조회
 export async function getNotifications(req, res, next) {

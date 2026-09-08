@@ -1,5 +1,5 @@
 import * as service from "./bookmarks.service.js"
-import { ok, created, fail } from "../../utils/response.js"
+import { ok, created } from "../../utils/response.js"
 
 // 7.1 북마크 등록
 export async function addBookmark(req, res, next) {

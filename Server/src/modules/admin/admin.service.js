@@ -1,12 +1,5 @@
 import * as repository from "./admin.repository.js"
 
-// TODO: 아래 컨트롤러에서 호출할 함수들은 아직 구현 전이다 (컨트롤러에서 바로 501 응답 중)
-// - getDashboard: 관리자 대시보드 통계
-// - getLostPosts: 실종 공고 관리
-// - getFoundPosts: 발견제보 관리
-// - getReports: 신고 목록 조회
-// - updateReport: 10.2 신고 처리
-
 // 상태 코드(status)와 에러 코드(code)를 담은 Error를 만든다.
 // inquiries.service.js의 동일 헬퍼와 같은 패턴 (프로젝트 전체 컨벤션).
 function serviceError(message, status, code) {
