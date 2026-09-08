@@ -123,8 +123,23 @@ export async function createPost({ userId, body, imageUrls }) {
     imageUrls,
   })
 
-  // TODO(AI 연동): AI API가 정해지면 여기에서 createdPost.id와 images를 전달한다.
-  // 등록 응답을 지연시키지 않도록 await 없이 비동기로 요청하고, 실패 로그/재시도 정책도 함께 정한다.
+  // AI 서버에 임베딩 추출을 요청
+  // 등록 응답을 지연시키지 않도록 await 없이 비동기로 요청
+  const SERVER_BASE_URL = process.env.SERVER_BASE_URL ?? "http://localhost:4000"
+  const AI_SERVER_URL = process.env.AI_SERVER_URL ?? "http://localhost:8001"
+
+  fetch(`${AI_SERVER_URL}/embeddings/lost-posts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      images: createdPost.images.map((img) => ({
+        id: img.id,
+        image_url: `${SERVER_BASE_URL}${img.image_url}`,   // 절대 URL로 변환
+      })),
+    }),
+  }).catch((error) => {
+    console.error("임베딩 추출 요청 실패:", error)
+  })
 
   // DB가 생성한 id, status, created_at과 저장된 이미지 목록을 컨트롤러에 반환한다.
   return createdPost
