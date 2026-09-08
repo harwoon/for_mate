@@ -114,24 +114,70 @@ CREATE INDEX idx_rescue_notice_edt ON rescue_animals (notice_edt);
 CREATE INDEX idx_rescue_color_tags ON rescue_animals USING GIN (color_tags);
 CREATE INDEX idx_rescue_region ON rescue_animals (region_sido, region_sigungu);
 
--- 사진 (실종/발견/구조동물 공통)
+-- 구조동물 공고 (보호중이에요) - 포인핸드 크롤링 데이터
+CREATE TABLE pawinhand_animals (
+  id             BIGSERIAL PRIMARY KEY,
+  source_id      VARCHAR(100) NOT NULL UNIQUE, -- 포인핸드 원본 고유 ID(문자열 가능)
+  notice_no      VARCHAR(100),
+  detail_url     TEXT         NOT NULL,
+  happen_dt      DATE,
+  happen_place   VARCHAR(200),
+  up_kind_nm     VARCHAR(20)  NOT NULL,
+  kind_nm        VARCHAR(50),
+  color_cd       VARCHAR(100),
+  color_tags     TEXT[],
+  age            VARCHAR(30),
+  weight         VARCHAR(20),
+  process_state  VARCHAR(30),
+  sex_cd         VARCHAR(1),
+  neuter_yn      VARCHAR(1),
+  special_mark   TEXT,
+  care_nm        VARCHAR(100),
+  care_tel       VARCHAR(30),
+  care_addr      VARCHAR(200),
+  region_sido    VARCHAR(30),
+  region_sigungu VARCHAR(40),
+  rfid_cd        VARCHAR(50),
+  notice_sdt     DATE,
+  notice_edt     DATE,
+  last_seen_at   TIMESTAMP    NOT NULL DEFAULT NOW(),
+  created_at     TIMESTAMP    NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_pawinhand_filter ON pawinhand_animals (up_kind_nm, kind_nm, happen_place, happen_dt);
+CREATE INDEX idx_pawinhand_notice_edt ON pawinhand_animals (notice_edt);
+CREATE INDEX idx_pawinhand_color_tags ON pawinhand_animals USING GIN (color_tags);
+CREATE INDEX idx_pawinhand_region ON pawinhand_animals (region_sido, region_sigungu);
+CREATE INDEX idx_pawinhand_last_seen_at ON pawinhand_animals (last_seen_at);
+
+-- 사진 (실종/발견/공공데이터 구조동물/포인핸드 공통)
 CREATE TABLE images (
   id              BIGSERIAL PRIMARY KEY,
   post_type       VARCHAR(10)  NOT NULL,
   lost_post_id    BIGINT REFERENCES lost_posts(id) ON DELETE CASCADE,
   found_post_id   BIGINT REFERENCES found_posts(id) ON DELETE CASCADE,
   desertion_no    BIGINT REFERENCES rescue_animals(desertion_no) ON DELETE CASCADE,
-  image_url       VARCHAR(255) NOT NULL,
-  is_primary      BOOLEAN      NOT NULL DEFAULT FALSE,
+  pawinhand_animal_id BIGINT REFERENCES pawinhand_animals(id) ON DELETE CASCADE,
+  image_url       TEXT         NOT NULL,
   created_at      TIMESTAMP    NOT NULL DEFAULT NOW(),
 
   -- post_type에 맞는 컬럼 하나만 채워지도록 강제
-  CHECK (
-    (post_type = 'lost'   AND lost_post_id  IS NOT NULL AND found_post_id IS NULL AND desertion_no IS NULL) OR
-    (post_type = 'found'  AND found_post_id IS NOT NULL AND lost_post_id  IS NULL AND desertion_no IS NULL) OR
-    (post_type = 'rescue' AND desertion_no  IS NOT NULL AND lost_post_id  IS NULL AND found_post_id IS NULL)
+  CONSTRAINT images_post_reference_check CHECK (
+    (post_type = 'lost' AND lost_post_id IS NOT NULL AND found_post_id IS NULL
+      AND desertion_no IS NULL AND pawinhand_animal_id IS NULL) OR
+    (post_type = 'found' AND found_post_id IS NOT NULL AND lost_post_id IS NULL
+      AND desertion_no IS NULL AND pawinhand_animal_id IS NULL) OR
+    (post_type = 'rescue' AND desertion_no IS NOT NULL AND lost_post_id IS NULL
+      AND found_post_id IS NULL AND pawinhand_animal_id IS NULL) OR
+    (post_type = 'pawinhand' AND pawinhand_animal_id IS NOT NULL AND lost_post_id IS NULL
+      AND found_post_id IS NULL AND desertion_no IS NULL)
   )
 );
+
+CREATE INDEX idx_images_pawinhand_animal
+  ON images (pawinhand_animal_id, id)
+  WHERE post_type = 'pawinhand';
 
 -- 이미지 임베딩
 CREATE TABLE embeddings (
