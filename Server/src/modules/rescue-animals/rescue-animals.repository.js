@@ -30,6 +30,8 @@ export async function findMany({
     colors,
     sido,
     sigungu,
+    startDate,
+    endDate,
     size,
     offset
 }) {
@@ -65,6 +67,16 @@ export async function findMany({
     if (sigungu) {
         values.push(sigungu)
         conditions.push(`r.region_sigungu = $${values.length}`)
+    }
+
+    // 구조 발생일
+    if (startDate) {
+        values.push(startDate)
+        conditions.push(`r.happen_dt >= $${values.length}`)
+    }
+    if (endDate) {
+        values.push(endDate)
+        conditions.push(`r.happen_dt <= $${values.length}`)
     }
 
     
