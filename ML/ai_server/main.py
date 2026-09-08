@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 # 작성한 파일(extract_embeddings.py) 불러오기라 밑줄 그어져도 오류 있는거 아님
-from extract_embeddings import crop, download, extract_embedding, MODEL_VERSION
+from extract_embeddings import crop, download, extract_embedding, save_to_db, MODEL_VERSION
 
 app = FastAPI()
 
@@ -22,6 +22,15 @@ class ImageIn(BaseModel):
 
 class EmbedRequest(BaseModel):
     images: list[ImageIn]
+
+
+class RescueAnimalIn(BaseModel):
+    desertion_no: int
+    image_urls: list[str]
+
+
+class RescueEmbedRequest(BaseModel):
+    animals: list[RescueAnimalIn]
 
 
 def save_embedding(image_id: int, embedding) -> None:
@@ -40,7 +49,7 @@ def save_embedding(image_id: int, embedding) -> None:
     finally:
         conn.close()
 
-
+# 실종 동물 임베딩
 @app.post("/embeddings/lost-posts")
 def embed_lost_post_images(req: EmbedRequest):
     results = []
@@ -53,4 +62,28 @@ def embed_lost_post_images(req: EmbedRequest):
         embedding = extract_embedding(cropped)
         save_embedding(image.id, embedding)
         results.append({"image_id": image.id, "status": "ok"})
+    return {"results": results}
+
+
+# 구조 동물 임베딩
+@app.post("/embeddings/rescue-animals")
+def embed_rescue_animals(req: RescueEmbedRequest):
+    results = []
+    total = len(req.animals)
+
+    for idx, animal in enumerate(req.animals, 1):
+        print(f"[{idx}/{total}] desertion_no={animal.desertion_no}")
+        
+        for url in animal.image_urls:
+            img = download(url)
+            cropped = crop(img) if img is not None else None
+
+            if cropped is None:
+                results.append({"desertion_no": animal.desertion_no, "status": "detect_failed"})
+                continue
+
+            embedding = extract_embedding(cropped)
+            save_to_db(animal.desertion_no, url, embedding)
+            results.append({"desertion_no": animal.desertion_no, "status": "ok"})
+            
     return {"results": results}

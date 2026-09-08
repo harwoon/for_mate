@@ -46,7 +46,7 @@ async function preprocess() {
   const pythonFile = path.join(__dirname, "pre.py") // 실전용
 
   // 1. Python 파일 실행
-  const { stdout, stderr } = await execAsync(`python ${pythonFile}`, { cwd: __dirname })
+  const { stdout, stderr } = await execAsync(`python pre.py`, { cwd: __dirname })
   if (stderr) {
     console.error(`Python stderr: ${stderr}`)
   }
@@ -122,8 +122,49 @@ async function saveAnimals(processed_animals) {
   console.log("DB 저장 완료")
 }
 
-async function extractEmbeddings() {
-  // TODO: 새로 추가된 이미지를 ML 서버에 보내 임베딩 추출 요청
+async function extractEmbeddings(processed) {
+  const { results } = processed
+  const { rows: existing } = await pool.query(
+    `SELECT DISTINCT desertion_no FROM images WHERE post_type = 'rescue'`
+  )
+  const alreadyProcessed = new Set(existing.map((row) => Number(row.desertion_no)))
+
+  const animals = results
+    .map((animal) => {
+      const key = Object.keys(animal).find((k) => k.includes("desertionNo"))
+      const desertionNo = Number(animal[key])
+      const imageUrls = [animal.popfile1, animal.popfile2].filter(Boolean)
+      return { desertion_no: desertionNo, image_urls: imageUrls }
+    })
+    .filter((animal) => !alreadyProcessed.has(animal.desertion_no) && animal.image_urls.length > 0)
+
+  if (animals.length === 0) {
+    console.log("임베딩 추출 대상 없음 (신규 동물 없음)")
+    return
+  }
+
+  const AI_SERVER_URL = process.env.AI_SERVER_URL ?? "http://localhost:8001"
+  const CHUNK_SIZE = 30
+  console.log(`임베딩 추출 요청: 신규 ${animals.length}마리, ${CHUNK_SIZE}마리씩 나눠서 처리`)
+
+  for (let i = 0; i < animals.length; i += CHUNK_SIZE) {
+    const chunk = animals.slice(i, i + CHUNK_SIZE)
+    console.log(`  진행: ${Math.min(i + CHUNK_SIZE, animals.length)}/${animals.length}`)
+    try {
+      const response = await fetch(`${AI_SERVER_URL}/embeddings/rescue-animals`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ animals: chunk }),
+      })
+      const data = await response.json()
+      const failed = data.results.filter((r) => r.status !== "ok").length
+      console.log(`  완료: 성공 ${data.results.length - failed}건, 실패 ${failed}건`)
+    } catch (error) {
+      console.error(`  청크 처리 실패 (${i}~${i + chunk.length}):`, error.message)
+      // 이 청크만 건너뛰고 다음 청크는 계속 진행
+    }
+  }
+  console.log("임베딩 추출 전체 완료")
 }
 
 async function resetMatchesAndNotifications() {
@@ -141,7 +182,7 @@ async function run() {
   const processed = await preprocess()
   console.log('processed', processed)
   await saveAnimals(processed)
-  await extractEmbeddings()
+  await extractEmbeddings(processed)
   await resetMatchesAndNotifications()
   await createNotifications()
 
