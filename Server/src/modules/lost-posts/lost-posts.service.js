@@ -361,12 +361,12 @@ export async function updatePost({ postId, userId, body, imageUrls = [] }) {
   }
   if (result.outcome === "invalid_image_count") {
     throw serviceError(
-      "수정 완료 후 이미지는 1장 이상 8장 이하여야 합니다.",
+      "수정 완료 후 이미지는 3장 이상 8장 이하여야 합니다.",
       400,
       "INVALID_IMAGE_COUNT",
     )
   }
-
+ㄴ
   // DB 트랜잭션이 성공한 후에만 삭제 대상 기존 로컬 파일을 제거한다.
   await removeOldLocalImages(result.deletedImages)
 

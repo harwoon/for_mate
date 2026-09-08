@@ -93,6 +93,7 @@ export async function updateReportStatus(reportId, status) {
         SET status = $1,
             updated_at = NOW()
         WHERE id = $2
+            AND status = 'pending'
         RETURNING id, post_id, post_type, status, updated_at`,
         [status, reportId]
     )

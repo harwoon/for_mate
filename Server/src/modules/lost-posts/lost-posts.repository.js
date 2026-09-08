@@ -217,7 +217,7 @@ export async function updatePostWithImages({ id, userId, updates, deleteImageIds
     }
 
     const finalImageCount = currentImages.length - deleteImageIds.length + imageUrls.length
-    if (finalImageCount < 1 || finalImageCount > 8) {
+    if (finalImageCount < 3 || finalImageCount > 8) {
       await client.query("ROLLBACK")
       return { outcome: "invalid_image_count" }
     }
