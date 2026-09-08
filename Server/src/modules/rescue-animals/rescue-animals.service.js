@@ -1,6 +1,27 @@
 import * as repository from "./rescue-animals.repository.js"
 
-// 공공데이터 수집 결과를 조회만 한다. 등록/수정 기능은 없다.
+function validateDate(value, fieldName) {
+    if (!value) return
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const error = new Error(`${fieldName} 형식이 올바르지 않습니다.`)
+        error.status = 400
+        error.code = "INVALID_DATE"
+        throw error
+    }
+
+    const date = new Date(`${value}T00:00:00Z`)
+
+    if (
+        Number.isNaN(date.getTime()) ||
+        date.toISOString().slice(0, 10) !== value
+    ) {
+        const error = new Error(`${fieldName}가 올바른 날짜가 아닙니다.`)
+        error.status = 400
+        error.code = "INVALID_DATE"
+        throw error
+    }
+}
 
 // 5.1 구조동물 목록 조회
 export async function getAnimals(query) {
@@ -31,12 +52,27 @@ export async function getAnimals(query) {
 
     const sido = typeof query.sido === "string" ? (query.sido.trim() || null) : null
     const sigungu = typeof query.sigungu === "string" ? (query.sigungu.trim() || null) : null
+    const startDate = typeof query.start_date === "string" ? (query.start_date.trim() || null) : null
+    const endDate = typeof query.end_date === "string" ? (query.end_date.trim() || null) : null
+
+    validateDate(startDate, "start_date")
+    validateDate(endDate, "end_date")
+
+    if (startDate && endDate && startDate > endDate) {
+        const error = new Error("start_date는 end_date보다 늦을 수 없습니다.")
+        error.status = 400
+        error.code = "INVALID_DATE_RANGE"
+        throw error
+    }
+
     const filters = {
         species: query.species || null,
         breed: query.breed || null,
         colors,
         sido,
         sigungu: sido ? sigungu : null,
+        startDate,
+        endDate,
         size,
         offset
     }
