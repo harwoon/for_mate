@@ -1,4 +1,5 @@
 .venv
+.gitignore
 
 # python
 __pycache__/
