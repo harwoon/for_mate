@@ -1,5 +1,5 @@
 import * as service from "./reports.service.js"
-import { ok, created, fail } from "../../utils/response.js"
+import { created } from "../../utils/response.js"
 
 // 10.1 게시글 신고
 export async function createReport(req, res, next) {

@@ -366,7 +366,7 @@ export async function updatePost({ postId, userId, body, imageUrls = [] }) {
       "INVALID_IMAGE_COUNT",
     )
   }
-ㄴ
+
   // DB 트랜잭션이 성공한 후에만 삭제 대상 기존 로컬 파일을 제거한다.
   await removeOldLocalImages(result.deletedImages)
 

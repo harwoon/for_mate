@@ -78,12 +78,6 @@ export async function login({ email: rawEmail, password }) {
   }
 }
 
-export async function getMe(userId) {
-  const user = await authRepository.findById(userId)
-  if (!user) throw serviceError("사용자를 찾을 수 없습니다.", 404, "USER_NOT_FOUND")
-  return toPublicUser(user)
-}
-
 export async function loginWithOAuth({ provider, email, name }) {
   let user = await authRepository.findByEmail(email)
   if (!user) {

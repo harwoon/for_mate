@@ -74,9 +74,7 @@ modules/lost-posts/
 └── lost-posts.repository.js  # DB 쿼리
 ```
 
-요청은 `router → controller → service → repository` 순서로 흘러갑니다.
-
-**auth 폴더는 회원가입/로그인이 실제로 동작하도록 구현해두었습니다.** 다른 기능을 만들 때 이 폴더를 참고하시면 됩니다. 나머지 controller는 `501 NOT_IMPLEMENTED`를 반환하도록 되어 있으니, TODO 주석을 보고 채워주세요.
+각 기능은 `router → controller → service → repository` 구조로 구현되어 있습니다.
 
 ## 작업 분담
 
