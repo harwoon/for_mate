@@ -1,23 +1,20 @@
 """
-YOLO(yolo11m) vs torchvision Faster R-CNN v2 크롭 박스 IoU 비교.
+손으로 라벨한 정답 박스(COCO json) 대비 각 탐지기의 크롭 박스 IoU 평가.
 
-collect_dataset.py 의 탐지기를 ultralytics YOLO(AGPL-3.0) -> torchvision(BSD-3) 로
-바꿨는데, 두 탐지기가 실제로 "같은 동물 박스"를 잡는지 확인하는 스크립트.
+탐지기: YOLO(yolo11m, AGPL) / torchvision Faster R-CNN v2(BSD-3) / RT-DETR(Apache-2.0).
+- crop() 과 동일한 규칙(동물 클래스 중 score>=thresh, 면적 최대 박스 1개)으로 탐지기 박스 선택
+- 그 박스 vs GT 박스 -> IoU
+- 탐지기별: 미탐율, 탐지분 평균/중앙 IoU, IoU>=0.5/0.7/0.9 비율
+- (옵션) 최악 IoU 케이스 시각화 그리드
 
-- 두 탐지기 각각에서 crop() 과 동일한 규칙(동물 클래스 중 면적 최대 박스 1개)으로 박스 선택
-- 두 박스의 IoU 계산, 케이스 분류(both / yolo_only / tv_only / neither)
-- 요약 통계 + CSV, (옵션) 최악 IoU 케이스 시각화 그리드
-
-기본 입력: dataset/raw/YT-BB-Dog (실제 영상 프레임, 구도 다양). processed_animals 는
-이미 224 크롭이라 비교 의미가 적다.
-
-  python scripts/compare_detectors.py --n 300
-  python scripts/compare_detectors.py --n 300 --out_grid dataset/derived/detector_iou_worst.png
+  python scripts/compare_detectors.py
+  python scripts/compare_detectors.py --out_grid dataset/derived/detector_gt_iou.png
+  python scripts/compare_detectors.py --gt <other.json> --img_dir <dir> --score_thresh 0.4
+  python scripts/compare_detectors.py --skip_rtdetr        # transformers 없이
 """
 import argparse
 import csv
-import random
-from collections import Counter
+import json
 from pathlib import Path
 
 import cv2
@@ -29,10 +26,18 @@ from torchvision.models.detection import (
 )
 from ultralytics import YOLO
 
+try:
+    from transformers import RTDetrForObjectDetection, RTDetrImageProcessor
+except ImportError:
+    RTDetrForObjectDetection = RTDetrImageProcessor = None
+
 ML_DIR = Path(__file__).resolve().parent.parent  # ML/  (이 파일은 ML/scripts/ 안)
 ANIMAL_CLASSES = {"bird", "cat", "dog", "horse", "sheep",
                   "cow", "elephant", "bear", "zebra", "giraffe"}
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+GT_DEFAULT = ML_DIR / "dataset" / "derived" / "detector_gt" / "detector_gt_shelter_dog.json"
+IMG_DEFAULT = ML_DIR / "dataset" / "derived" / "detector_gt" / "dog"
 
 
 def iou(a, b):
@@ -61,7 +66,6 @@ def largest_animal_box(boxes, names, scores, thresh):
 class YoloDet:
     def __init__(self, weight=None):
         # yolo11n(nano)은 저해상도에서 탐지율이 크게 떨어져 yolo11m을 기본값으로 둠.
-        # 파일이 없으면 ultralytics 가 이름으로 자동 다운로드.
         self.m = YOLO(weight or str(ML_DIR / "checkpoints" / "yolo11m.pt"))
 
     def __call__(self, img_bgr, thresh):
@@ -77,7 +81,6 @@ class YoloDet:
 class TvDet:
     def __init__(self):
         w = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
-        # 내부 임계값은 낮게 두고, 비교는 largest_animal_box 의 thresh 로 통일
         self.m = fasterrcnn_resnet50_fpn_v2(weights=w, box_score_thresh=0.05).eval().to(DEVICE)
         self.pre = w.transforms()
         self.cats = w.meta["categories"]
@@ -93,19 +96,56 @@ class TvDet:
         return largest_animal_box(boxes, names, scores, thresh)
 
 
+class RtDetrDet:
+    def __init__(self, name="PekingU/rtdetr_r50vd"):
+        self.proc = RTDetrImageProcessor.from_pretrained(name)
+        self.m = RTDetrForObjectDetection.from_pretrained(name).eval().to(DEVICE)
+        self.cats = self.m.config.id2label
+
+    @torch.no_grad()
+    def __call__(self, img_bgr, thresh):
+        rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        inp = self.proc(images=rgb, return_tensors="pt").to(DEVICE)
+        out = self.m(**inp)
+        h, w = img_bgr.shape[:2]
+        res = self.proc.post_process_object_detection(
+            out, target_sizes=[(h, w)], threshold=0.05)[0]  # 비교는 largest_animal_box의 thresh로 통일
+        boxes = [list(map(float, b)) for b in res["boxes"].cpu()]
+        names = [self.cats[int(l)] for l in res["labels"].cpu()]
+        scores = [float(s) for s in res["scores"].cpu()]
+        return largest_animal_box(boxes, names, scores, thresh)
+
+
+def load_coco_gt(json_path):
+    """COCO json -> {file_name: (x1,y1,x2,y2)}. 이미지당 박스 여러 개면 면적 최대 1개."""
+    d = json.load(open(json_path, encoding="utf-8"))
+    id2name = {im["id"]: im["file_name"] for im in d["images"]}
+    best = {}  # file_name -> (box, area)
+    for a in d["annotations"]:
+        x, y, w, h = a["bbox"]
+        fn, area = id2name[a["image_id"]], w * h
+        if fn not in best or area > best[fn][1]:
+            best[fn] = ((x, y, x + w, y + h), area)
+    return {fn: box for fn, (box, _) in best.items()}
+
+
+# rows 의 iou_* / *_missed / _b_* 키 접미사와 표시색
+DETS = [("YOLO", "yolo", "lime"),
+        ("torchvision", "tv", "red"),
+        ("RT-DETR", "rtdetr", "gold")]
+
+
 def make_grid(rows, out_path, k):
+    """탐지기별 최악 IoU k개: GT(파랑) + 탐지기별 박스."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.patches as patches
     import matplotlib.pyplot as plt
 
-    both = sorted((r for r in rows if r["category"] == "both"), key=lambda r: r["_iou"])
-    disagree = [r for r in rows if r["category"] in ("yolo_only", "tv_only")]
-    picks = both[:k] + disagree[:max(0, k - len(both[:k]))]
+    keys = [k_ for _, k_, _ in DETS if f"iou_{k_}" in rows[0]]
+    picks = sorted(rows, key=lambda r: min(r[f"iou_{k_}"] for k_ in keys))[:k]
     if not picks:
-        print("그리드에 그릴 케이스 없음")
         return
-
     cols = 4
     n_rows = (len(picks) + cols - 1) // cols
     fig, axes = plt.subplots(n_rows, cols, figsize=(cols * 3.2, n_rows * 3.2))
@@ -113,82 +153,98 @@ def make_grid(rows, out_path, k):
     for ax in axes:
         ax.axis("off")
     for ax, r in zip(axes, picks):
-        im = cv2.cvtColor(cv2.imread(r["path"]), cv2.COLOR_BGR2RGB)
-        ax.imshow(im)
-        for box, color in ((r["_yb"], "lime"), (r["_tb"], "red")):
-            if box:
-                x1, y1, x2, y2 = box
-                ax.add_patch(patches.Rectangle((x1, y1), x2 - x1, y2 - y1,
-                             fill=False, edgecolor=color, linewidth=2))
-        ax.set_title(f"{r['category']}  IoU={r['_iou']:.2f}", fontsize=9)
-    fig.suptitle("green = YOLO   red = torchvision", fontsize=11)
+        ax.imshow(cv2.cvtColor(cv2.imread(r["path"]), cv2.COLOR_BGR2RGB))
+        ax.add_patch(_rect(r["_gt"], "deepskyblue", 3))
+        for _, k_, color in DETS:
+            if f"_b_{k_}" in r:
+                ax.add_patch(_rect(r[f"_b_{k_}"], color, 2))
+        ax.set_title("  ".join(f"{k_} {r[f'iou_{k_}']:.2f}" for k_ in keys), fontsize=8)
+    legend = "blue = GT   " + "   ".join(f"{c} = {n}" for n, k_, c in DETS if k_ in keys)
+    fig.suptitle(legend, fontsize=11)
     fig.tight_layout()
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=110)
     print(f"그리드 -> {out_path}")
 
 
+def _rect(box, color, lw):
+    import matplotlib.patches as patches
+    if not box:
+        return patches.Rectangle((0, 0), 0, 0, fill=False)
+    x1, y1, x2, y2 = box
+    return patches.Rectangle((x1, y1), x2 - x1, y2 - y1,
+                             fill=False, edgecolor=color, linewidth=lw)
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--src", default=str(ML_DIR / "dataset" / "raw" / "YT-BB-Dog"))
-    ap.add_argument("--n", type=int, default=300)
-    ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--yolo", default=None,
-                    help="YOLO 가중치 경로/이름 (기본: checkpoints/yolo11m.pt)")
+    ap.add_argument("--gt", default=str(GT_DEFAULT), help="COCO json 정답")
+    ap.add_argument("--img_dir", default=str(IMG_DEFAULT), help="이미지 폴더")
+    ap.add_argument("--yolo", default=None, help="YOLO 가중치 (기본: checkpoints/yolo11m.pt)")
+    ap.add_argument("--rtdetr", default="PekingU/rtdetr_r50vd", help="RT-DETR HF 모델명")
+    ap.add_argument("--skip_rtdetr", action="store_true")
     ap.add_argument("--score_thresh", type=float, default=0.25,
-                    help="두 탐지기에 공통 적용할 score 하한 (YOLO 기본 conf=0.25)")
-    ap.add_argument("--out_csv", default=str(ML_DIR / "dataset" / "derived" / "detector_iou.csv"))
-    ap.add_argument("--out_grid", default=None, help="최악 IoU N개 시각화 png 경로")
+                    help="탐지기 공통 score 하한")
+    ap.add_argument("--out_csv", default=str(ML_DIR / "dataset" / "derived" / "detector_gt_iou.csv"))
+    ap.add_argument("--out_grid", default=None, help="최악 IoU 시각화 png")
     ap.add_argument("--grid_n", type=int, default=12)
     args = ap.parse_args()
 
-    paths = sorted(Path(args.src).rglob("*.jpg"))
-    random.Random(args.seed).shuffle(paths)
-    paths = paths[: args.n]
-    print(f"{len(paths)} images  <-  {args.src}  (device={DEVICE})")
+    gt = load_coco_gt(args.gt)
+    img_dir = Path(args.img_dir)
+    files = [fn for fn in sorted(gt) if (img_dir / fn).exists()]
+    missing = len(gt) - len(files)
+    print(f"GT {len(gt)}개 중 {len(files)}개 평가"
+          + (f" (이미지 없음 {missing}개 건너뜀)" if missing else "")
+          + f"  (device={DEVICE})")
 
-    yolo, tv = YoloDet(args.yolo), TvDet()
+    dets = {"yolo": YoloDet(args.yolo), "tv": TvDet()}
+    use_rtdetr = not args.skip_rtdetr and RTDetrForObjectDetection is not None
+    if args.skip_rtdetr:
+        print("RT-DETR 건너뜀 (--skip_rtdetr)")
+    elif RTDetrForObjectDetection is None:
+        print("RT-DETR 건너뜀 (transformers 미설치)")
+    else:
+        dets["rtdetr"] = RtDetrDet(args.rtdetr)
+
     rows = []
-    for i, p in enumerate(paths, 1):
-        im = cv2.imread(str(p))
+    for i, fn in enumerate(files, 1):
+        im = cv2.imread(str(img_dir / fn))
         if im is None:
             continue
-        yb = yolo(im, args.score_thresh)
-        tb = tv(im, args.score_thresh)
-        cat = ("both" if yb and tb else
-               "yolo_only" if yb else
-               "tv_only" if tb else "neither")
-        rows.append(dict(
-            path=str(p), category=cat, iou=round(iou(yb, tb), 4),
-            yolo_box="" if yb is None else " ".join(f"{v:.0f}" for v in yb),
-            tv_box="" if tb is None else " ".join(f"{v:.0f}" for v in tb),
-            _iou=iou(yb, tb), _yb=yb, _tb=tb,
-        ))
+        gtb = gt[fn]
+        row = dict(file=fn, path=str(img_dir / fn), _gt=gtb)
+        for key, det in dets.items():
+            b = det(im, args.score_thresh)
+            row[f"iou_{key}"] = round(iou(b, gtb), 4)
+            row[f"{key}_missed"] = int(b is None)
+            row[f"_b_{key}"] = b
+        rows.append(row)
         if i % 50 == 0:
-            print(f"  {i}/{len(paths)}")
+            print(f"  {i}/{len(files)}")
 
+    fields = ["file", "path"] + [f"iou_{k}" for k in dets] + [f"{k}_missed" for k in dets]
     Path(args.out_csv).parent.mkdir(parents=True, exist_ok=True)
-    fields = ["path", "category", "iou", "yolo_box", "tv_box"]
     with open(args.out_csv, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
         w.writeheader()
         w.writerows(rows)
 
     n = len(rows)
-    cc = Counter(r["category"] for r in rows)
-    both = np.array([r["_iou"] for r in rows if r["category"] == "both"])
-    print(f"\n=== {n} images | score_thresh={args.score_thresh} ===")
-    for k in ("both", "yolo_only", "tv_only", "neither"):
-        print(f"  {k:10s} {cc[k]:4d}  ({cc[k] / n:.1%})")
-    if len(both):
-        print(f"\n둘 다 탐지 {len(both)}장  IoU:  mean {both.mean():.3f}  "
-              f"median {np.median(both):.3f}  min {both.min():.3f}")
-        for thr in (0.5, 0.7, 0.9):
-            print(f"  IoU >= {thr}:  {(both >= thr).mean():.1%}")
-    agree = cc["both"] + cc["neither"]
-    print(f"\n탐지 유무 일치율(both+neither): {agree / n:.1%}")
-    print(f"CSV -> {args.out_csv}")
-
+    print(f"\n=== GT 대비 IoU | {n}장 | score_thresh={args.score_thresh} ===")
+    for label, key, _ in DETS:
+        if key not in dets:
+            continue
+        miss = sum(r[f"{key}_missed"] for r in rows)
+        det_iou = np.array([r[f"iou_{key}"] for r in rows if not r[f"{key}_missed"]])
+        allv = np.array([r[f"iou_{key}"] for r in rows])
+        print(f"\n[{label}]  미탐 {miss}/{n} ({miss / n:.1%})")
+        if len(det_iou):
+            print(f"  탐지분 IoU: mean {det_iou.mean():.3f}  median {np.median(det_iou):.3f}  "
+                  f"min {det_iou.min():.3f}")
+            for thr in (0.5, 0.7, 0.9):
+                print(f"  IoU>={thr}: 탐지분 {(det_iou >= thr).mean():.1%}  |  전체 {(allv >= thr).mean():.1%}")
+    print(f"\nCSV -> {args.out_csv}")
     if args.out_grid:
         make_grid(rows, args.out_grid, args.grid_n)
 
