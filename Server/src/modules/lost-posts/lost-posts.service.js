@@ -104,7 +104,6 @@ export async function createPost({ userId, body, imageUrls }) {
   // DB에 저장하기 전에 명세에서 정한 코드값과 날짜 형식을 검사한다.
   // sex와 neuter_yn은 사용자가 소문자로 보내도 대문자로 바꾼 뒤 검사한다.
   validateChoice(species, ["개", "고양이"], "species")
-  // 승아: 수정검토
   validateChoice(sex, ["M", "F", "Q"], "sex")
   validateChoice(neuterYn, ["Y", "N", "U"], "neuter_yn")
   validateDate(eventDate)
@@ -313,7 +312,9 @@ export async function updatePost({ postId, userId, body, imageUrls = [] }) {
   if (hasOwn(body, "description")) updates.description = optionalText(body.description)
 
   if (updates.species !== undefined) validateChoice(updates.species, ["개", "고양이"], "species")
-  if (updates.sex !== undefined) validateChoice(updates.sex, ["M", "F", "U"], "sex")
+  if (updates.sex !== undefined) {
+    validateChoice(updates.sex, ["M", "F", "Q"], "sex")
+  }
   if (updates.neuter_yn !== undefined) {
     validateChoice(updates.neuter_yn, ["Y", "N", "U"], "neuter_yn")
   }

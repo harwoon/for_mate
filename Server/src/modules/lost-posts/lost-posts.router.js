@@ -92,24 +92,32 @@ async function cleanupLostImagesOnError(error, req, res, next) {
   next(error)
 }
 
-// 실행 순서: 로그인 확인 → 이미지 업로드 → 요청 검증 및 DB 저장 → 201 응답
+
+// 3.1 실종 공고 등록
 router.post(
   "/",
   requireAuth,
   uploadLostImagesLocally,
   controller.createPost,
   cleanupLostImagesOnError,
-) // 3.1 실종 공고 등록
-router.get("/", controller.getPosts)                                    // 3.2 실종 공고 목록 조회 (필터링)
-router.get("/:id", optionalAuth, controller.getPost)                                  // 3.3 실종 공고 상세 조회
+)
+
+// 3.2 실종 공고 목록 조회 (필터링)
+router.get("/", controller.getPosts)
+
+// 3.3 실종 공고 상세 조회
+router.get("/:id", optionalAuth, controller.getPost)
+
+// 3.4 실종 공고 및 이미지 수정
 router.put(
   "/:id",
   requireAuth,
   uploadLostImagesLocally,
   controller.updatePost,
   cleanupLostImagesOnError,
-) // 3.4 실종 공고 및 이미지 수정
-router.patch("/:id/status", requireAuth, controller.updateStatus)       // 3.4 상태 변경 (찾음 처리)
-router.delete("/:id", requireAuth, controller.deletePost)               // 3.4 실종 공고 삭제
+)
+
+// 3.5 실종 공고 삭제
+router.delete("/:id", requireAuth, controller.deletePost)
 
 export default router
