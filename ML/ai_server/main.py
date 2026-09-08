@@ -9,6 +9,7 @@ import psycopg2
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+# 작성한 파일(extract_embeddings.py) 불러오기라 밑줄 그어져도 오류 있는거 아님
 from extract_embeddings import crop, download, extract_embedding, MODEL_VERSION
 
 app = FastAPI()
