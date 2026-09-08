@@ -58,7 +58,7 @@ function uploadLostImagesLocally(req, res, next) {
   uploadLost(req, res, async (error) => {
     if (!error) {
       // DB에는 운영체제의 실제 경로가 아닌 웹에서 접근할 수 있는 URL 경로를 저장한다.
-      req.imageUrls = req.files.map((file) => `/uploads/lost-posts/${file.filename}`)
+      req.imageUrls = (req.files || []).map((file) => `/uploads/lost-posts/${file.filename}`)
       return next()
     }
 
