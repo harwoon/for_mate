@@ -51,9 +51,9 @@ def save_embedding(image_id: int, embedding) -> None:
     finally:
         conn.close()
 
-# 실종 동물 임베딩
-@app.post("/embeddings/lost-posts")
-def embed_lost_post_images(req: EmbedRequest):
+# 실종 동물, 포인핸드 크롤링 임베딩
+@app.post("/embeddings/images")
+def embed_images(req: EmbedRequest):
     results = []
     for image in req.images:
         img = download(image.image_url)

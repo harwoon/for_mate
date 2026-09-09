@@ -128,7 +128,7 @@ export async function createPost({ userId, body, imageUrls }) {
   const SERVER_BASE_URL = process.env.SERVER_BASE_URL ?? "http://localhost:4000"
   const AI_SERVER_URL = process.env.AI_SERVER_URL ?? "http://localhost:8001"
 
-  fetch(`${AI_SERVER_URL}/embeddings/lost-posts`, {
+  fetch(`${AI_SERVER_URL}/embeddings/images`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

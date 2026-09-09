@@ -412,6 +412,46 @@ async function saveAnimal(animal) {
   }
 }
 
+// 임베딩 추출
+async function extractEmbeddings() {
+  // 아직 임베딩이 없는 pawinhand 사진들만 골라낸다 (syncImages가 이미 images는 다 만들어둔 상태).
+  const { rows: pending } = await pool.query(
+    `SELECT i.id, i.image_url
+     FROM images i
+     LEFT JOIN embeddings e ON e.image_id = i.id
+     WHERE i.post_type = 'pawinhand' AND e.id IS NULL`,
+  )
+
+  if (pending.length === 0) {
+    console.log("[pawinhand] 임베딩 추출 대상 없음")
+    return
+  }
+
+  const AI_SERVER_URL = process.env.AI_SERVER_URL ?? "http://localhost:8001"
+  const CHUNK_SIZE = 30
+  console.log(`[pawinhand] 임베딩 추출 요청: ${pending.length}장, ${CHUNK_SIZE}장씩 나눠서 처리`)
+
+  for (let i = 0; i < pending.length; i += CHUNK_SIZE) {
+    const chunk = pending.slice(i, i + CHUNK_SIZE)
+    console.log(`  진행: ${Math.min(i + CHUNK_SIZE, pending.length)}/${pending.length}`)
+    try {
+      const response = await fetch(`${AI_SERVER_URL}/embeddings/images`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          images: chunk.map((row) => ({ id: row.id, image_url: row.image_url })),
+        }),
+      })
+      const data = await response.json()
+      const failed = data.results.filter((r) => r.status !== "ok").length
+      console.log(`  완료: 성공 ${data.results.length - failed}건, 실패 ${failed}건`)
+    } catch (error) {
+      console.error(`  청크 처리 실패 (${i}~${i + chunk.length}):`, error.message)
+    }
+  }
+  console.log("[pawinhand] 임베딩 추출 전체 완료")
+}
+
 async function run() {
   console.log(
     `[pawinhand] 동기화 시작 (rssLimit=${syncLimit}, refreshLimit=${refreshLimit}, dryRun=${dryRun})`,
@@ -460,6 +500,9 @@ async function run() {
   if (summary.failed === summary.requested) {
     throw serviceError("모든 포인핸드 공고 처리에 실패했습니다.", "PAWINHAND_SYNC_FAILED")
   }
+
+  await extractEmbeddings()
+  
 }
 
 run()
