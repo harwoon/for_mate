@@ -85,6 +85,16 @@ export async function getInquiry(req, res, next) {
     }
 }
 
+// 매칭 기록 조회
+export async function getMatches(req, res, next) {
+    try {
+        const matches = await service.getMatches(req.query)
+
+        ok(res, matches)
+    } catch (err) {
+        next(err)
+    }
+}
 
 // 11.3 문의 답변 등록(관리자)
 export async function answerInquiry(req, res, next) {
