@@ -4,8 +4,9 @@ import { ok, created, fail } from "../../utils/response.js"
 // 6.1 AI 매칭 결과 조회
 export async function getMatches(req, res, next) {
   try {
-    // TODO: 당일 결과 있으면 그대로 반환, 없으면 ML 서버에 유사도 계산 요청 후 저장
-    fail(res, 501, "NOT_IMPLEMENTED", "아직 구현되지 않았습니다.")
+    const lostPostId = Number(req.params.id)
+    const results = await service.getMatches(lostPostId)
+    ok(res, results)
   } catch (err) {
     next(err)
   }
