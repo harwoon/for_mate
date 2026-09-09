@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "job:sync": "node src/jobs/rescueAnimalSync.job.js",
+    "job:pawinhand-sync": "node src/jobs/pawinhandSync.job.js",
     "job:backfill-region": "node src/jobs/backfillRegion.js"
   },
   "dependencies": {
