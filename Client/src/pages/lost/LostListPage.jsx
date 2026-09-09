@@ -16,6 +16,7 @@ import Pagination from "../../components/common/Pagination.jsx"
 import Loading from "../../components/common/Loading.jsx"
 import ErrorState from "../../components/common/ErrorState.jsx"
 import Empty from "../../components/common/Empty.jsx"
+import { Link } from "react-router-dom"
 
 const PAGE_SIZE = 20
 
@@ -125,8 +126,19 @@ export default function LostListPage() {
 
   return (
     <div className="container">
-      <div className="page-header">
-        <h1 className="page-title">찾고있어요</h1>
+      <div
+          className="page-header"
+          style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+          }}
+      >
+          <h1 className="page-title">찾고있어요</h1>
+
+          <Link to="/lost-posts/new" className="btn btn-primary">
+              실종 공고 등록
+          </Link>
       </div>
 
       <FilterBar
