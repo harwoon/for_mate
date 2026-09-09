@@ -16,7 +16,7 @@ export async function findLostPostEmbeddings(lostPostId) {
 
 // 벡터 하나를 기준으로 가장 가까운 구조동물 후보 K개를 조회한다.
 // "ORDER BY 거리 LIMIT" 형태를 유지해야 pgvector HNSW 인덱스가 실제로 사용된다.
-export async function findNearestRescueCandidates(embeddingLiteral, excludedIds, limit = 20) {
+export async function findNearestRescueCandidates(embeddingLiteral, limit = 20) {
   const { rows } = await query(
     `
     SELECT
@@ -30,7 +30,7 @@ export async function findNearestRescueCandidates(embeddingLiteral, excludedIds,
     ORDER BY e.embedding <=> $1::vector
     LIMIT $3
     `,
-    [embeddingLiteral, excludedIds, limit],
+    [embeddingLiteral, limit],
   )
   return rows // [{ desertion_no, distance }, ...]
 }
