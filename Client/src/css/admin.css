@@ -1,0 +1,44 @@
+.admin-layout { display: flex; min-height: 100vh; background: var(--color-bg); }
+.admin-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 10; display: flex; flex-direction: column; width: 248px; padding: var(--space-lg) var(--space-md); border-right: 1px solid var(--color-border); background: var(--color-surface); }
+.admin-brand, .admin-login-brand { display: inline-flex; align-items: center; gap: var(--space-sm); color: var(--color-text); font-size: var(--font-lg); font-weight: var(--weight-bold); }
+.admin-brand small { display: block; margin-top: 2px; color: var(--color-primary); font-size: 10px; letter-spacing: .12em; }
+.admin-brand-mark { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--color-primary-light); color: var(--color-primary); }
+.admin-nav { display: flex; flex-direction: column; gap: 2px; margin-top: var(--space-2xl); }
+.admin-nav-item, .admin-utility-link { display: flex; align-items: center; gap: var(--space-sm); width: 100%; padding: 11px 12px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--color-text-sub); font-size: var(--font-sm); text-align: left; cursor: pointer; }
+.admin-nav-item:hover, .admin-utility-link:hover { background: var(--color-surface-hover); color: var(--color-primary-dark); }
+.admin-nav-item.is-active { background: var(--color-primary-light); color: var(--color-primary-dark); font-weight: var(--weight-semibold); }
+.admin-nav-item i, .admin-utility-link i { width: 20px; font-size: 18px; text-align: center; }
+.admin-sidebar-bottom { display: flex; flex-direction: column; gap: 2px; margin-top: auto; padding-top: var(--space-md); border-top: 1px solid var(--color-border-light); }
+.admin-main { width: calc(100% - 248px); min-height: 100vh; margin-left: 248px; }
+.admin-header { display: flex; align-items: center; justify-content: space-between; min-height: 76px; padding: var(--space-md) var(--space-32); border-bottom: 1px solid var(--color-border); background: var(--color-surface); }
+.admin-header-eyebrow { color: var(--color-primary); font-size: var(--font-xs); font-weight: var(--weight-semibold); }
+.admin-header h1 { margin-top: 3px; font-size: var(--font-lg); font-weight: var(--weight-bold); }
+.admin-user { display: inline-flex; align-items: center; gap: var(--space-sm); color: var(--color-text-sub); font-size: var(--font-sm); }
+.admin-content { max-width: 1280px; margin: 0 auto; padding: var(--space-32); }
+.admin-page-heading h2 { font-size: var(--font-24); font-weight: var(--weight-bold); }
+.admin-page-heading p { margin-top: var(--space-xs); color: var(--color-text-sub); font-size: var(--font-sm); }
+.admin-summary-grid, .admin-dashboard-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-md); margin-top: var(--space-32); }
+.admin-summary-item, .admin-placeholder-panel { border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.admin-summary-item { display: grid; grid-template-columns: auto 1fr; gap: var(--space-xs) var(--space-sm); padding: var(--space-lg); }
+.admin-summary-item > i { grid-row: span 2; color: var(--color-primary); font-size: 22px; }
+.admin-summary-item span, .admin-summary-item small { color: var(--color-text-sub); font-size: var(--font-sm); }
+.admin-summary-item strong { grid-column: 2; font-size: var(--font-xl); font-weight: var(--weight-bold); }
+.admin-summary-item small { grid-column: 2; color: var(--color-text-light); font-size: var(--font-xs); }
+.admin-dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.admin-placeholder-panel { min-height: 180px; padding: var(--space-lg); }
+.admin-placeholder-panel h3 { font-size: var(--font-md); font-weight: var(--weight-semibold); }
+.admin-placeholder-panel p { margin-top: var(--space-sm); color: var(--color-text-sub); font-size: var(--font-sm); line-height: 1.6; }
+.admin-page-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: var(--space-32); text-align: center; }
+.admin-page-placeholder > i { margin-bottom: var(--space-md); color: var(--color-primary); font-size: 28px; }
+.admin-login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: var(--space-lg); background: var(--color-bg); }
+.admin-login-panel { width: 100%; max-width: 440px; padding: var(--space-32); border: 1px solid var(--color-border); background: var(--color-surface); }
+.admin-login-heading { margin-top: var(--space-2xl); }
+.admin-login-heading h1 { margin-top: var(--space-sm); font-size: var(--font-24); }
+.admin-login-heading > p:last-child { margin-top: var(--space-xs); color: var(--color-text-sub); font-size: var(--font-sm); }
+.admin-login-form { display: flex; flex-direction: column; gap: var(--space-sm); margin-top: var(--space-32); }
+.admin-login-form label { margin-top: var(--space-sm); font-size: var(--font-sm); font-weight: var(--weight-semibold); }
+.admin-login-form input { width: 100%; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); }
+.admin-login-form input:focus { outline: 2px solid var(--color-primary-light); border-color: var(--color-primary); }
+.admin-login-back { display: inline-flex; align-items: center; gap: var(--space-xs); margin-top: var(--space-lg); color: var(--color-text-sub); font-size: var(--font-sm); }
+@media (max-width: 800px) { .admin-sidebar { position: static; width: 220px; } .admin-main { width: calc(100% - 220px); margin-left: 0; } .admin-summary-grid, .admin-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .admin-layout { display: block; } .admin-sidebar { width: 100%; min-height: auto; } .admin-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: var(--space-lg); } .admin-sidebar-bottom { margin-top: var(--space-lg); } .admin-main { width: 100%; } .admin-header, .admin-content { padding: var(--space-lg) var(--space-md); } .admin-summary-grid, .admin-dashboard-grid { grid-template-columns: 1fr; } }
