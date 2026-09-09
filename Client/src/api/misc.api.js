@@ -7,6 +7,7 @@ export const addBookmark = (animal) => post("/bookmarks",
 export const removeBookmark = (bookmarkId) => del(`/bookmarks/${bookmarkId}`)
 
 // 마이페이지
+export const getMySummary = () => get("/my/summary")
 export const getMyLostPosts = (params) => get(`/my/lost-posts${toQuery(params)}`)
 export const getMyFoundPosts = (params) => get(`/my/found-posts${toQuery(params)}`)
 

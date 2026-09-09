@@ -177,3 +177,72 @@ export async function findById(desertionNo, userId, sourceType = "rescue") {
 
     return result.rows[0] ?? null
 }
+
+// 구조동물 상세 이전글/다음글 조회
+export async function findAdjacent(animalId, sourceType) {
+    const result = await query(
+        `
+        WITH ordered_animals AS (
+            SELECT
+                r.source_type,
+                r.animal_id::text AS animal_id,
+                r.up_kind_nm AS species,
+                r.kind_nm AS breed,
+                r.happen_place,
+                TO_CHAR(r.happen_dt, 'YYYY-MM-DD') AS happen_dt,
+                ROW_NUMBER() OVER (
+                    ORDER BY
+                        r.notice_sdt DESC NULLS LAST,
+                        r.source_type ASC,
+                        r.animal_id DESC
+                ) AS row_num
+            FROM (${animalsSql}) r
+            WHERE r.notice_edt >= CURRENT_DATE
+        ),
+        current_animal AS (
+            SELECT row_num
+            FROM ordered_animals
+            WHERE source_type = $1
+                AND animal_id = $2
+        )
+        SELECT
+            (
+                SELECT row_to_json(previous_item)
+                FROM (
+                    SELECT
+                        source_type,
+                        animal_id,
+                        species,
+                        breed,
+                        happen_place,
+                        happen_dt
+                    FROM ordered_animals
+                    WHERE row_num = (
+                        SELECT row_num - 1
+                        FROM current_animal
+                    )
+                ) previous_item
+            ) AS previous_post,
+            (
+                SELECT row_to_json(next_item)
+                FROM (
+                    SELECT
+                        source_type,
+                        animal_id,
+                        species,
+                        breed,
+                        happen_place,
+                        happen_dt
+                    FROM ordered_animals
+                    WHERE row_num = (
+                        SELECT row_num + 1
+                        FROM current_animal
+                    )
+                ) next_item
+            ) AS next_post
+        `,
+        [sourceType, String(animalId)]
+    )
+
+    return result.rows[0]
+}

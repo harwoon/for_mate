@@ -1,39 +1,54 @@
 import { Routes, Route } from "react-router-dom"
 
+// 공통 레이아웃
 import Layout from "./components/layout/Layout.jsx"
 import ProtectedRoute from "./components/layout/ProtectedRoute.jsx"
 
+// 공통 페이지
 import HomePage from "./pages/HomePage.jsx"
 import NotFoundPage from "./pages/NotFoundPage.jsx"
 
+// 인증
 import LoginPage from "./pages/auth/LoginPage.jsx"
 import SignupPage from "./pages/auth/SignupPage.jsx"
 
+// 찾고있어요
 import LostListPage from "./pages/lost/LostListPage.jsx"
 import LostDetailPage from "./pages/lost/LostDetailPage.jsx"
 import LostCreatePage from "./pages/lost/LostCreatePage.jsx"
 import LostEditPage from "./pages/lost/LostEditPage.jsx"
 
+// 보호중이에요
 import RescueListPage from "./pages/rescue/RescueListPage.jsx"
 import RescueDetailPage from "./pages/rescue/RescueDetailPage.jsx"
 
+// 발견제보
 import FoundListPage from "./pages/found/FoundListPage.jsx"
 import FoundDetailPage from "./pages/found/FoundDetailPage.jsx"
 import FoundCreatePage from "./pages/found/FoundCreatePage.jsx"
 import FoundEditPage from "./pages/found/FoundEditPage.jsx"
 
+// AI 매칭
 import AiSearchPage from "./pages/match/AiSearchPage.jsx"
 import MatchResultPage from "./pages/match/MatchResultPage.jsx"
 import MatchComparePage from "./pages/match/MatchComparePage.jsx"
 
+// 마이페이지
 import MyPage from "./pages/mypage/MyPage.jsx"
+import MyLostPostsPage from "./pages/mypage/MyLostPostsPage.jsx"
+import MyFoundPostsPage from "./pages/mypage/MyFoundPostsPage.jsx"
+import MyBookmarksPage from "./pages/mypage/MyBookmarksPage.jsx"
 import NotificationPage from "./pages/mypage/NotificationPage.jsx"
+import MyInquiriesPage from "./pages/mypage/MyInquiriesPage.jsx"
+import MyInquiryDetailPage from "./pages/mypage/MyInquiryDetailPage.jsx"
 
+// 고객지원
 import SupportPage from "./pages/support/SupportPage.jsx"
 import TermsPage from "./pages/support/TermsPage.jsx"
 import PrivacyPage from "./pages/support/PrivacyPage.jsx"
 import AboutPage from "./pages/support/AboutPage.jsx"
 
+// 관리자
 import AdminPage from "./pages/admin/AdminPage.jsx"
 
 export default function App() {
@@ -49,6 +64,10 @@ export default function App() {
                 <Route path="/lost-posts/:id" element={<LostDetailPage />} />
 
                 <Route path="/rescue-animals" element={<RescueListPage />} />
+                <Route
+                    path="/rescue-animals/:sourceType/:animalId"
+                    element={<RescueDetailPage />}
+                />
                 <Route
                     path="/rescue-animals/:desertionNo"
                     element={<RescueDetailPage />}
@@ -86,6 +105,26 @@ export default function App() {
                     />
 
                     <Route path="/mypage" element={<MyPage />} />
+                    <Route
+                        path="/mypage/lost-posts"
+                        element={<MyLostPostsPage />}
+                    />
+                    <Route
+                        path="/mypage/found-posts"
+                        element={<MyFoundPostsPage />}
+                    />
+                    <Route
+                        path="/mypage/bookmarks"
+                        element={<MyBookmarksPage />}
+                    />
+                    <Route
+                        path="/mypage/inquiries"
+                        element={<MyInquiriesPage />}
+                    />
+                    <Route
+                        path="/mypage/inquiries/:inquiryId"
+                        element={<MyInquiryDetailPage />}
+                    />
                     <Route path="/notifications" element={<NotificationPage />} />
 
                     <Route path="/admin" element={<AdminPage />} />
