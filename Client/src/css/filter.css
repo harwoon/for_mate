@@ -1,0 +1,369 @@
+/* ============================= 필터 모달 ============================= */
+
+.filter-modal {
+    max-width: 500px;
+    max-height: calc(100vh - 48px);
+    border: 1px solid var(--color-border);
+    border-radius: 18px;
+    box-shadow: var(--shadow-lg);
+}
+
+.filter-modal .modal-header {
+    align-items: flex-start;
+    padding: 24px 24px 18px;
+    border-bottom: 0;
+}
+
+.modal-heading {
+    min-width: 0;
+}
+
+.filter-modal .modal-title {
+    color: var(--color-text);
+    font-size: 20px;
+    font-weight: var(--weight-bold);
+    line-height: 1.35;
+    letter-spacing: -0.03em;
+}
+
+.modal-description {
+    margin-top: 5px;
+    color: var(--color-text-sub);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.modal-close-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-surface);
+    color: var(--color-text-light);
+    cursor: pointer;
+    transition:
+        border-color var(--transition-fast),
+        background var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.modal-close-button:hover {
+    border-color: var(--color-border-strong);
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+}
+
+.modal-close-button i {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.filter-modal .modal-body {
+    padding: 0 24px;
+}
+
+.filter-modal-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-section {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.filter-section:first-of-type {
+    padding-top: 4px;
+}
+
+.filter-section:last-child {
+    border-bottom: 0;
+}
+
+.filter-section-title {
+    margin-bottom: 10px;
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: var(--weight-bold);
+    line-height: 1.4;
+}
+
+
+/* ============================= 종류 pill ============================= */
+
+.filter-option-row,
+.filter-color-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.filter-pill,
+.filter-color-pill {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 13px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-text-sub);
+    font-size: 13px;
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+    user-select: none;
+    transition:
+        border-color var(--transition-fast),
+        background var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.filter-pill:hover,
+.filter-color-pill:hover {
+    border-color: var(--color-border-strong);
+    background: var(--color-surface-hover);
+}
+
+.filter-pill.is-selected,
+.filter-color-pill.is-selected {
+    border-color: rgba(71, 120, 79, 0.35);
+    background: var(--color-primary-light);
+    color: var(--color-primary-dark);
+    font-weight: var(--weight-semibold);
+}
+
+.filter-pill input,
+.filter-color-pill input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+
+/* ============================= 색상 ============================= */
+
+.filter-color-pill {
+    gap: 6px;
+    min-height: 32px;
+    padding: 0 10px;
+    border-radius: var(--radius-full);
+}
+
+.filter-color-dot {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 9px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--radius-full);
+}
+
+.filter-color-dot.is-white {
+    background: #ffffff;
+    border-color: #d8dbd4;
+}
+
+.filter-color-dot.is-black {
+    background: #1f211f;
+}
+
+.filter-color-dot.is-brown {
+    background: #95613f;
+}
+
+.filter-color-dot.is-yellow {
+    background: #f2bd27;
+}
+
+.filter-color-dot.is-gray {
+    background: #9ca09b;
+}
+
+.filter-color-dot.is-cream {
+    background: #eadfbf;
+}
+
+.filter-color-dot.is-other {
+    background: #c5c9c3;
+}
+
+
+/* ============================= 입력 / Select ============================= */
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.filter-control {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    font-size: 13px;
+    font-weight: var(--weight-medium);
+    outline: none;
+    transition:
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.filter-control::placeholder {
+    color: var(--color-text-light);
+}
+
+.filter-control:hover:not(:disabled) {
+    border-color: var(--color-border-strong);
+}
+
+.filter-control:focus {
+    border-color: var(--color-primary);
+    box-shadow:
+        0 0 0 3px rgba(71, 120, 79, 0.08);
+}
+
+.filter-control:disabled {
+    background: var(--color-surface-hover);
+    color: var(--color-text-disabled);
+    cursor: not-allowed;
+}
+
+
+/* ============================= 상태 ============================= */
+
+.filter-state-message,
+.filter-error-message {
+    margin: 4px 0 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: var(--font-xs);
+    line-height: 1.5;
+}
+
+.filter-state-message {
+    background: var(--color-primary-soft);
+    color: var(--color-text-sub);
+}
+
+.filter-error-message {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+
+/* ============================= 하단 버튼 ============================= */
+
+.filter-modal .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px 24px;
+    border-top: 0;
+}
+
+.filter-reset-button {
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: 8px;
+    color: var(--color-text-sub);
+}
+
+.filter-search-button {
+    min-height: 40px;
+    padding: 0 18px;
+    border-radius: 8px;
+    gap: 7px;
+}
+
+.filter-search-button i {
+    font-size: 17px;
+    line-height: 1;
+}
+
+/* ============================= 적용된 필터 ============================= */
+
+.filter-chip-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 5px 7px 5px 11px;
+    border: 1px solid rgba(71, 120, 79, 0.1);
+    border-radius: var(--radius-full);
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+    font-size: 13px;
+    font-weight: var(--weight-medium);
+    line-height: 1;
+}
+
+.filter-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 19px;
+    height: 19px;
+    flex: 0 0 19px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--color-primary);
+    cursor: pointer;
+    transition:
+        background var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.filter-chip-remove:hover {
+    background: rgba(71, 120, 79, 0.12);
+    color: var(--color-primary-dark);
+}
+
+.filter-chip-remove i {
+    font-size: 14px;
+    line-height: 1;
+}
+
+/* ============================= 반응형 ============================= */
+
+@media (max-width: 600px) {
+    .filter-modal {
+        max-height: calc(100vh - 24px);
+        border-radius: 16px;
+    }
+
+    .filter-modal .modal-header {
+        padding: 20px 18px 14px;
+    }
+
+    .filter-modal .modal-body {
+        padding: 0 18px;
+    }
+
+    .filter-modal .modal-footer {
+        padding: 16px 18px 20px;
+    }
+
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+}

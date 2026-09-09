@@ -15,7 +15,7 @@ export default function FilterBar({
                     onClick={onOpenFilter}
                 >
                     <i
-                        className="ri-filter-3-line"
+                        className="ri-align-justify"
                         aria-hidden="true"
                     />
                     <span>필터</span>
@@ -42,10 +42,30 @@ export default function FilterBar({
                 </div>
             </div>
 
-            {/* 적용된 필터 조건을 칩으로 보여준다 */}
             {chips?.length > 0 && (
-                <div className="row filter-chip-row">
-                    {chips}
+                <div className="filter-chip-row">
+                    {chips.map((chip) => (
+                        <span
+                            key={chip.key}
+                            className="filter-chip"
+                        >
+                            <span>
+                                {chip.label}
+                            </span>
+
+                            <button
+                                type="button"
+                                className="filter-chip-remove"
+                                onClick={chip.onRemove}
+                                aria-label={`${chip.label} 필터 해제`}
+                            >
+                                <i
+                                    className="ri-close-line"
+                                    aria-hidden="true"
+                                />
+                            </button>
+                        </span>
+                    ))}
                 </div>
             )}
         </div>

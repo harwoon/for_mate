@@ -119,23 +119,96 @@ export default function FoundListPage() {
         })
 
         setPage(1)
-        setIsFilterOpen(false)
     }
 
     function handleChangeSort(nextSort) {
         setSort(nextSort)
         setPage(1)
     }
+    function handleRemoveFilter(field, value) {
+        setFilters((current) => {
+            if (field === "colors") {
+                return {
+                    ...current,
+                    colors: current.colors.filter(
+                        (color) => color !== value
+                    )
+                }
+            }
 
-    const filterLabels = [
-        filters.species,
-        filters.breed,
-        ...filters.colors,
-        [filters.sido, filters.sigungu]
-            .filter(Boolean)
-            .join(" "),
-        filters.start_date && `시작일 ${filters.start_date}`,
-        filters.end_date && `종료일 ${filters.end_date}`
+            if (field === "region") {
+                return {
+                    ...current,
+                    sido: "",
+                    sigungu: ""
+                }
+            }
+
+            return {
+                ...current,
+                [field]: ""
+            }
+        })
+
+        setPage(1)
+    }
+
+    const filterChips = [
+        filters.species && {
+            key: "species",
+            label: filters.species,
+            onRemove: () => (
+                handleRemoveFilter("species")
+            )
+        },
+
+        filters.breed && {
+            key: "breed",
+            label: filters.breed,
+            onRemove: () => (
+                handleRemoveFilter("breed")
+            )
+        },
+
+        ...filters.colors.map((color) => ({
+            key: `color-${color}`,
+            label: color,
+            onRemove: () => (
+                handleRemoveFilter(
+                    "colors",
+                    color
+                )
+            )
+        })),
+
+        (filters.sido || filters.sigungu) && {
+            key: "region",
+            label: [
+                filters.sido,
+                filters.sigungu
+            ]
+                .filter(Boolean)
+                .join(" "),
+            onRemove: () => (
+                handleRemoveFilter("region")
+            )
+        },
+
+        filters.start_date && {
+            key: "start-date",
+            label: `시작일 ${filters.start_date}`,
+            onRemove: () => (
+                handleRemoveFilter("start_date")
+            )
+        },
+
+        filters.end_date && {
+            key: "end-date",
+            label: `종료일 ${filters.end_date}`,
+            onRemove: () => (
+                handleRemoveFilter("end_date")
+            )
+        }
     ].filter(Boolean)
 
     return (
@@ -147,14 +220,7 @@ export default function FoundListPage() {
                 ]}
             />
 
-            <div
-                className="page-header"
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center"
-                }}
-            >
+            <div className="page-header">
                 <div>
                     <h1 className="page-title">
                         발견제보
@@ -178,14 +244,7 @@ export default function FoundListPage() {
                 onOpenFilter={() => setIsFilterOpen(true)}
                 sort={sort}
                 onChangeSort={handleChangeSort}
-                chips={filterLabels.map((label, index) => (
-                    <span
-                        className="badge"
-                        key={`${label}-${index}`}
-                    >
-                        {label}
-                    </span>
-                ))}
+                chips={filterChips}
             />
 
             {isFilterOpen && (

@@ -103,22 +103,6 @@
     box-shadow: 0 0 0 3px rgba(71, 120, 79, 0.1);
 }
 
-.lost-list-page .filter-chip-row {
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.lost-list-page .chip {
-    min-height: 30px;
-    padding: 5px 10px;
-    border: 1px solid rgba(71, 120, 79, 0.12);
-    border-radius: 8px;
-    background: var(--color-primary-light);
-    color: var(--color-primary-dark);
-    font-size: var(--font-xs);
-    font-weight: var(--weight-semibold);
-}
-
 
 /* ============================= 카드 목록 ============================= */
 
