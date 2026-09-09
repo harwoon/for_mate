@@ -6,6 +6,7 @@ import { AuthProvider } from "./context/AuthContext.jsx"
 
 // CSS는 index.css 하나만 불러오면 된다 (내부에서 나머지를 import 함)
 import "./css/index.css"
+import "remixicon/fonts/remixicon.css"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

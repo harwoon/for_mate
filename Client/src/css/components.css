@@ -987,46 +987,48 @@
 
 /* ============================= Breadcrumb-location ============================= */
 .breadcrumb {
-    margin-bottom: var(--space-md);
+    padding-top: 40px;
 }
 
 .breadcrumb-list {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: var(--space-sm);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    font-size: var(--font-sm);
+    gap: 4px;
 }
 
 .breadcrumb-item {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: var(--space-sm);
+    gap: 4px;
 }
 
-.breadcrumb-link {
-    color: var(--color-text-sub);
-    text-decoration: none;
-    transition: color 0.2s ease;
+.breadcrumb-link,
+.breadcrumb-current {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--color-text-light);
+    font-size: 13px;
+    font-weight: var(--weight-medium);
 }
 
 .breadcrumb-link:hover {
     color: var(--color-primary);
-    text-decoration: underline;
 }
 
-.breadcrumb-link:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 3px;
-    border-radius: var(--radius-sm);
+.breadcrumb-current {
+    color: var(--color-text-sub);
+}
+
+.breadcrumb-link i,
+.breadcrumb-current i {
+    font-size: 15px;
 }
 
 .breadcrumb-separator {
     color: var(--color-text-light);
-    user-select: none;
+    font-size: 15px;
 }
 
 .breadcrumb-current {
