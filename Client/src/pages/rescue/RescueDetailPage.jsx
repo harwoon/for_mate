@@ -15,6 +15,7 @@ import Breadcrumb from "../../components/common/Breadcrumb.jsx"
 import Empty from "../../components/common/Empty.jsx"
 import ErrorState from "../../components/common/ErrorState.jsx"
 import Loading from "../../components/common/Loading.jsx"
+import PostNavigation from "../../components/common/PostNavigation.jsx"
 
 const SEX_LABELS = {
     M: "수컷",
@@ -565,6 +566,18 @@ export default function RescueDetailPage() {
                             </p>
                         )}
                     </section>
+
+                    <PostNavigation
+                        previousPost={animal.previous_post}
+                        nextPost={animal.next_post}
+                        getPath={(post) => (
+                            `/rescue-animals/${post.source_type}/${post.animal_id}`
+                        )}
+                        getTitle={(post) => (
+                            `${post.breed || post.species || "구조동물"} · ${post.happen_place || "지역 정보 없음"}`
+                        )}
+                        getDate={(post) => post.happen_dt}
+                    />
                 </div>
             )}
         </>
