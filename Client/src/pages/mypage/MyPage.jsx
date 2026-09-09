@@ -197,6 +197,12 @@ export default function MyPage() {
                                     {counts.answered_inquiries ?? 0}건
                                 </strong>
                             </div>
+                            <Link
+                                to="/mypage/inquiries"
+                                className="btn btn-outline"
+                            >
+                                내 문의글 보러가기
+                            </Link>
                         </div>
                     </section>
 
@@ -210,9 +216,12 @@ export default function MyPage() {
                                         찾고있어요
                                     </h3>
 
-                                    <span className="text-sub">
-                                        {counts.lost_posts ?? 0}건
-                                    </span>
+                                    <Link
+                                        to="/mypage/lost-posts"
+                                        className="text-sub"
+                                    >
+                                        전체보기 →
+                                    </Link>
                                 </div>
 
                                 {recentLost ? (
@@ -256,9 +265,12 @@ export default function MyPage() {
                                         발견제보
                                     </h3>
 
-                                    <span className="text-sub">
-                                        {counts.found_posts ?? 0}건
-                                    </span>
+                                    <Link
+                                        to="/mypage/found-posts"
+                                        className="text-sub"
+                                    >
+                                        전체보기 →
+                                    </Link>
                                 </div>
 
                                 {recentFound ? (
@@ -349,10 +361,12 @@ export default function MyPage() {
                     <section className="stack">
                         <div className="row-between">
                             <h2>북마크</h2>
-
-                            <span className="text-sub">
-                                {counts.bookmarks ?? 0}건
-                            </span>
+                            <Link
+                                to="/mypage/bookmarks"
+                                className="text-sub"
+                            >
+                                전체보기 →
+                            </Link>
                         </div>
 
                         {bookmarkPreviews.length === 0 ? (
