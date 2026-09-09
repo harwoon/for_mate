@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { deleteLostPost, getLostPost } from "../../api/lostPosts.api.js"
+import AlertModal from "../../components/common/AlertModal.jsx"
 import Badge from "../../components/common/Badge.jsx"
+import Breadcrumb from "../../components/common/Breadcrumb.jsx"
 import Empty from "../../components/common/Empty.jsx"
 import ErrorState from "../../components/common/ErrorState.jsx"
 import Loading from "../../components/common/Loading.jsx"
-import Breadcrumb from "../../components/common/Breadcrumb.jsx"
+import PostNavigation from "../../components/common/PostNavigation.jsx"
+import ReportModal from "../../components/post/ReportModal.jsx"
 
 const SEX_LABELS = {
     M: "수컷",
@@ -48,6 +51,18 @@ export default function LostDetailPage() {
     const [actionError, setActionError] = useState("")
     const [retryCount, setRetryCount] = useState(0)
     const [deleting, setDeleting] = useState(false)
+
+    const [reportOpen, setReportOpen] = useState(false)
+    const [alertOpen, setAlertOpen] = useState(false)
+    const [alertTitle, setAlertTitle] = useState("")
+    const [alertMessage, setAlertMessage] = useState("")
+
+	useEffect(() => {
+		window.scrollTo({
+			top: 0,
+			behavior: "smooth"
+		})
+	}, [id])
 
     useEffect(() => {
         let cancelled = false
@@ -119,6 +134,30 @@ export default function LostDetailPage() {
         }
     }
 
+    function handleReportButtonClick() {
+        if (post.is_reported) {
+            setAlertTitle("신고 안내")
+            setAlertMessage("이미 신고한 게시글입니다.")
+            setAlertOpen(true)
+            return
+        }
+
+        setReportOpen(true)
+    }
+
+    function handleReportSuccess() {
+        setReportOpen(false)
+
+        setPost((current) => ({
+            ...current,
+            is_reported: true
+        }))
+
+        setAlertTitle("신고 접수 완료")
+        setAlertMessage("신고가 정상적으로 접수되었습니다.")
+        setAlertOpen(true)
+    }
+
     if (loading) {
         return <Loading message="실종 공고를 불러오는 중입니다." />
     }
@@ -137,18 +176,20 @@ export default function LostDetailPage() {
     }
 
     return (
-		<div className="container">
-			<Breadcrumb
-				items={[
-					{ label: "홈", to: "/" },
-					{ label: "찾고있어요", to: "/lost-posts" },
-					{ label: "상세" }
-				]}
-			/>
+        <div className="container">
+            <Breadcrumb
+                items={[
+                    { label: "홈", to: "/" },
+                    { label: "찾고있어요", to: "/lost-posts" },
+                    { label: "상세" }
+                ]}
+            />
 
-			<div className="page-header">
-				<h1 className="page-title">실종 공고 상세</h1>
-			</div>
+            <div className="page-header">
+                <h1 className="page-title">
+                    실종 공고 상세
+                </h1>
+            </div>
 
             <section>
                 <div>
@@ -280,18 +321,39 @@ export default function LostDetailPage() {
                         </div>
                     ) : (
                         <div>
-                            {/* TODO: ReportModal이 구현되면 모달 열기 기능을 연결한다. */}
                             <button
                                 type="button"
-                                className="btn btn-outline"
-                                disabled
+                                className={post.is_reported ? "btn btn-outline" : "btn btn-danger"}
+                                onClick={handleReportButtonClick}
                             >
-                                신고하기
+                                {post.is_reported ? "신고 완료" : "신고하기"}
                             </button>
                         </div>
                     )}
                 </div>
             </section>
+
+            <PostNavigation
+                previousPost={post.previous_post}
+                nextPost={post.next_post}
+                basePath="/lost-posts"
+            />
+
+            {reportOpen && (
+                <ReportModal
+                    postId={id}
+                    postType="lost"
+                    onClose={() => setReportOpen(false)}
+                    onSuccess={handleReportSuccess}
+                />
+            )}
+
+            <AlertModal
+                open={alertOpen}
+                title={alertTitle}
+                message={alertMessage}
+                onConfirm={() => setAlertOpen(false)}
+            />
         </div>
     )
 }

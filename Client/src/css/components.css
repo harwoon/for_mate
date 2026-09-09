@@ -885,3 +885,64 @@
         gap: var(--space-xs);
     }
 }
+
+
+
+/* ============================= PostNavigation(이전글, 다음글) ============================= */
+.post-navigation {
+    margin-top: var(--space-xl);
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.post-navigation-row {
+    display: grid;
+    grid-template-columns: 100px 1fr auto;
+    align-items: center;
+    gap: var(--space-md);
+    min-height: 56px;
+    padding: 0 var(--space-md);
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.post-navigation-row + .post-navigation-row {
+    border-top: 1px solid var(--color-border);
+}
+
+.post-navigation-row:hover {
+    background: var(--color-primary-light);
+}
+
+.post-navigation-label {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--color-text-sub);
+}
+
+.post-navigation-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--font-sm);
+}
+
+.post-navigation-date {
+    color: var(--color-text-light);
+    font-size: var(--font-sm);
+    white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+    .post-navigation-row {
+        grid-template-columns: 78px 1fr;
+        gap: var(--space-sm);
+        padding: var(--space-sm);
+    }
+
+    .post-navigation-date {
+        grid-column: 2;
+        font-size: var(--font-xs);
+    }
+}
