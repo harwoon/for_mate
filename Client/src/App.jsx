@@ -50,10 +50,23 @@ import AboutPage from "./pages/support/AboutPage.jsx"
 
 // 관리자
 import AdminPage from "./pages/admin/AdminPage.jsx"
+import AdminLoginPage from "./pages/admin/AdminLoginPage.jsx"
+import AdminLayout from "./components/layout/AdminLayout.jsx"
+import AdminRoute from "./components/layout/AdminRoute.jsx"
 
 export default function App() {
     return (
         <Routes>
+            <Route path="/admin/login" element={<AdminLoginPage />} />
+            <Route element={<AdminRoute />}>
+                <Route element={<AdminLayout />}>
+                    <Route path="/admin" element={<AdminPage />} />
+                    <Route path="/admin/lost-posts" element={<AdminPage />} />
+                    <Route path="/admin/found-posts" element={<AdminPage />} />
+                    <Route path="/admin/reports" element={<AdminPage />} />
+                    <Route path="/admin/inquiries" element={<AdminPage />} />
+                </Route>
+            </Route>
             <Route element={<Layout />}>
                 {/* 누구나 볼 수 있는 페이지 */}
                 <Route path="/" element={<HomePage />} />
@@ -127,7 +140,6 @@ export default function App() {
                     />
                     <Route path="/notifications" element={<NotificationPage />} />
 
-                    <Route path="/admin" element={<AdminPage />} />
                 </Route>
 
                 <Route path="*" element={<NotFoundPage />} />
