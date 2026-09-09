@@ -301,3 +301,41 @@ export async function getDashboard() {
         }
     }
 }
+
+// 관리자 매칭 기록 조회
+export async function getMatches(query) {
+    const minSimilarity = query.min_similarity ? Number(query.min_similarity) : null
+    const matchedDate = query.matched_date?.trim() || null
+    const limit = query.limit ? Number(query.limit) : 100
+
+    if (minSimilarity !== null && (Number.isNaN(minSimilarity) || minSimilarity < 0 || minSimilarity > 1)) {
+        const error = new Error("min_similarity는 0~1 사이 값이어야 합니다.")
+        error.status = 400
+        error.code = "INVALID_QUERY"
+        throw error
+    }
+
+    const matches = await repository.findAllMatches({ minSimilarity, matchedDate, limit })
+    return matches.map(toMatchListItem)
+}
+
+function toMatchListItem(match) {
+    return {
+        id: Number(match.id),
+        lost_post: {
+            id: Number(match.source_post_id),
+            pet_name: match.pet_name,
+            species: match.lost_species,
+            image_url: match.lost_image_url
+        },
+        rescue_animal: {
+            desertion_no: Number(match.desertion_no),
+            up_kind_nm: match.up_kind_nm,
+            kind_nm: match.kind_nm,
+            image_url: match.rescue_image_url
+        },
+        similarity_score: Number(match.similarity_score),
+        matched_date: match.matched_date,
+        created_at: match.created_at
+    }
+}

@@ -16,4 +16,6 @@ router.get("/inquiries", requireAuth, requireAdmin, controller.getInquiries)    
 router.get("/inquiries/:inquiryId", requireAuth, requireAdmin, controller.getInquiry)
 router.patch("/inquiries/:inquiryId", requireAuth, requireAdmin, controller.answerInquiry) // 11.3 문의 답변 등록(관리자)
 
+router.get("/matches", requireAuth, requireAdmin, controller.getMatches)  // 관리자 매칭 기록 조회
+
 export default router

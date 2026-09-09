@@ -1,0 +1,76 @@
+.alert-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.alert-modal {
+    width: 100%;
+    max-width: 400px;
+    overflow: hidden;
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+    border-radius: 16px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
+}
+
+.alert-modal-body {
+    padding: 32px 28px 24px;
+    text-align: center;
+}
+
+.alert-modal-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    margin: 0 auto 18px;
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 700;
+    background: #3f7650;
+    border-radius: 50%;
+}
+
+.alert-modal-title {
+    margin: 0 0 10px;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.alert-modal-message {
+    margin: 0;
+    color: #666666;
+    font-size: 15px;
+    line-height: 1.6;
+    white-space: pre-line;
+}
+
+.alert-modal-actions {
+    padding: 0 28px 28px;
+}
+
+.alert-modal-confirm {
+    width: 100%;
+    min-height: 44px;
+}
+
+@media (max-width: 480px) {
+    .alert-modal {
+        max-width: 340px;
+    }
+
+    .alert-modal-body {
+        padding: 28px 20px 22px;
+    }
+
+    .alert-modal-actions {
+        padding: 0 20px 20px;
+    }
+}

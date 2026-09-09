@@ -1,11 +1,3 @@
-// 피그마: U-02 찾고있어요
-//
-// 구현할 내용:
-// - FilterBar + FilterModal 연결
-// - getLostPosts로 목록 조회 후 PostGrid + PostCard 렌더
-// - Pagination 연결
-// - 결과 0건이면 Empty (U-02-N01)
-
 import { useEffect, useState } from "react"
 import { getLostPosts } from "../../api/lostPosts.api.js"
 import FilterBar from "../../components/post/FilterBar.jsx"
@@ -16,8 +8,10 @@ import Pagination from "../../components/common/Pagination.jsx"
 import Loading from "../../components/common/Loading.jsx"
 import ErrorState from "../../components/common/ErrorState.jsx"
 import Empty from "../../components/common/Empty.jsx"
+import { Link } from "react-router-dom"
+import Breadcrumb from "../../components/common/Breadcrumb.jsx"
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 12
 
 const EMPTY_FILTERS = {
   species: "",
@@ -125,8 +119,25 @@ export default function LostListPage() {
 
   return (
     <div className="container">
-      <div className="page-header">
-        <h1 className="page-title">찾고있어요</h1>
+      <Breadcrumb
+          items={[
+              { label: "홈", to: "/" },
+              { label: "찾고있어요" }
+          ]}
+      />
+      <div
+          className="page-header"
+          style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+          }}
+      >
+          <h1 className="page-title">찾고있어요</h1>
+
+          <Link to="/lost-posts/new" className="btn btn-primary">
+              실종 공고 등록
+          </Link>
       </div>
 
       <FilterBar

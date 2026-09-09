@@ -17,8 +17,9 @@ export async function getAnimals(req, res, next) {
 export async function getAnimal(req, res, next) {
     try {
         const animal = await service.getAnimal(
-            req.params.desertionNo,
-            req.userId ?? null
+            req.params.animalId ?? req.params.desertionNo,
+            req.userId ?? null,
+            req.params.sourceType ?? "rescue"
         )
 
         if (!animal) {

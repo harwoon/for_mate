@@ -261,3 +261,64 @@ export async function resolveReportWithBlind(reportId, postType, postId) {
         client.release()
     }
 }
+
+
+// 관리자 매칭 기록 조회
+export async function findAllMatches(filters) {
+    const conditions = []
+    const params = []
+
+    if (filters.minSimilarity !== null) {
+        params.push(filters.minSimilarity)
+        conditions.push(`m.similarity_score >= $${params.length}`)
+    }
+
+    if (filters.matchedDate) {
+        params.push(filters.matchedDate)
+        conditions.push(`m.matched_date = $${params.length}`)
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""
+
+    params.push(filters.limit)
+    const limitParamIndex = params.length
+
+    const result = await query(
+        `SELECT
+            m.id,
+            m.source_post_id,
+            m.desertion_no,
+            m.similarity_score,
+            m.matched_date,
+            m.created_at,
+            lp.pet_name,
+            lp.species AS lost_species,
+            lost_image.image_url AS lost_image_url,
+            ra.up_kind_nm,
+            ra.kind_nm,
+            rescue_image.image_url AS rescue_image_url
+        FROM matches m
+        JOIN lost_posts lp ON lp.id = m.source_post_id
+        JOIN rescue_animals ra ON ra.desertion_no = m.desertion_no
+        LEFT JOIN LATERAL (
+            SELECT image_url
+            FROM images
+            WHERE post_type = 'lost' AND lost_post_id = lp.id
+            ORDER BY created_at ASC, id ASC
+            LIMIT 1
+        ) lost_image ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT image_url
+            FROM images
+            WHERE post_type = 'rescue' AND desertion_no = ra.desertion_no
+            ORDER BY created_at ASC, id ASC
+            LIMIT 1
+        ) rescue_image ON TRUE
+        ${whereClause}
+        ORDER BY m.created_at DESC
+        LIMIT $${limitParamIndex}`,
+        params
+    )
+
+    return result.rows
+}

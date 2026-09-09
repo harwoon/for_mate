@@ -1,20 +1,266 @@
-// 피그마: U-11 발견제보
-//
-// 구현할 내용:
-// - 게시판 표 형식 (번호 / 제목 / 발견 위치 / 등록 시간)
-// - getFoundPosts로 목록 조회
-// - FilterBar + Pagination 연결
-// - '발견제보 작성' 버튼
+import { useEffect, useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import { getFoundPosts } from "../../api/foundPosts.api.js"
+import Breadcrumb from "../../components/common/Breadcrumb.jsx"
+import Empty from "../../components/common/Empty.jsx"
+import ErrorState from "../../components/common/ErrorState.jsx"
+import Loading from "../../components/common/Loading.jsx"
+import Pagination from "../../components/common/Pagination.jsx"
+import FilterBar from "../../components/post/FilterBar.jsx"
+import FilterModal from "../../components/post/FilterModal.jsx"
+
+const PAGE_SIZE = 20
+
+const EMPTY_FILTERS = {
+    species: "",
+    breed: "",
+    colors: [],
+    sido: "",
+    sigungu: "",
+    start_date: "",
+    end_date: ""
+}
+
+function formatCreatedAt(value) {
+    if (!value) return "-"
+
+    const date = new Date(value)
+
+    if (Number.isNaN(date.getTime())) {
+        return String(value)
+    }
+
+    return date.toLocaleString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+    })
+}
 
 export default function FoundListPage() {
-  return (
-    <div className="container">
-      <div className="page-header">
-        <h1 className="page-title">발견제보</h1>
-          <p className="page-desc">시민들이 직접 발견한 동물 제보를 확인할 수 있습니다.</p>
-      </div>
+    const navigate = useNavigate()
 
-      {/* TODO: 위 주석의 내용을 구현하세요 */}
-    </div>
-  )
+    const [filters, setFilters] = useState(EMPTY_FILTERS)
+    const [isFilterOpen, setIsFilterOpen] = useState(false)
+    const [sort, setSort] = useState("latest")
+    const [page, setPage] = useState(1)
+
+    const [posts, setPosts] = useState([])
+    const [total, setTotal] = useState(0)
+
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState("")
+    const [retryCount, setRetryCount] = useState(0)
+
+    useEffect(() => {
+        let cancelled = false
+
+        async function loadPosts() {
+            setLoading(true)
+            setError("")
+
+            const region = [filters.sido, filters.sigungu]
+                .filter(Boolean)
+                .join(" ")
+
+            try {
+                const result = await getFoundPosts({
+                    page,
+                    size: PAGE_SIZE,
+                    species: filters.species,
+                    breed: filters.breed,
+                    color: filters.colors.join(","),
+                    region,
+                    start_date: filters.start_date,
+                    end_date: filters.end_date,
+                    sort
+                })
+
+                if (cancelled) return
+
+                setPosts(result?.items ?? [])
+                setTotal(result?.total ?? 0)
+            } catch (error) {
+                if (!cancelled) {
+                    setPosts([])
+                    setTotal(0)
+                    setError(
+                        error.message ||
+                        "발견제보 게시글을 불러오지 못했습니다."
+                    )
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoading(false)
+                }
+            }
+        }
+
+        loadPosts()
+
+        return () => {
+            cancelled = true
+        }
+    }, [filters, page, sort, retryCount])
+
+    function handleApplyFilters(nextFilters) {
+        setFilters(nextFilters)
+        setPage(1)
+        setIsFilterOpen(false)
+    }
+
+    function handleResetFilters() {
+        setFilters({
+            ...EMPTY_FILTERS,
+            colors: []
+        })
+
+        setPage(1)
+        setIsFilterOpen(false)
+    }
+
+    function handleChangeSort(nextSort) {
+        setSort(nextSort)
+        setPage(1)
+    }
+
+    const filterLabels = [
+        filters.species,
+        filters.breed,
+        ...filters.colors,
+        [filters.sido, filters.sigungu]
+            .filter(Boolean)
+            .join(" "),
+        filters.start_date && `시작일 ${filters.start_date}`,
+        filters.end_date && `종료일 ${filters.end_date}`
+    ].filter(Boolean)
+
+    return (
+        <div className="container">
+            <Breadcrumb
+                items={[
+                    { label: "홈", to: "/" },
+                    { label: "발견제보" }
+                ]}
+            />
+
+            <div
+                className="page-header"
+                style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center"
+                }}
+            >
+                <div>
+                    <h1 className="page-title">
+                        발견제보
+                    </h1>
+
+                    <p className="page-desc">
+                        시민들이 직접 발견한 동물 제보를 확인할 수 있습니다.
+                    </p>
+                </div>
+
+                <Link
+                    to="/found-posts/new"
+                    className="btn btn-primary"
+                >
+                    발견제보 작성
+                </Link>
+            </div>
+
+            <FilterBar
+                total={total}
+                onOpenFilter={() => setIsFilterOpen(true)}
+                sort={sort}
+                onChangeSort={handleChangeSort}
+                chips={filterLabels.map((label, index) => (
+                    <span
+                        className="badge"
+                        key={`${label}-${index}`}
+                    >
+                        {label}
+                    </span>
+                ))}
+            />
+
+            {isFilterOpen && (
+                <FilterModal
+                    initialFilters={filters}
+                    dateTitle="발견 날짜"
+                    onClose={() => setIsFilterOpen(false)}
+                    onApply={handleApplyFilters}
+                    onReset={handleResetFilters}
+                />
+            )}
+
+            {loading && (
+                <Loading message="발견제보 게시글을 불러오는 중입니다." />
+            )}
+
+            {!loading && error && (
+                <ErrorState
+                    message={error}
+                    onRetry={() => (
+                        setRetryCount((count) => count + 1)
+                    )}
+                    onHome={() => navigate("/")}
+                />
+            )}
+
+            {!loading && !error && posts.length === 0 && (
+                <Empty message="조건에 맞는 발견제보가 없습니다." />
+            )}
+
+            {!loading && !error && posts.length > 0 && (
+                <>
+                    <table className="board-table">
+                        <thead>
+                            <tr>
+                                <th>번호</th>
+                                <th>제목</th>
+                                <th>발견 위치</th>
+                                <th>등록 시간</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {posts.map((post) => (
+                                <tr key={post.id}>
+                                    <td>{post.no}</td>
+
+                                    <td>
+                                        <Link
+                                            to={`/found-posts/${post.id}`}
+                                        >
+                                            {post.title}
+                                        </Link>
+                                    </td>
+
+                                    <td>
+                                        {post.region || "-"}
+                                    </td>
+
+                                    <td>
+                                        {formatCreatedAt(post.created_at)}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    <Pagination
+                        page={page}
+                        total={total}
+                        size={PAGE_SIZE}
+                        onChange={setPage}
+                    />
+                </>
+            )}
+        </div>
+    )
 }

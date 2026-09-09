@@ -6,7 +6,9 @@ export async function addBookmark(req, res, next) {
 	try {
 		const bookmark = await service.addBookmark({
 			userId: req.userId,
-			desertionNo: req.body.desertion_no
+			desertionNo: req.body?.desertion_no,
+            sourceType: req.body?.source_type,
+            animalId: req.body?.animal_id
 		})
 
 		created(res, bookmark)

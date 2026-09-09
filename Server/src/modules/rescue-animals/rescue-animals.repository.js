@@ -1,4 +1,5 @@
 import { query } from "../../db/pool.js"
+import { animalsSql, animalImageCondition } from "./animal-source.js"
 
 // 사용 테이블: rescue_animals, images
 
@@ -85,7 +86,7 @@ export async function findMany({
     const countResult = await query(
         `
         SELECT COUNT(*)::int AS total
-        FROM rescue_animals r
+        FROM (${animalsSql}) r
         WHERE ${whereSql}
         `,
         values
@@ -98,12 +99,12 @@ export async function findMany({
     const result = await query(
         `
         SELECT
-            r.desertion_no,
+            r.source_type, r.animal_id::text AS animal_id,
+            r.desertion_no::text AS desertion_no, r.source_id,
             (
                 SELECT i.image_url
                 FROM images i
-                WHERE i.post_type = 'rescue'
-                    AND i.desertion_no = r.desertion_no
+                WHERE ${animalImageCondition}
                 ORDER BY i.id ASC
                 LIMIT 1
             ) AS image_url,
@@ -111,12 +112,12 @@ export async function findMany({
             r.kind_nm AS breed,
             r.color_tags,
             r.happen_place,
-            r.happen_dt,
-            r.notice_edt AS notice_end_date,
+            TO_CHAR(r.happen_dt, 'YYYY-MM-DD') AS happen_dt,
+            TO_CHAR(r.notice_edt, 'YYYY-MM-DD') AS notice_end_date,
             r.notice_edt - CURRENT_DATE AS days_until_end
-        FROM rescue_animals r
+        FROM (${animalsSql}) r
         WHERE ${whereSql}
-        ORDER BY r.notice_sdt DESC NULLS LAST, r.desertion_no DESC
+        ORDER BY r.notice_sdt DESC NULLS LAST, r.source_type ASC, r.animal_id DESC
         LIMIT $${sizeIndex}
         OFFSET $${offsetIndex}
         `,
@@ -130,17 +131,17 @@ export async function findMany({
 }
 
 // 5.2 구조동물 상세 조회
-export async function findById(desertionNo, userId) {
+export async function findById(desertionNo, userId, sourceType = "rescue") {
     const result = await query(
         `
         SELECT
-            r.desertion_no,
+            r.source_type, r.animal_id::text AS animal_id,
+            r.desertion_no::text AS desertion_no, r.source_id,
             COALESCE(
                 (
                     SELECT json_agg(i.image_url ORDER BY i.id ASC)
                     FROM images i
-                    WHERE i.post_type = 'rescue'
-                        AND i.desertion_no = r.desertion_no
+                    WHERE ${animalImageCondition}
                 ),
                 '[]'::json
             ) AS images,
@@ -152,25 +153,96 @@ export async function findById(desertionNo, userId) {
             r.neuter_yn,
             r.special_mark,
             r.happen_place,
-            r.happen_dt,
-            r.notice_sdt AS notice_start_date,
-            r.notice_edt AS notice_end_date,
+            TO_CHAR(r.happen_dt, 'YYYY-MM-DD') AS happen_dt,
+            TO_CHAR(r.notice_sdt, 'YYYY-MM-DD') AS notice_start_date,
+            TO_CHAR(r.notice_edt, 'YYYY-MM-DD') AS notice_end_date,
             r.notice_edt - CURRENT_DATE AS days_until_end,
             r.care_nm AS care_name,
             r.care_tel,
-            r.care_addr,
+            r.care_addr, r.notice_no, r.detail_url, r.process_state, r.age, r.weight,
             EXISTS (
                 SELECT 1
                 FROM bookmarks b
                 WHERE b.user_id = $2
-                    AND b.desertion_no = r.desertion_no
+                    AND b.source_type = r.source_type
+                    AND ((r.source_type = 'rescue' AND b.desertion_no = r.animal_id)
+                      OR (r.source_type = 'pawinhand' AND b.pawinhand_animal_id = r.animal_id))
             ) AS is_bookmarked
-        FROM rescue_animals r
-        WHERE r.desertion_no = $1
+        FROM (${animalsSql}) r
+        WHERE r.animal_id = $1 AND r.source_type = $3
         AND r.notice_edt >= CURRENT_DATE
         `,
-        [desertionNo, userId]
+        [desertionNo, userId, sourceType]
     )
 
     return result.rows[0] ?? null
+}
+
+// 구조동물 상세 이전글/다음글 조회
+export async function findAdjacent(animalId, sourceType) {
+    const result = await query(
+        `
+        WITH ordered_animals AS (
+            SELECT
+                r.source_type,
+                r.animal_id::text AS animal_id,
+                r.up_kind_nm AS species,
+                r.kind_nm AS breed,
+                r.happen_place,
+                TO_CHAR(r.happen_dt, 'YYYY-MM-DD') AS happen_dt,
+                ROW_NUMBER() OVER (
+                    ORDER BY
+                        r.notice_sdt DESC NULLS LAST,
+                        r.source_type ASC,
+                        r.animal_id DESC
+                ) AS row_num
+            FROM (${animalsSql}) r
+            WHERE r.notice_edt >= CURRENT_DATE
+        ),
+        current_animal AS (
+            SELECT row_num
+            FROM ordered_animals
+            WHERE source_type = $1
+                AND animal_id = $2
+        )
+        SELECT
+            (
+                SELECT row_to_json(previous_item)
+                FROM (
+                    SELECT
+                        source_type,
+                        animal_id,
+                        species,
+                        breed,
+                        happen_place,
+                        happen_dt
+                    FROM ordered_animals
+                    WHERE row_num = (
+                        SELECT row_num - 1
+                        FROM current_animal
+                    )
+                ) previous_item
+            ) AS previous_post,
+            (
+                SELECT row_to_json(next_item)
+                FROM (
+                    SELECT
+                        source_type,
+                        animal_id,
+                        species,
+                        breed,
+                        happen_place,
+                        happen_dt
+                    FROM ordered_animals
+                    WHERE row_num = (
+                        SELECT row_num + 1
+                        FROM current_animal
+                    )
+                ) next_item
+            ) AS next_post
+        `,
+        [sourceType, String(animalId)]
+    )
+
+    return result.rows[0]
 }

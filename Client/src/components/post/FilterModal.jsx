@@ -25,9 +25,10 @@ function createDraftFilters(filters = {}) {
 // 검색하기를 누르기 전까지는 draftFilters만 변경하므로 목록에 즉시 반영되지 않는다.
 export default function FilterModal({
   initialFilters = EMPTY_FILTERS,
+  dateTitle = "실종 날짜",
   onClose,
   onApply,
-  onReset,
+  onReset
 }) {
   const [draftFilters, setDraftFilters] = useState(() => createDraftFilters(initialFilters))
   const [breedKeyword, setBreedKeyword] = useState(initialFilters.breed || "")
@@ -267,7 +268,7 @@ export default function FilterModal({
         </fieldset>
 
         <fieldset>
-          <legend>실종 날짜</legend>
+          <legend>{dateTitle}</legend>
           <label>
             시작일
             <input

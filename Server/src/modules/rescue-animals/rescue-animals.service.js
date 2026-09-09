@@ -1,4 +1,5 @@
 import * as repository from "./rescue-animals.repository.js"
+import { validateSourceType, parseAnimalId } from "./animal-source.js"
 
 function validateDate(value, fieldName) {
     if (!value) return
@@ -83,11 +84,33 @@ export async function getAnimals(query) {
 }
 
 // 5.2 구조동물 상세 조회
-export async function getAnimal(desertionNo, userId) {
+export async function getAnimal(desertionNo, userId, sourceType = "rescue") {
+    validateSourceType(sourceType)
+
     if (!desertionNo) {
         return null
     }
 
-    // 북마크 기능 사용 : userId 있어야 함
-    return repository.findById(desertionNo, userId)
+    const animalId = parseAnimalId(desertionNo)
+
+    const animal = await repository.findById(
+        animalId,
+        userId,
+        sourceType
+    )
+
+    if (!animal) {
+        return null
+    }
+
+    const navigation = await repository.findAdjacent(
+        animalId,
+        sourceType
+    )
+
+    return {
+        ...animal,
+        previous_post: navigation?.previous_post ?? null,
+        next_post: navigation?.next_post ?? null
+    }
 }

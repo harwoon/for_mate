@@ -15,6 +15,7 @@ import reportsRouter from "./modules/reports/reports.router.js"
 import inquiriesRouter from "./modules/inquiries/inquiries.router.js"
 import pagesRouter from "./modules/pages/pages.router.js"
 import adminRouter from "./modules/admin/admin.router.js"
+import faqsRouter from "./modules/faqs/faqs.router.js"
 
 import { errorHandler } from "./middleware/error.middleware.js"
 
@@ -22,6 +23,7 @@ const app = express()
 
 app.use(cors({ origin: config.frontendUrl, credentials: true }))
 app.use(express.json())
+app.use("/faqs", faqsRouter)
 app.use("/uploads", express.static("uploads"))
 
 // 서버 상태 확인용
