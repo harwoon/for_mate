@@ -167,6 +167,7 @@ export default function LostDetailPage() {
             <ErrorState
                 message={error}
                 onRetry={() => setRetryCount((count) => count + 1)}
+                onHome={() => navigate("/")}
             />
         )
     }
