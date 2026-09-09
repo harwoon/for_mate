@@ -14,15 +14,6 @@ export async function findLostPostEmbeddings(lostPostId) {
   return rows.map((row) => row.embedding) // "[0.1,0.2,...]" 형태 문자열
 }
 
-// 이 실종 공고에서 사용자가 이미 제외한 구조동물 목록 (6.4 기능과 연동).
-export async function findExcludedDesertionNos(lostPostId) {
-  const { rows } = await query(
-    `SELECT excluded_desertion_no FROM match_exclusions WHERE source_post_id = $1`,
-    [lostPostId],
-  )
-  return rows.map((row) => Number(row.excluded_desertion_no))
-}
-
 // 벡터 하나를 기준으로 가장 가까운 구조동물 후보 K개를 조회한다.
 // "ORDER BY 거리 LIMIT" 형태를 유지해야 pgvector HNSW 인덱스가 실제로 사용된다.
 export async function findNearestRescueCandidates(embeddingLiteral, excludedIds, limit = 20) {
@@ -58,4 +49,24 @@ export async function upsertMatches(sourcePostId, ranked) {
       [sourcePostId, desertion_no, similarity, today],
     )
   }
+}
+
+// 매칭 상세 비교용 — 실종 공고 + 구조동물 정보를 한 번에 조회한다.
+export async function findMatchById(matchId) {
+  const { rows } = await query(
+    `
+    SELECT
+      m.id, m.similarity_score, m.matched_date,
+      lp.id AS lost_post_id, lp.user_id AS lost_post_owner_id,
+      lp.pet_name, lp.species, lp.breed, lp.color, lp.sex, lp.region, lp.event_date,
+      ra.desertion_no, ra.up_kind_nm, ra.kind_nm, ra.color_tags, ra.sex_cd,
+      ra.region_sido, ra.region_sigungu, ra.happen_place, ra.happen_dt
+    FROM matches m
+    JOIN lost_posts lp ON lp.id = m.source_post_id
+    JOIN rescue_animals ra ON ra.desertion_no = m.desertion_no
+    WHERE m.id = $1
+    `,
+    [matchId],
+  )
+  return rows[0]
 }
