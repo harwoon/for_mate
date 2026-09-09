@@ -309,9 +309,13 @@ export default function Header() {
                     ) : (
                         <Link
                             to="/login"
-                            className="btn btn-primary btn-sm"
+                            className="header-login-button"
                         >
-                            로그인
+                            <i
+                                className="ri-user-line"
+                                aria-hidden="true"
+                            />
+                            <span>Login</span>
                         </Link>
                     )}
                 </div>

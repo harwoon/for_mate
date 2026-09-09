@@ -2,12 +2,14 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { imageUrl } from "../../api/client.js"
 import { getMySummary } from "../../api/misc.api.js"
+import { useAuth } from "../../context/AuthContext.jsx"
 import Breadcrumb from "../../components/common/Breadcrumb.jsx"
 import Empty from "../../components/common/Empty.jsx"
 import ErrorState from "../../components/common/ErrorState.jsx"
 import Loading from "../../components/common/Loading.jsx"
 import PostCard from "../../components/post/PostCard.jsx"
 import PostGrid from "../../components/post/PostGrid.jsx"
+
 
 function formatDate(value) {
     if (!value) return "-"
@@ -30,6 +32,7 @@ function getBookmarkPath(bookmark) {
 
 export default function MyPage() {
     const navigate = useNavigate()
+    const { logout } = useAuth()
 
     const [summary, setSummary] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -132,6 +135,17 @@ export default function MyPage() {
                             내가 등록한 공고와 매칭,
                             북마크 현황을 확인할 수 있습니다.
                         </p>
+
+                        <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={async () => {
+                                await logout()
+                                navigate("/")
+                            }}
+                        >
+                            로그아웃
+                        </button>
                     </div>
 
                     <section className="stack">
