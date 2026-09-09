@@ -151,8 +151,12 @@ export default function Header() {
                 <Link
                     to="/"
                     className="header-logo"
+                    aria-label="For Mate 홈으로 이동"
                 >
-                    For Mate
+                    <img
+                        src="/images/LOGO.png"
+                        alt="For Mate"
+                    />
                 </Link>
 
                 <nav className="header-nav">
@@ -182,25 +186,14 @@ export default function Header() {
                             >
                                 <button
                                     type="button"
-                                    className="header-notification-button"
+                                    className="header-icon-button"
                                     aria-label="알림"
-                                    onClick={
-                                        handleToggleNotification
-                                    }
+                                    onClick={handleToggleNotification}
                                 >
-                                    <svg
-                                        viewBox="0 0 24 24"
+                                    <i
+                                        className="ri-notification-3-line"
                                         aria-hidden="true"
-                                    >
-                                        <path
-                                            d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                        />
-                                    </svg>
+                                    />
 
                                     {unreadCount > 0 && (
                                         <span className="header-notification-count">
@@ -214,13 +207,10 @@ export default function Header() {
                                 {isNotificationOpen && (
                                     <div className="notification-dropdown">
                                         <div className="notification-dropdown-header">
-                                            <strong>
-                                                알림
-                                            </strong>
+                                            <strong>알림</strong>
 
                                             <span className="text-sub">
-                                                읽지 않음{" "}
-                                                {unreadCount}건
+                                                읽지 않음 {unreadCount}건
                                             </span>
                                         </div>
 
@@ -238,83 +228,65 @@ export default function Header() {
                                             </div>
                                         ) : (
                                             <div className="notification-dropdown-list">
-                                                {previewNotifications.map(
-                                                    (notification) => (
-                                                        <button
-                                                            key={
-                                                                notification.notification_id
-                                                            }
-                                                            type="button"
-                                                            className={
-                                                                notification.is_read
-                                                                    ? "notification-dropdown-item"
-                                                                    : "notification-dropdown-item is-unread"
-                                                            }
-                                                            onClick={() => (
-                                                                handleNotificationClick(
-                                                                    notification
-                                                                )
-                                                            )}
-                                                        >
-                                                            <div className="notification-dropdown-info">
-                                                                <div className="notification-dropdown-title">
-                                                                    {!notification.is_read && (
-                                                                        <span className="notification-new-dot" />
-                                                                    )}
+                                                {previewNotifications.map((notification) => (
+                                                    <button
+                                                        key={notification.notification_id}
+                                                        type="button"
+                                                        className={
+                                                            notification.is_read
+                                                                ? "notification-dropdown-item"
+                                                                : "notification-dropdown-item is-unread"
+                                                        }
+                                                        onClick={() => (
+                                                            handleNotificationClick(notification)
+                                                        )}
+                                                    >
+                                                        <div className="notification-dropdown-info">
+                                                            <div className="notification-dropdown-title">
+                                                                {!notification.is_read && (
+                                                                    <span className="notification-new-dot" />
+                                                                )}
 
-                                                                    <strong>
-                                                                        {notification.region ||
+                                                                <strong>
+                                                                    {notification.region ||
                                                                         "지역 정보 없음"}
-                                                                    </strong>
+                                                                </strong>
 
-                                                                    <span>
-                                                                        {notification.breed ||
+                                                                <span>
+                                                                    {notification.breed ||
                                                                         "품종 정보 없음"}
-                                                                    </span>
-                                                                </div>
-
-                                                                <p>
-                                                                    유사도{" "}
-                                                                    {Math.round(
-                                                                        Number(
-                                                                            notification.similarity_score
-                                                                        ) * 100
-                                                                    )}
-                                                                    %의 보호동물이 등록되었습니다.
-                                                                </p>
-
-                                                                <span className="text-sub">
-                                                                    {String(
-                                                                        notification.created_at
-                                                                    )
-                                                                        .slice(
-                                                                            0,
-                                                                            10
-                                                                        )
-                                                                        .replaceAll(
-                                                                            "-",
-                                                                            "."
-                                                                        )}
                                                                 </span>
                                                             </div>
 
-                                                            <span className="notification-check-button">
-                                                                공고확인
+                                                            <p>
+                                                                유사도{" "}
+                                                                {Math.round(
+                                                                    Number(
+                                                                        notification.similarity_score
+                                                                    ) * 100
+                                                                )}
+                                                                %의 보호동물이 등록되었습니다.
+                                                            </p>
+
+                                                            <span className="text-sub">
+                                                                {String(notification.created_at)
+                                                                    .slice(0, 10)
+                                                                    .replaceAll("-", ".")}
                                                             </span>
-                                                        </button>
-                                                    )
-                                                )}
+                                                        </div>
+
+                                                        <span className="notification-check-button">
+                                                            공고확인
+                                                        </span>
+                                                    </button>
+                                                ))}
                                             </div>
                                         )}
 
                                         <Link
                                             to="/notifications"
                                             className="notification-dropdown-all"
-                                            onClick={() => (
-                                                setIsNotificationOpen(
-                                                    false
-                                                )
-                                            )}
+                                            onClick={() => setIsNotificationOpen(false)}
                                         >
                                             전체 알림 보기
                                         </Link>
@@ -324,17 +296,15 @@ export default function Header() {
 
                             <Link
                                 to="/mypage"
-                                className="text-sub"
+                                className="header-icon-button"
+                                aria-label="마이페이지"
+                                title="마이페이지"
                             >
-                                마이페이지
+                                <i
+                                    className="ri-user-line"
+                                    aria-hidden="true"
+                                />
                             </Link>
-
-                            <button
-                                className="btn btn-text"
-                                onClick={logout}
-                            >
-                                로그아웃
-                            </button>
                         </>
                     ) : (
                         <Link
