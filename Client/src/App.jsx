@@ -50,6 +50,10 @@ export default function App() {
 
                 <Route path="/rescue-animals" element={<RescueListPage />} />
                 <Route
+                    path="/rescue-animals/:sourceType/:animalId"
+                    element={<RescueDetailPage />}
+                />
+                <Route
                     path="/rescue-animals/:desertionNo"
                     element={<RescueDetailPage />}
                 />
