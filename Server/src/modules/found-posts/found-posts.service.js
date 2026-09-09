@@ -229,6 +229,22 @@ export async function createPost({ userId, body, imageUrls = [] }) {
         )
     }
 
+    if (imageUrls.length < 1) {
+        throw serviceError(
+            "이미지를 1장 이상 등록해주세요.",
+            400,
+            "MISSING_IMAGE"
+        )
+    }
+
+    if (imageUrls.length > 3) {
+        throw serviceError(
+            "이미지는 최대 3장까지 등록할 수 있습니다.",
+            400,
+            "TOO_MANY_IMAGES"
+        )
+    }
+
     if (imageUrls.length > 3) {
         throw serviceError(
             "이미지는 최대 3장까지 등록할 수 있습니다.",
@@ -480,6 +496,14 @@ async function validateImageUpdate(id, deleteImageUrls, newImageUrls) {
         currentImages.length -
         deleteImageUrls.length +
         newImageUrls.length
+
+    if (finalImageCount < 1) {
+        throw serviceError(
+            "이미지를 1장 이상 등록해주세요.",
+            400,
+            "MISSING_IMAGE"
+        )
+    }
 
     if (finalImageCount > 3) {
         throw serviceError(
