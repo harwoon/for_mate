@@ -25,14 +25,13 @@ export async function findNearestRescueCandidates(embeddingLiteral, limit = 20) 
     FROM embeddings e
     JOIN images i ON i.id = e.image_id AND i.post_type = 'rescue'
     JOIN rescue_animals ra ON ra.desertion_no = i.desertion_no
-    WHERE ra.desertion_no <> ALL($2::bigint[])
-      AND (ra.notice_edt IS NULL OR ra.notice_edt >= CURRENT_DATE)
+    WHERE ra.notice_edt IS NULL OR ra.notice_edt >= CURRENT_DATE
     ORDER BY e.embedding <=> $1::vector
-    LIMIT $3
+    LIMIT $2
     `,
     [embeddingLiteral, limit],
   )
-  return rows // [{ desertion_no, distance }, ...]
+  return rows
 }
 
 // 계산 결과를 이력으로 저장한다. 같은 날 같은 쌍이면 최신 값으로 덮어쓴다(캐시 아님, append 성격의 upsert).
