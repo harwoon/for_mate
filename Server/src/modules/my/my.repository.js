@@ -1,3 +1,4 @@
+import { findMany as findBookmarks } from "../bookmarks/bookmarks.repository.js"
 import { query } from "../../db/pool.js"
 
 // 사용 테이블: lost_posts, found_posts, matches, bookmarks, rescue_animals, images
@@ -104,29 +105,7 @@ export async function findSummary(userId) {
                 LIMIT 6`,
                 [userId]
             ),
-            query(
-                `SELECT
-                    b.id AS bookmark_id,
-                    b.desertion_no,
-                    first_image.image_url AS thumbnail_url,
-                    CASE
-                        WHEN ra.notice_edt IS NOT NULL AND ra.notice_edt < CURRENT_DATE THEN true
-                        ELSE false
-                    END AS is_expired
-                FROM bookmarks b
-                JOIN rescue_animals ra ON ra.desertion_no = b.desertion_no
-                LEFT JOIN LATERAL (
-                    SELECT image_url
-                    FROM images
-                    WHERE post_type = 'rescue' AND desertion_no = b.desertion_no
-                    ORDER BY created_at ASC, id ASC
-                    LIMIT 1
-                ) first_image ON TRUE
-                WHERE b.user_id = $1
-                ORDER BY b.created_at DESC, b.id DESC
-                LIMIT 3`,
-                [userId]
-            )
+            findBookmarks(userId, 3)
         ])
 
     return {
@@ -134,7 +113,7 @@ export async function findSummary(userId) {
         recentLostPost: recentLostResult.rows[0] ?? null,
         recentFoundPost: recentFoundResult.rows[0] ?? null,
         matchPreviews: matchResult.rows,
-        bookmarkPreviews: bookmarkResult.rows
+        bookmarkPreviews: bookmarkResult
     }
 }
 

@@ -1,91 +1,49 @@
 import { query } from "../../db/pool.js"
+import { animalsSql, animalImageCondition } from "../rescue-animals/animal-source.js"
 
-// 사용 테이블: bookmarks, rescue_animals
-
-
-// 구조동물 존재 확인
-export async function findRescueAnimalByDesertionNo(desertionNo) {
-    const result = await query(
-        `
-            SELECT desertion_no
-            FROM rescue_animals
-            WHERE desertion_no = $1
-        `,
-        [desertionNo]
-    )
-
+export async function findAnimal(animalId, sourceType) {
+    const result = await query(`SELECT animal_id FROM (${animalsSql}) r
+        WHERE r.source_type = $1 AND r.animal_id = $2`, [sourceType, animalId])
     return result.rows[0]
 }
 
-// 중복 북마크 확인
-export async function findByUserAndDesertionNo(userId, desertionNo) {
-    const result = await query(
-        `
-            SELECT id
-            FROM bookmarks
-            WHERE user_id = $1
-                AND desertion_no = $2
-        `,
-        [userId, desertionNo]
-    )
-
+export async function create(userId, animalId, sourceType) {
+    const result = await query(`
+        INSERT INTO bookmarks (user_id, source_type, desertion_no, pawinhand_animal_id)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT DO NOTHING
+        RETURNING id::text, source_type, desertion_no::text,
+            COALESCE(desertion_no, pawinhand_animal_id)::text AS animal_id, created_at
+    `, [userId, sourceType, sourceType === "rescue" ? animalId : null,
+        sourceType === "pawinhand" ? animalId : null])
     return result.rows[0]
 }
 
-// 7.1 북마크 등록
-export async function create(userId, desertionNo) {
-    const result = await query(
-        `
-            INSERT INTO bookmarks (
-                user_id,
-                desertion_no
-            )
-            VALUES ($1, $2)
-            RETURNING id, desertion_no, created_at
-        `,
-        [userId, desertionNo]
-    )
-
-    return result.rows[0]
-}
-
-// 7.2 북마크 목록 조회
-export async function findMany(userId) {
-    const result = await query(
-        `
-            SELECT
-                b.id AS bookmark_id,
-                b.desertion_no,
-                (
-                    SELECT i.image_url
-                    FROM images i
-                    WHERE i.post_type = 'rescue'
-                        AND i.desertion_no = b.desertion_no
-                    ORDER BY i.created_at ASC, i.id ASC
-                    LIMIT 1
-                ) AS thumbnail_url,
-                ra.up_kind_nm AS species,
-                ra.happen_place AS region,
-                CASE
-                    WHEN ra.notice_edt IS NOT NULL
-                        AND ra.notice_edt < CURRENT_DATE
-                    THEN true
-                    ELSE false
-                END AS is_expired,
-                b.created_at
-            FROM bookmarks b
-            JOIN rescue_animals ra
-                ON ra.desertion_no = b.desertion_no
-            WHERE b.user_id = $1
-            ORDER BY b.created_at DESC, b.id DESC
-        `,
-        [userId]
-    )
-
+// Shared by the full list and the limited my-page preview.
+export async function findMany(userId, limit = null) {
+    const result = await query(`
+        SELECT b.id::text AS bookmark_id, b.source_type,
+            r.animal_id::text AS animal_id, b.desertion_no::text, r.source_id,
+            first_image.image_url, first_image.image_url AS thumbnail_url,
+            r.up_kind_nm AS species, r.kind_nm AS breed,
+            r.happen_place, r.happen_place AS region,
+            TO_CHAR(r.notice_edt, 'YYYY-MM-DD') AS notice_end_date,
+            COALESCE(r.notice_edt < CURRENT_DATE, false) AS is_expired,
+            b.created_at
+        FROM bookmarks b
+        JOIN (${animalsSql}) r ON r.source_type = b.source_type
+            AND r.animal_id = COALESCE(b.desertion_no, b.pawinhand_animal_id)
+        LEFT JOIN LATERAL (
+            SELECT i.image_url FROM images i WHERE ${animalImageCondition}
+            ORDER BY i.created_at ASC, i.id ASC LIMIT 1
+        ) first_image ON TRUE
+        WHERE b.user_id = $1
+        ORDER BY b.created_at DESC, b.id DESC
+        LIMIT $2
+    `, [userId, limit])
     return result.rows
 }
 
-// 북마크 소유자 확인
 export async function findById(bookmarkId) {
     const result = await query(
         `

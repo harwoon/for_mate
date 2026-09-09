@@ -23,6 +23,7 @@ export default defineConfig({
       "/my": "http://localhost:4000",
       "/admin": "http://localhost:4000",
       "/pages": "http://localhost:4000",
+      "/faqs": "http://localhost:4000",
       "/uploads": "http://localhost:4000"
     }
   }

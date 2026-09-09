@@ -2,7 +2,8 @@ import { get, post, put, del, toQuery } from "./client.js"
 
 // 북마크
 export const getBookmarks = () => get("/bookmarks")
-export const addBookmark = (desertionNo) => post("/bookmarks", { desertion_no: desertionNo })
+export const addBookmark = (animal) => post("/bookmarks",
+  typeof animal === "object" && animal !== null ? animal : { desertion_no: animal })
 export const removeBookmark = (bookmarkId) => del(`/bookmarks/${bookmarkId}`)
 
 // 마이페이지

@@ -4,7 +4,7 @@ import { get, post } from "./client.js"
 export const signup = (data) => post("/auth/signup", data)
 export const login = (data) => post("/auth/login", data)
 export const logout = () => post("/auth/logout")
-export const getMe = () => get("/auth/me")
+export const getMe = (options) => get("/auth/me", options)
 export const refresh = () => post("/auth/refresh")
 
 // 소셜 로그인은 백엔드가 리다이렉트 방식으로 처리한다.

@@ -136,6 +136,11 @@ export async function findMany({ filters, size, offset }) {
             SELECT
                 fp.id,
                 fp.title,
+                fp.species, fp.breed, fp.color,
+                TO_CHAR(fp.find_date, 'YYYY-MM-DD') AS find_date,
+                (SELECT i.image_url FROM images i
+                 WHERE i.post_type = 'found' AND i.found_post_id = fp.id
+                 ORDER BY i.created_at ASC, i.id ASC LIMIT 1) AS primary_image_url,
                 fp.region,
                 fp.created_at
             FROM found_posts fp
