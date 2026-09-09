@@ -8,7 +8,7 @@ const EMPTY_FORM = {
     pet_name: "",
     species: "",
     breed: "",
-    color: "",
+    colors: [],
     sex: "",
     neuter_yn: "",
     sido: "",
@@ -19,11 +19,17 @@ const EMPTY_FORM = {
 }
 
 const EMPTY_ERRORS = {
+    images: "",
     pet_name: "",
     species: "",
-    region: "",
-    event_date: "",
-    images: ""
+    breed: "",
+    colors: "",
+    sex: "",
+    neuter_yn: "",
+    sido: "",
+    sigungu: "",
+    detail_region: "",
+    event_date: ""
 }
 
 const MAX_IMAGES = 8
@@ -41,6 +47,7 @@ function getToday() {
 export default function LostCreatePage() {
     const navigate = useNavigate()
     const imagesRef = useRef([])
+    const fieldRefs = useRef({})
 
     const [form, setForm] = useState(EMPTY_FORM)
     const [fieldErrors, setFieldErrors] = useState(EMPTY_ERRORS)
@@ -57,6 +64,10 @@ export default function LostCreatePage() {
     const [submitting, setSubmitting] = useState(false)
 
     const [alertOpen, setAlertOpen] = useState(false)
+    const [alertTitle, setAlertTitle] = useState("")
+    const [alertMessage, setAlertMessage] = useState("")
+    const [alertType, setAlertType] = useState("")
+    const [invalidField, setInvalidField] = useState("")
     const [createdPostId, setCreatedPostId] = useState(null)
 
     useEffect(() => {
@@ -161,23 +172,50 @@ export default function LostCreatePage() {
         }
     }, [])
 
+    function setFieldRef(field, element) {
+        if (element) {
+            fieldRefs.current[field] = element
+        }
+    }
+
+    function scrollToField(field) {
+        const element = fieldRefs.current[field]
+
+        if (!element) return
+
+        element.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        })
+    }
+
+    function focusField(field) {
+        const element = fieldRefs.current[field]
+
+        if (!element) return
+
+        if (element.matches?.("input, select, textarea, button")) {
+            element.focus()
+            return
+        }
+
+        const focusTarget = element.querySelector?.(
+            "input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])"
+        )
+
+        focusTarget?.focus()
+    }
+
     function handleChange(field, value) {
-        setForm((current) => ({ ...current, [field]: value }))
+        setForm((current) => ({
+            ...current,
+            [field]: value
+        }))
 
         if (fieldErrors[field]) {
             setFieldErrors((current) => ({
                 ...current,
                 [field]: ""
-            }))
-        }
-
-        if (
-            ["sido", "sigungu", "detail_region"].includes(field) &&
-            fieldErrors.region
-        ) {
-            setFieldErrors((current) => ({
-                ...current,
-                region: ""
             }))
         }
     }
@@ -191,10 +229,29 @@ export default function LostCreatePage() {
 
         setBreeds([])
 
-        if (fieldErrors.species) {
+        setFieldErrors((current) => ({
+            ...current,
+            species: "",
+            breed: ""
+        }))
+    }
+
+    function handleColorToggle(color) {
+        setForm((current) => {
+            const isSelected = current.colors.includes(color)
+
+            return {
+                ...current,
+                colors: isSelected
+                    ? current.colors.filter((item) => item !== color)
+                    : [...current.colors, color]
+            }
+        })
+
+        if (fieldErrors.colors) {
             setFieldErrors((current) => ({
                 ...current,
-                species: ""
+                colors: ""
             }))
         }
     }
@@ -208,12 +265,11 @@ export default function LostCreatePage() {
 
         setSigunguList([])
 
-        if (fieldErrors.region) {
-            setFieldErrors((current) => ({
-                ...current,
-                region: ""
-            }))
-        }
+        setFieldErrors((current) => ({
+            ...current,
+            sido: "",
+            sigungu: ""
+        }))
     }
 
     function handleImageChange(event) {
@@ -279,54 +335,114 @@ export default function LostCreatePage() {
         })
     }
 
+    function showValidationAlert(message) {
+        setAlertTitle("입력 확인")
+        setAlertMessage(message)
+        setAlertType("validation")
+        setAlertOpen(true)
+    }
+
+    function showValidationError(field, message) {
+        setFieldErrors({
+            ...EMPTY_ERRORS,
+            [field]: message
+        })
+
+        setInvalidField(field)
+        scrollToField(field)
+        showValidationAlert(message)
+
+        return false
+    }
+
     function validate() {
-        const nextErrors = { ...EMPTY_ERRORS }
-
-        const region = [
-            form.sido,
-            form.sigungu,
-            form.detail_region.trim()
-        ]
-            .filter(Boolean)
-            .join(" ")
-
         if (images.length < MIN_IMAGES) {
-            nextErrors.images = `이미지를 ${MIN_IMAGES}장 이상 등록해 주세요.`
-            setFieldErrors(nextErrors)
-            return false
+            return showValidationError(
+                "images",
+                `이미지를 ${MIN_IMAGES}장 이상 등록해 주세요.`
+            )
         }
 
         if (images.length > MAX_IMAGES) {
-            nextErrors.images = `이미지는 최대 ${MAX_IMAGES}장까지 등록할 수 있습니다.`
-            setFieldErrors(nextErrors)
-            return false
+            return showValidationError(
+                "images",
+                `이미지는 최대 ${MAX_IMAGES}장까지 등록할 수 있습니다.`
+            )
         }
 
         if (!form.pet_name.trim()) {
-            nextErrors.pet_name = "반려동물 이름을 입력해 주세요."
-            setFieldErrors(nextErrors)
-            return false
+            return showValidationError(
+                "pet_name",
+                "반려동물 이름을 입력해 주세요."
+            )
         }
 
         if (!form.species) {
-            nextErrors.species = "동물 종류를 선택해 주세요."
-            setFieldErrors(nextErrors)
-            return false
+            return showValidationError(
+                "species",
+                "동물 종류를 선택해 주세요."
+            )
         }
 
-        if (!region) {
-            nextErrors.region = "실종 위치를 입력해 주세요."
-            setFieldErrors(nextErrors)
-            return false
+        if (!form.breed.trim()) {
+            return showValidationError(
+                "breed",
+                "품종을 입력해 주세요."
+            )
+        }
+
+        if (form.colors.length === 0) {
+            return showValidationError(
+                "colors",
+                "털 색상을 한 가지 이상 선택해 주세요."
+            )
+        }
+
+        if (!form.sex) {
+            return showValidationError(
+                "sex",
+                "성별을 선택해 주세요."
+            )
+        }
+
+        if (!form.neuter_yn) {
+            return showValidationError(
+                "neuter_yn",
+                "중성화 여부를 선택해 주세요."
+            )
+        }
+
+        if (!form.sido) {
+            return showValidationError(
+                "sido",
+                "시/도를 선택해 주세요."
+            )
+        }
+
+        if (!form.sigungu) {
+            return showValidationError(
+                "sigungu",
+                "시/군/구를 선택해 주세요."
+            )
+        }
+
+        if (!form.detail_region.trim()) {
+            return showValidationError(
+                "detail_region",
+                "상세 위치를 입력해 주세요."
+            )
         }
 
         if (!form.event_date) {
-            nextErrors.event_date = "실종 날짜를 선택해 주세요."
-            setFieldErrors(nextErrors)
-            return false
+            return showValidationError(
+                "event_date",
+                "실종 날짜를 선택해 주세요."
+            )
         }
 
-        setFieldErrors(nextErrors)
+        setFieldErrors(EMPTY_ERRORS)
+        setInvalidField("")
+
         return true
     }
 
@@ -350,24 +466,15 @@ export default function LostCreatePage() {
 
         formData.append("pet_name", form.pet_name.trim())
         formData.append("species", form.species)
+        formData.append("breed", form.breed.trim())
+        formData.append("sex", form.sex)
+        formData.append("neuter_yn", form.neuter_yn)
         formData.append("region", region)
         formData.append("event_date", form.event_date)
 
-        if (form.breed.trim()) {
-            formData.append("breed", form.breed.trim())
-        }
-
-        if (form.color) {
-            formData.append("color", form.color)
-        }
-
-        if (form.sex) {
-            formData.append("sex", form.sex)
-        }
-
-        if (form.neuter_yn) {
-            formData.append("neuter_yn", form.neuter_yn)
-        }
+        form.colors.forEach((color) => {
+            formData.append("color", color)
+        })
 
         if (form.description.trim()) {
             formData.append("description", form.description.trim())
@@ -381,6 +488,9 @@ export default function LostCreatePage() {
             const createdPost = await createLostPost(formData)
 
             setCreatedPostId(createdPost.id)
+            setAlertTitle("등록 완료")
+            setAlertMessage("실종 공고가 등록되었습니다.")
+            setAlertType("success")
             setAlertOpen(true)
         } catch (error) {
             setSubmitError(error.message || "실종 공고 등록에 실패했습니다.")
@@ -392,9 +502,19 @@ export default function LostCreatePage() {
     function handleAlertConfirm() {
         setAlertOpen(false)
 
-        navigate("/ai-search", {
-            state: { lostPostId: createdPostId }
-        })
+        if (alertType === "success") {
+            navigate("/ai-search", {
+                state: { lostPostId: createdPostId }
+            })
+
+            return
+        }
+
+        if (alertType === "validation" && invalidField) {
+            setTimeout(() => {
+                focusField(invalidField)
+            }, 0)
+        }
     }
 
     const noBreedResult =
@@ -407,6 +527,7 @@ export default function LostCreatePage() {
         <div className="container">
             <div className="page-header">
                 <h1 className="page-title">실종 공고 등록</h1>
+
                 <p className="page-desc">
                     잃어버린 반려동물의 정보를 최대한 자세히 입력해 주세요.
                 </p>
@@ -424,10 +545,11 @@ export default function LostCreatePage() {
 
                     <div className="form-field">
                         <label className="form-label" htmlFor="lost-images">
-                            사진
+                            사진 *
                         </label>
 
                         <input
+                            ref={(element) => setFieldRef("images", element)}
                             id="lost-images"
                             type="file"
                             accept="image/jpeg,image/png,image/webp"
@@ -511,6 +633,7 @@ export default function LostCreatePage() {
                         </label>
 
                         <input
+                            ref={(element) => setFieldRef("pet_name", element)}
                             id="pet-name"
                             type="text"
                             className={`form-input${fieldErrors.pet_name ? " is-error" : ""}`}
@@ -527,7 +650,9 @@ export default function LostCreatePage() {
                         )}
                     </div>
 
-                    <fieldset>
+                    <fieldset
+                        ref={(element) => setFieldRef("species", element)}
+                    >
                         <legend>종류 *</legend>
 
                         <label>
@@ -561,13 +686,14 @@ export default function LostCreatePage() {
 
                     <div className="form-field">
                         <label className="form-label" htmlFor="breed">
-                            품종
+                            품종 *
                         </label>
 
                         <input
+                            ref={(element) => setFieldRef("breed", element)}
                             id="breed"
                             type="text"
-                            className="form-input"
+                            className={`form-input${fieldErrors.breed ? " is-error" : ""}`}
                             list="lost-breed-options"
                             value={form.breed}
                             disabled={!form.species}
@@ -596,31 +722,41 @@ export default function LostCreatePage() {
                                 없는 품종입니다.
                             </p>
                         )}
+
+                        {fieldErrors.breed && (
+                            <p className="form-error">
+                                {fieldErrors.breed}
+                            </p>
+                        )}
                     </div>
 
-                    <div className="form-field">
-                        <label className="form-label" htmlFor="color">
-                            털 색상
-                        </label>
+                    <fieldset
+                        ref={(element) => setFieldRef("colors", element)}
+                    >
+                        <legend>털 색상 *</legend>
 
-                        <select
-                            id="color"
-                            className="form-select"
-                            value={form.color}
-                            onChange={(event) => handleChange("color", event.target.value)}
-                        >
-                            <option value="">선택하지 않음</option>
+                        {colorTags.map((color) => (
+                            <label key={color}>
+                                <input
+                                    type="checkbox"
+                                    checked={form.colors.includes(color)}
+                                    onChange={() => handleColorToggle(color)}
+                                />
+                                {color}
+                            </label>
+                        ))}
 
-                            {colorTags.map((color) => (
-                                <option key={color} value={color}>
-                                    {color}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                        {fieldErrors.colors && (
+                            <p className="form-error">
+                                {fieldErrors.colors}
+                            </p>
+                        )}
+                    </fieldset>
 
-                    <fieldset>
-                        <legend>성별</legend>
+                    <fieldset
+                        ref={(element) => setFieldRef("sex", element)}
+                    >
+                        <legend>성별 *</legend>
 
                         <label>
                             <input
@@ -651,10 +787,18 @@ export default function LostCreatePage() {
                             />
                             미상
                         </label>
+
+                        {fieldErrors.sex && (
+                            <p className="form-error">
+                                {fieldErrors.sex}
+                            </p>
+                        )}
                     </fieldset>
 
-                    <fieldset>
-                        <legend>중성화 여부</legend>
+                    <fieldset
+                        ref={(element) => setFieldRef("neuter_yn", element)}
+                    >
+                        <legend>중성화 여부 *</legend>
 
                         <label>
                             <input
@@ -685,6 +829,12 @@ export default function LostCreatePage() {
                             />
                             미상
                         </label>
+
+                        {fieldErrors.neuter_yn && (
+                            <p className="form-error">
+                                {fieldErrors.neuter_yn}
+                            </p>
+                        )}
                     </fieldset>
                 </div>
 
@@ -696,12 +846,13 @@ export default function LostCreatePage() {
 
                         <div className="form-field">
                             <label className="form-label" htmlFor="sido">
-                                시/도
+                                시/도 *
                             </label>
 
                             <select
+                                ref={(element) => setFieldRef("sido", element)}
                                 id="sido"
-                                className="form-select"
+                                className={`form-select${fieldErrors.sido ? " is-error" : ""}`}
                                 value={form.sido}
                                 onChange={(event) => handleSidoChange(event.target.value)}
                             >
@@ -713,16 +864,23 @@ export default function LostCreatePage() {
                                     </option>
                                 ))}
                             </select>
+
+                            {fieldErrors.sido && (
+                                <p className="form-error">
+                                    {fieldErrors.sido}
+                                </p>
+                            )}
                         </div>
 
                         <div className="form-field">
                             <label className="form-label" htmlFor="sigungu">
-                                시/군/구
+                                시/군/구 *
                             </label>
 
                             <select
+                                ref={(element) => setFieldRef("sigungu", element)}
                                 id="sigungu"
-                                className="form-select"
+                                className={`form-select${fieldErrors.sigungu ? " is-error" : ""}`}
                                 value={form.sigungu}
                                 disabled={!form.sido}
                                 onChange={(event) => handleChange("sigungu", event.target.value)}
@@ -735,25 +893,32 @@ export default function LostCreatePage() {
                                     </option>
                                 ))}
                             </select>
+
+                            {fieldErrors.sigungu && (
+                                <p className="form-error">
+                                    {fieldErrors.sigungu}
+                                </p>
+                            )}
                         </div>
 
                         <div className="form-field">
                             <label className="form-label" htmlFor="detail-region">
-                                상세 위치
+                                상세 위치 *
                             </label>
 
                             <input
+                                ref={(element) => setFieldRef("detail_region", element)}
                                 id="detail-region"
                                 type="text"
-                                className={`form-input${fieldErrors.region ? " is-error" : ""}`}
+                                className={`form-input${fieldErrors.detail_region ? " is-error" : ""}`}
                                 value={form.detail_region}
                                 placeholder="예: 역삼역 1번 출구 근처"
                                 onChange={(event) => handleChange("detail_region", event.target.value)}
                             />
 
-                            {fieldErrors.region && (
+                            {fieldErrors.detail_region && (
                                 <p className="form-error">
-                                    {fieldErrors.region}
+                                    {fieldErrors.detail_region}
                                 </p>
                             )}
                         </div>
@@ -765,6 +930,7 @@ export default function LostCreatePage() {
                         </label>
 
                         <input
+                            ref={(element) => setFieldRef("event_date", element)}
                             id="event-date"
                             type="date"
                             className={`form-input${fieldErrors.event_date ? " is-error" : ""}`}
@@ -818,8 +984,8 @@ export default function LostCreatePage() {
 
             <AlertModal
                 open={alertOpen}
-                title="등록 완료"
-                message="실종 공고가 등록되었습니다."
+                title={alertTitle}
+                message={alertMessage}
                 onConfirm={handleAlertConfirm}
             />
         </div>

@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import "../../css/AlertModal.css"
 
 export default function AlertModal({
@@ -8,8 +8,12 @@ export default function AlertModal({
     confirmText = "확인",
     onConfirm
 }) {
+    const confirmButtonRef = useRef(null)
+
     useEffect(() => {
         if (!open) return
+
+        confirmButtonRef.current?.focus()
 
         function handleKeyDown(event) {
             if (event.key === "Escape") {
@@ -48,6 +52,7 @@ export default function AlertModal({
 
                 <div className="alert-modal-actions">
                     <button
+                        ref={confirmButtonRef}
                         type="button"
                         className="btn btn-primary alert-modal-confirm"
                         onClick={onConfirm}
