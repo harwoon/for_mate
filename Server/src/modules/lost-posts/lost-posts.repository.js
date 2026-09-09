@@ -75,33 +75,77 @@ export async function createPostWithImages({ userId, post, imageUrls }) {
 
 // 3.3 실종 공고 상세 조회
 // 공고가 존재하지 않으면 undefined를 반환하고, 존재하면 연결된 사진까지 조회한다.
-export async function findById(id) {
-  // 작성자 확인과 블라인드 사유 표시에 필요한 정보까지 함께 조회한다.
-  const postResult = await pool.query(
-    `SELECT
-       lp.id, lp.user_id, lp.pet_name, lp.species, lp.breed, lp.color,
-       lp.sex, lp.neuter_yn, lp.region, lp.event_date, lp.description,
-       lp.status, lp.created_at,
-       r.reason AS blind_reason
-     FROM lost_posts lp
-     LEFT JOIN reports r
-       ON r.id = lp.blind_report_id
-     WHERE lp.id = $1`,
-    [id],
-  )
+export async function findById(id, userId = null) {
+    // 작성자 확인, 블라인드 사유, 현재 사용자의 신고 여부까지 함께 조회한다.
+    const postResult = await pool.query(
+        `SELECT
+            lp.id, lp.user_id, lp.pet_name, lp.species, lp.breed, lp.color,
+            lp.sex, lp.neuter_yn, lp.region, lp.event_date, lp.description,
+            lp.status, lp.created_at,
+            r.reason AS blind_reason,
+            EXISTS (
+                SELECT 1
+                FROM reports user_report
+                WHERE user_report.user_id = $2
+                    AND user_report.post_id = lp.id
+                    AND user_report.post_type = 'lost'
+            ) AS is_reported
+        FROM lost_posts lp
+        LEFT JOIN reports r
+            ON r.id = lp.blind_report_id
+        WHERE lp.id = $1`,
+        [id, userId]
+    )
 
-  const post = postResult.rows[0]
-  if (!post) return undefined
+    const post = postResult.rows[0]
+    if (!post) return undefined
 
-  const imageResult = await pool.query(
-    `SELECT id, image_url, created_at
-     FROM images
-     WHERE post_type = 'lost' AND lost_post_id = $1
-     ORDER BY id ASC`,
-    [id],
-  )
+    const imageResult = await pool.query(
+        `SELECT id, image_url, created_at
+        FROM images
+        WHERE post_type = 'lost' AND lost_post_id = $1
+        ORDER BY id ASC`,
+        [id]
+    )
 
-  return { ...post, images: imageResult.rows }
+    return { ...post, images: imageResult.rows }
+}
+
+// 상세 페이지 하단의 이전글 / 다음글 조회
+// 목록과 동일하게 created_at DESC, id DESC 순서를 기준으로 한다.
+export async function findAdjacentPosts({ id, createdAt }) {
+    const previousResult = await pool.query(
+        `SELECT id, pet_name, species, breed, created_at
+        FROM lost_posts
+        WHERE status = 'active'
+            AND id <> $2
+            AND (
+                created_at > $1
+                OR (created_at = $1 AND id > $2)
+            )
+        ORDER BY created_at ASC, id ASC
+        LIMIT 1`,
+        [createdAt, id]
+    )
+
+    const nextResult = await pool.query(
+        `SELECT id, pet_name, species, breed, created_at
+        FROM lost_posts
+        WHERE status = 'active'
+            AND id <> $2
+            AND (
+                created_at < $1
+                OR (created_at = $1 AND id < $2)
+            )
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1`,
+        [createdAt, id]
+    )
+
+    return {
+        previousPost: previousResult.rows[0] ?? null,
+        nextPost: nextResult.rows[0] ?? null
+    }
 }
 
 // 3.2 실종 공고 목록 조회

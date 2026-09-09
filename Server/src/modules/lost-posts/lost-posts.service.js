@@ -216,31 +216,49 @@ export async function getPosts(query) {
 
 // 3.3 실종 공고 상세 조회
 export async function getPost({ postId, userId }) {
-  const id = Number(postId)
-  if (!Number.isInteger(id) || id <= 0) {
-    throw serviceError("공고 ID가 올바르지 않습니다.", 400, "INVALID_POST_ID")
-  }
+    const id = Number(postId)
 
-  const post = await repository.findById(id)
-  if (!post) {
-    throw serviceError("실종 공고를 찾을 수 없습니다.", 404, "LOST_POST_NOT_FOUND")
-  }
+    if (!Number.isInteger(id) || id <= 0) {
+        throw serviceError("공고 ID가 올바르지 않습니다.", 400, "INVALID_POST_ID")
+    }
 
-  const isOwner =
-    userId != null &&
-    String(userId) === String(post.user_id)
+    const post = await repository.findById(id, userId ?? null)
 
-  // 블라인드 공고는 작성자 본인만 열람할 수 있다.
-  if (post.status === "blind" && !isOwner) {
-    throw serviceError("실종 공고를 찾을 수 없습니다.", 404, "LOST_POST_NOT_FOUND")
-  }
+    if (!post) {
+        throw serviceError("실종 공고를 찾을 수 없습니다.", 404, "LOST_POST_NOT_FOUND")
+    }
 
-  const { user_id, ...publicPost } = post
+    const isOwner =
+        userId != null &&
+        String(userId) === String(post.user_id)
 
-  return {
-    ...publicPost,
-    is_owner: isOwner,
-  }
+    // 블라인드 공고는 작성자 본인만 열람할 수 있다.
+    if (post.status === "blind" && !isOwner) {
+        throw serviceError("실종 공고를 찾을 수 없습니다.", 404, "LOST_POST_NOT_FOUND")
+    }
+
+    let previousPost = null
+    let nextPost = null
+
+    // 목록에 노출되는 active 공고에서만 이전글 / 다음글을 제공한다.
+    if (post.status === "active") {
+        const adjacentPosts = await repository.findAdjacentPosts({
+            id,
+            createdAt: post.created_at
+        })
+
+        previousPost = adjacentPosts.previousPost
+        nextPost = adjacentPosts.nextPost
+    }
+
+    const { user_id, ...publicPost } = post
+
+    return {
+        ...publicPost,
+        is_owner: isOwner,
+        previous_post: previousPost,
+        next_post: nextPost
+    }
 }
 
 function hasOwn(object, key) {
