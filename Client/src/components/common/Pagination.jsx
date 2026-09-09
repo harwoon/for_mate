@@ -1,100 +1,149 @@
-import { Link } from "react-router-dom"
-import "../../css/components.css"
-
-function formatDate(value) {
-    if (!value) return ""
-
-    return String(value)
-        .slice(0, 10)
-        .replaceAll("-", ".")
-}
-
-function getLostTitle(post) {
-    const name = post.pet_name || "이름 없음"
-    const species = post.species || "종류 미상"
-    const breed = post.breed || "품종 미상"
-
-    return `${name}(${species}) - ${breed}`
-}
-
-export default function PostNavigation({
-    previousPost,
-    nextPost,
-    basePath,
-    getPath,
-    getTitle = getLostTitle,
-    getDate = (post) => post.created_at
+// 목록 하단 페이지네이션
+export default function Pagination({
+    page,
+    total,
+    size = 20,
+    onChange
 }) {
-    function createPath(post) {
-        if (getPath) {
-            return getPath(post)
+    const lastPage = Math.max(
+        1,
+        Math.ceil((total || 0) / size)
+    )
+
+    const currentPage = Math.min(
+        Math.max(Number(page) || 1, 1),
+        lastPage
+    )
+
+    if (lastPage <= 1) return null
+
+    function changePage(nextPage) {
+        if (
+            nextPage < 1 ||
+            nextPage > lastPage ||
+            nextPage === currentPage
+        ) {
+            return
         }
 
-        return `${basePath}/${post.id}`
+        onChange(nextPage)
     }
 
-    function NavigationRow({
-        post,
-        type
-    }) {
-        const isPrevious = type === "previous"
-
-        const label = isPrevious
-            ? "▲ 이전글"
-            : "▼ 다음글"
-
-        if (!post) {
-            return (
-                <div className="post-navigation-row">
-                    <span className="post-navigation-label">
-                        {label}
-                    </span>
-
-                    <span className="post-navigation-title">
-                        {isPrevious
-                            ? "이전글이 없습니다."
-                            : "다음글이 없습니다."}
-                    </span>
-                </div>
+    function getPageItems() {
+        if (lastPage <= 6) {
+            return Array.from(
+                { length: lastPage },
+                (_, index) => index + 1
             )
         }
 
-        return (
-            <Link
-                to={createPath(post)}
-                className="post-navigation-row"
-            >
-                <span className="post-navigation-label">
-                    {label}
-                </span>
+        const items = [1, 2, 3, 4]
 
-                <span className="post-navigation-title">
-                    {getTitle(post)}
-                </span>
+        if (
+            currentPage > 4 &&
+            currentPage < lastPage - 1
+        ) {
+            if (currentPage > 5) {
+                items.push("ellipsis-middle-left")
+            }
 
-                <span className="post-navigation-date">
-                    {formatDate(
-                        getDate(post)
-                    )}
-                </span>
-            </Link>
-        )
+            items.push(currentPage)
+
+            if (currentPage < lastPage - 2) {
+                items.push("ellipsis-middle-right")
+            }
+        } else {
+            items.push("ellipsis-middle")
+        }
+
+        items.push(lastPage - 1, lastPage)
+
+        return [...new Set(items)]
     }
+
+    const pageItems = getPageItems()
 
     return (
         <nav
-            className="post-navigation"
-            aria-label="이전글 다음글"
+            className="pagination"
+            aria-label="페이지 이동"
         >
-            <NavigationRow
-                post={previousPost}
-                type="previous"
-            />
+            <button
+                type="button"
+                className="pagination-nav"
+                onClick={() => changePage(1)}
+                disabled={currentPage === 1}
+                aria-label="첫 페이지"
+                title="첫 페이지"
+            >
+                «
+            </button>
 
-            <NavigationRow
-                post={nextPost}
-                type="next"
-            />
+            <button
+                type="button"
+                className="pagination-nav"
+                onClick={() => changePage(currentPage - 1)}
+                disabled={currentPage === 1}
+                aria-label="이전 페이지"
+                title="이전 페이지"
+            >
+                ‹
+            </button>
+
+            {pageItems.map((item) => {
+                if (String(item).startsWith("ellipsis")) {
+                    return (
+                        <span
+                            key={item}
+                            className="pagination-ellipsis"
+                        >
+                            …
+                        </span>
+                    )
+                }
+
+                return (
+                    <button
+                        type="button"
+                        key={item}
+                        className={
+                            item === currentPage
+                                ? "is-active"
+                                : ""
+                        }
+                        onClick={() => changePage(item)}
+                        aria-current={
+                            item === currentPage
+                                ? "page"
+                                : undefined
+                        }
+                    >
+                        {item}
+                    </button>
+                )
+            })}
+
+            <button
+                type="button"
+                className="pagination-nav"
+                onClick={() => changePage(currentPage + 1)}
+                disabled={currentPage === lastPage}
+                aria-label="다음 페이지"
+                title="다음 페이지"
+            >
+                ›
+            </button>
+
+            <button
+                type="button"
+                className="pagination-nav"
+                onClick={() => changePage(lastPage)}
+                disabled={currentPage === lastPage}
+                aria-label="마지막 페이지"
+                title="마지막 페이지"
+            >
+                »
+            </button>
         </nav>
     )
 }
