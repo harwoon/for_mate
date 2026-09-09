@@ -11,7 +11,7 @@ import Empty from "../../components/common/Empty.jsx"
 import { Link } from "react-router-dom"
 import Breadcrumb from "../../components/common/Breadcrumb.jsx"
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 12
 
 const EMPTY_FILTERS = {
   species: "",
