@@ -23,7 +23,10 @@ from torch.utils.data import DataLoader, Dataset
 
 FN_RE = re.compile(r"(\d+)_c(\d+)s(\d+)_(\d+)\.jpg$", re.I)
 MEAN, STD = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
-MODEL_IMG_SIZE = {"megadescriptor": 224, "petface": 224, "arbase": 384}
+MODEL_IMG_SIZE = {"megadescriptor": 224, "petface": 224, "arbase": 384, "petreco": 224}
+
+PETRECO_REPO = "open-noodle/pet-recognition-large"   # DINOv2-large(frozen) + 512d projection, Apache-2.0
+PETRECO_FILE = "recognition/model.onnx"
 
 
 class ImgList(Dataset):
@@ -43,11 +46,41 @@ def parse_pid(p):
     return int(m.group(1)) if m else None
 
 
-def build_model(model_name, ckpt_path, device):
-    ck = torch.load(ckpt_path, map_location=device, weights_only=False)
+class OnnxEmbedder:
+    """ONNX 모델을 torch 모듈처럼: __call__(tensor[N,3,H,W]) -> tensor[N,D]. embed() 에서 그대로 쓰임."""
+    def __init__(self, onnx_path, device):
+        import onnxruntime as ort
+        avail = ort.get_available_providers()
+        prov = (["CUDAExecutionProvider", "CPUExecutionProvider"]
+                if device == "cuda" and "CUDAExecutionProvider" in avail else ["CPUExecutionProvider"])
+        self.sess = ort.InferenceSession(str(onnx_path), providers=prov)
+        self.iname = self.sess.get_inputs()[0].name
+        self.oname = self.sess.get_outputs()[0].name
+
+    def __call__(self, x):
+        out = self.sess.run([self.oname],
+                            {self.iname: x.detach().cpu().numpy().astype("float32")})[0]
+        return torch.from_numpy(out)
+
+    def to(self, *a, **k):
+        return self
+
+    def eval(self):
+        return self
+
+
+def build_model(model_name, ckpt_path, device, zeroshot=False):
+    if model_name == "petreco":
+        from huggingface_hub import hf_hub_download
+        onnx_path = ckpt_path or hf_hub_download(PETRECO_REPO, PETRECO_FILE)
+        return OnnxEmbedder(onnx_path, device)
+
+    ck = None if zeroshot else torch.load(ckpt_path, map_location=device, weights_only=False)
     if model_name == "megadescriptor":
         import timm
-        model = timm.create_model("hf-hub:BVRA/MegaDescriptor-B-224", num_classes=0, pretrained=False)
+        # zeroshot: 파인튜닝 없이 사전학습 가중치 그대로 (파인튜닝 이득 대조용)
+        model = timm.create_model("hf-hub:BVRA/MegaDescriptor-B-224", num_classes=0,
+                                  pretrained=zeroshot)
     elif model_name == "petface":
         from torchvision.models import resnet50
         import torch.nn as nn
@@ -55,10 +88,12 @@ def build_model(model_name, ckpt_path, device):
         model.fc = nn.Sequential(nn.Linear(model.fc.in_features, 512), nn.BatchNorm1d(512))
     elif model_name == "arbase":
         from arbase_model import ARBase
-        model = ARBase(num_classes=ck["num_classes"], pretrained_backbone=False)
+        model = ARBase(num_classes=(ck["num_classes"] if ck else 1),
+                       pretrained_backbone=zeroshot)
     else:
         raise ValueError(model_name)
-    model.load_state_dict(ck["model"])
+    if ck is not None:
+        model.load_state_dict(ck["model"])
     return model.to(device).eval()
 
 
@@ -75,12 +110,18 @@ def embed(model, paths, tf, device, batch=64):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", required=True, choices=["megadescriptor", "petface", "arbase"])
+    ap.add_argument("--model", required=True,
+                    choices=["megadescriptor", "petface", "arbase", "petreco"])
     ap.add_argument("--root", required=True, help="예: ML/dataset/derived/MPDD_hard_corrupt/MPDD/pytorch")
-    ap.add_argument("--weight", required=True)
+    ap.add_argument("--weight", default=None,
+                    help="체크포인트 경로. petreco 는 생략하면 HF 에서 자동 다운로드")
     ap.add_argument("--gallery_per_id", type=int, default=2)
     ap.add_argument("--dump_errors", default=None, help="케이스별 랭크/오답을 csv로 저장 (오류 분석용)")
+    ap.add_argument("--zeroshot", action="store_true",
+                    help="파인튜닝 없이 사전학습 가중치 그대로 (megadescriptor/arbase). 파인튜닝 이득 대조용")
     args = ap.parse_args()
+    if args.model not in ("petreco",) and not args.weight and not args.zeroshot:
+        ap.error("--weight 필요 (petreco 또는 --zeroshot 이면 생략 가능)")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     img_size = MODEL_IMG_SIZE[args.model]
@@ -97,7 +138,9 @@ def main():
     print(f"gallery 원본 {len(g_paths_all)}장 -> {args.gallery_per_id}장/개체 캡 적용 후 "
           f"{len(g_paths)}장 ({len(by_pid)}개체)")
 
-    model = build_model(args.model, args.weight, device)
+    model = build_model(args.model, args.weight, device, zeroshot=args.zeroshot)
+    if args.zeroshot:
+        print(f"[zeroshot] {args.model} 사전학습 가중치 그대로 (파인튜닝 없음)")
 
     g_emb, g_used_paths = embed(model, g_paths, tf, device)
     g_pid = np.array([parse_pid(p) for p in g_used_paths])

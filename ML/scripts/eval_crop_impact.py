@@ -137,11 +137,30 @@ def make_cropper(mode):
     return crop
 
 
-MODELS = list(MODEL_REGISTRY) + ["clipreid"]
+MODELS = list(MODEL_REGISTRY) + ["clipreid", "petreco", "dinov2"]
 
 
 def load_model(name, clipreid_config=None, clipreid_weight=None):
     """-> (callable(tensor)->임베딩, 입력크기, mean(3,), std(3,))."""
+    if name == "petreco":   # open-noodle/pet-recognition-large (ONNX, DINOv2-L + 512d projection)
+        import onnxruntime as ort
+        from huggingface_hub import hf_hub_download
+        onnx = hf_hub_download("open-noodle/pet-recognition-large", "recognition/model.onnx")
+        prov = (["CUDAExecutionProvider", "CPUExecutionProvider"]
+                if "CUDAExecutionProvider" in ort.get_available_providers() else ["CPUExecutionProvider"])
+        sess = ort.InferenceSession(onnx, providers=prov)
+        iname, oname = sess.get_inputs()[0].name, sess.get_outputs()[0].name
+
+        def fn(t):
+            e = sess.run([oname], {iname: t.detach().cpu().numpy().astype("float32")})[0]
+            return torch.from_numpy(e)
+        return fn, 224, MEAN, STD
+
+    if name == "dinov2":    # facebook/dinov2-large 원본 (projection 없이 pooler_output 1024d)
+        from transformers import AutoModel
+        m = AutoModel.from_pretrained("facebook/dinov2-large").eval().to(DEVICE)
+        return (lambda t: m(pixel_values=t).pooler_output), 224, MEAN, STD
+
     if name == "clipreid":
         cfg_path = clipreid_config or str(ML_DIR / "external" / "CLIP-ReID" / "configs" /
                                          "person" / "vit_clipreid_mpdd_hard_corrupt.yml")
