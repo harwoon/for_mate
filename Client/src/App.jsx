@@ -20,6 +20,7 @@ import RescueDetailPage from "./pages/rescue/RescueDetailPage.jsx"
 import FoundListPage from "./pages/found/FoundListPage.jsx"
 import FoundDetailPage from "./pages/found/FoundDetailPage.jsx"
 import FoundCreatePage from "./pages/found/FoundCreatePage.jsx"
+import FoundEditPage from "./pages/found/FoundEditPage.jsx"
 
 import AiSearchPage from "./pages/match/AiSearchPage.jsx"
 import MatchResultPage from "./pages/match/MatchResultPage.jsx"
@@ -72,6 +73,7 @@ export default function App() {
                     <Route path="/lost-edit/:id" element={<LostEditPage />} />
 
                     <Route path="/found-posts/new" element={<FoundCreatePage />} />
+                    <Route path="/found-edit/:id" element={<FoundEditPage />} />
 
                     <Route path="/ai-search" element={<AiSearchPage />} />
                     <Route
