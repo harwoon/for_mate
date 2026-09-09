@@ -1,818 +1,887 @@
 /* 버튼, 카드, 뱃지, 폼 등 여러 화면에서 공통으로 쓰는 요소 */
 
-/* ===== 버튼 ===== */
+/* ============================= 버튼 ============================= */
 .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-xs);
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-sm);
-  font-weight: 600;
-  transition: background-color 0.15s, border-color 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-sm);
+    font-weight: 600;
+    transition:
+        background-color 0.15s,
+        border-color 0.15s;
 }
 
 .btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .btn-primary {
-  background: var(--color-primary);
-  color: #fff;
+    background: var(--color-primary);
+    color: #fff;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--color-primary-dark);
+    background: var(--color-primary-dark);
 }
 
 .btn-outline {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
 }
 
 .btn-outline:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
 }
 
 .btn-danger {
-  background: var(--color-surface);
-  color: var(--color-danger);
-  border: 1px solid var(--color-danger);
+    background: var(--color-surface);
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
 }
 
 /* 소셜 로그인 버튼 (구글/카카오는 브랜드 색상을 그대로 따른다) */
 .btn-google {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
 }
 
 .btn-google:hover:not(:disabled) {
-  border-color: var(--color-text-light);
+    border-color: var(--color-text-light);
 }
 
 .btn-kakao {
-  background: #fee500;
-  color: #191600;
+    background: #fee500;
+    color: #191600;
 }
 
 .btn-kakao:hover:not(:disabled) {
-  background: #f5dc00;
+    background: #f5dc00;
 }
 
 .btn-text {
-  color: var(--color-text-sub);
-  padding: var(--space-sm);
+    color: var(--color-text-sub);
+    padding: var(--space-sm);
 }
 
 .btn-block {
-  width: 100%;
+    width: 100%;
 }
 
 .btn-sm {
-  padding: 6px 12px;
-  font-size: var(--font-xs);
+    padding: 6px 12px;
+    font-size: var(--font-xs);
 }
 
-/* ===== 카드 ===== */
+/* ============================= 카드 ============================= */
 .card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
 }
 
 .card-padded {
-  padding: var(--space-lg);
+    padding: var(--space-lg);
 }
 
 /* 공고 카드 (찾고있어요 / 보호중이에요 목록) */
 .post-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  transition: box-shadow 0.15s;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: box-shadow 0.15s;
 }
 
 .post-card:hover {
-  box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-md);
 }
 
 .post-card-thumb {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-  background: var(--color-primary-light);
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background: var(--color-primary-light);
 }
 
 .post-card-body {
-  padding: var(--space-md);
+    padding: var(--space-md);
 }
 
 .post-card-title {
-  font-weight: 600;
-  margin: var(--space-sm) 0 var(--space-xs);
+    font-weight: 600;
+    margin: var(--space-sm) 0 var(--space-xs);
 }
 
 .post-card-meta {
-  font-size: var(--font-sm);
-  color: var(--color-text-sub);
+    font-size: var(--font-sm);
+    color: var(--color-text-sub);
 }
 
 /* 카드 목록 그리드 */
 .card-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-md);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-md);
 }
 
 @media (max-width: 1024px) {
-  .card-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+    .card-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (max-width: 600px) {
-  .card-grid {
-    grid-template-columns: 1fr;
-  }
+    .card-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
-/* ===== 뱃지 ===== */
+/* ============================= 뱃지 ============================= */
 .badge {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: var(--radius-full);
-  font-size: var(--font-xs);
-  font-weight: 600;
-  color: #fff;
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: #fff;
 }
 
 .badge-lost {
-  background: var(--badge-lost);
+    background: var(--badge-lost);
 }
 
 .badge-rescue {
-  background: var(--badge-rescue);
+    background: var(--badge-rescue);
 }
 
 .badge-ending {
-  background: var(--badge-ending);
+    background: var(--badge-ending);
 }
 
 /* 필터 조건 표시용 태그 (× 눌러 삭제) */
 .chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: 4px 12px;
-  border-radius: var(--radius-full);
-  background: var(--color-primary-light);
-  color: var(--color-primary-dark);
-  font-size: var(--font-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-light);
+    color: var(--color-primary-dark);
+    font-size: var(--font-sm);
 }
 
 .chip button {
-  color: inherit;
-  font-size: var(--font-sm);
-  line-height: 1;
+    color: inherit;
+    font-size: var(--font-sm);
+    line-height: 1;
 }
 
-/* ===== 폼 ===== */
+/* ============================= 폼 ============================= */
 .form-field {
-  margin-bottom: var(--space-md);
+    margin-bottom: var(--space-md);
 }
 
 .form-label {
-  display: block;
-  margin-bottom: var(--space-xs);
-  font-size: var(--font-sm);
-  font-weight: 600;
+    display: block;
+    margin-bottom: var(--space-xs);
+    font-size: var(--font-sm);
+    font-weight: 600;
 }
 
 .form-input,
 .form-select,
 .form-textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
 }
 
 .form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
-  outline: none;
-  border-color: var(--color-primary);
+    outline: none;
+    border-color: var(--color-primary);
 }
 
 .form-textarea {
-  min-height: 120px;
-  resize: vertical;
+    min-height: 120px;
+    resize: vertical;
 }
 
 /* 입력값이 잘못됐을 때 */
 .form-input.is-error,
 .form-select.is-error,
 .form-textarea.is-error {
-  border-color: var(--color-danger);
+    border-color: var(--color-danger);
 }
 
 .form-error {
-  margin-top: var(--space-xs);
-  font-size: var(--font-xs);
-  color: var(--color-danger);
+    margin-top: var(--space-xs);
+    font-size: var(--font-xs);
+    color: var(--color-danger);
 }
 
 .form-help {
-  margin-top: var(--space-xs);
-  font-size: var(--font-xs);
-  color: var(--color-text-sub);
+    margin-top: var(--space-xs);
+    font-size: var(--font-xs);
+    color: var(--color-text-sub);
 }
 
-/* ===== 인증 카드 (로그인 / 회원가입 등, 피그마 C-01 로그인 기준) ===== */
+/* ============================= 인증 카드 (로그인 / 회원가입 등, 피그마 C-01 로그인 기준) ============================= */
 .auth-page {
-  padding-top: var(--space-2xl);
-  padding-bottom: var(--space-2xl);
+    padding-top: var(--space-2xl);
+    padding-bottom: var(--space-2xl);
 }
 
 .auth-card {
-  width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
-  box-shadow: var(--shadow-md);
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    box-shadow: var(--shadow-md);
 }
 
 .auth-intro {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-xs);
-  text-align: center;
-  margin-bottom: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
+    text-align: center;
+    margin-bottom: var(--space-lg);
 }
 
 .auth-logo {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  font-size: var(--font-lg);
-  font-weight: 800;
-  color: var(--color-text);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: var(--font-lg);
+    font-weight: 800;
+    color: var(--color-text);
 }
 
 .auth-logo-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-full);
-  background: var(--color-primary);
+    width: 10px;
+    height: 10px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
 }
 
 .auth-links {
-  margin-top: var(--space-lg);
-  text-align: center;
-  font-size: var(--font-sm);
+    margin-top: var(--space-lg);
+    text-align: center;
+    font-size: var(--font-sm);
 }
 
 .auth-links a {
-  margin-left: var(--space-xs);
-  font-weight: 600;
-  color: var(--color-text);
+    margin-left: var(--space-xs);
+    font-weight: 600;
+    color: var(--color-text);
 }
 
 /* 회원가입 카드 상단 타이틀 (로그인 카드의 가운데 정렬 auth-intro와 달리 왼쪽 정렬) */
 .auth-card-header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-xs);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-xs);
 }
 
 .auth-card-title {
-  font-size: var(--font-lg);
-  font-weight: 800;
+    font-size: var(--font-lg);
+    font-weight: 800;
 }
 
 /* 약관 동의 박스 (피그마 C-02 consent-box). 체크박스 2개를 감싸는 카드형 영역 */
 .auth-consent-box {
-  width: 100%;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
+    width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
 }
 
 /* 필수 약관에 동의하지 않은 채 제출했을 때 (C-02-V07, C-02-V08) */
 .auth-consent-box.is-error {
-  border-color: var(--color-danger);
+    border-color: var(--color-danger);
 }
 
 .auth-consent-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
 }
 
 .auth-consent-item label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  flex: 1;
-  font-size: var(--font-sm);
-  font-weight: 600;
-  cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex: 1;
+    font-size: var(--font-sm);
+    font-weight: 600;
+    cursor: pointer;
 }
 
 .auth-consent-item input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--color-primary);
-  cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
 }
 
 .auth-consent-item a {
-  font-size: var(--font-xs);
-  color: var(--color-text-light);
-  white-space: nowrap;
+    font-size: var(--font-xs);
+    color: var(--color-text-light);
+    white-space: nowrap;
 }
 
 /* 약관/개인정보처리방침 같은 정적 법률 문서 페이지 (피그마 C-03, C-04) */
 .legal-sections {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg); /* 조항(section)과 조항 사이 간격. 피그마에선 20px지만, 프로젝트에 20px 토큰이 없어 가장 가까운 --space-lg(24px)로 맞추었다 */
-  width: 100%;
-  /* 피그마에서는 카드 전체(card-header / text-content / 버튼)가 gap-24로 똑같이 띄어져 있다.
-     .auth-card-header는 회원가입 카드에서도 따로 쓰이고 있어 그쪽 margin을 건드릴 수 없므로,
-     이 요소 자체에 위아래 24px씩 margin을 줘서 헤더/버튼과의 간격을 맞추었다(margin collapsing으로 위는 헤더의 4px와 겹쳐져도 큰 값인 24px가 적용된다). */
-  margin: var(--space-lg) 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(
+        --space-lg
+    ); /* 조항(section)과 조항 사이 간격. 피그마에선 20px지만, 프로젝트에 20px 토큰이 없어 가장 가까운 --space-lg(24px)로 맞추었다 */
+    width: 100%;
+    /* 피그마에서는 카드 전체(card-header / text-content / 버튼)가 gap-24로 똑같이 띄어져 있다.
+         .auth-card-header는 회원가입 카드에서도 따로 쓰이고 있어 그쪽 margin을 건드릴 수 없므로,
+         이 요소 자체에 위아래 24px씩 margin을 줘서 헤더/버튼과의 간격을 맞추었다(margin collapsing으로 위는 헤더의 4px와 겹쳐져도 큰 값인 24px가 적용된다). */
+    margin: var(--space-lg) 0;
 }
 
 .legal-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    width: 100%;
 }
 
 .legal-section h2 {
-  font-size: var(--font-md);
-  font-weight: 800;
-  color: var(--color-text);
+    font-size: var(--font-md);
+    font-weight: 800;
+    color: var(--color-text);
 }
 
 /* 조항 하나의 본문이 여러 줄(배열 body)이어도, 그 줄들끼리는 피그마에서도 단순 줄바꿈일 뿐 별도 문단이 아니다.
-   그래서 이 래퍼 안에서는 별도 줄 간격을 주지 않고(reset.css가 이미 모든 margin을 0으로 만들어둬서 <p> 여러 개가 자연스럽게 붙어 쌓인다),
-   제목과의 간격(8px)만 .legal-section의 flex gap으로 준다. */
+     그래서 이 래퍼 안에서는 별도 줄 간격을 주지 않고(reset.css가 이미 모든 margin을 0으로 만들어둬서 <p> 여러 개가 자연스럽게 붙어 쌓인다),
+     제목과의 간격(8px)만 .legal-section의 flex gap으로 준다. */
 .legal-section-body {
-  width: 100%;
+    width: 100%;
 }
 
 .legal-section p {
-  font-size: var(--font-sm);
-  color: var(--color-text-sub);
-  line-height: 1.6;
+    font-size: var(--font-sm);
+    color: var(--color-text-sub);
+    line-height: 1.6;
 }
 
 /* 이메일/비밀번호 로그인과 소셜 로그인 사이 구분선 ("또는") */
 .auth-divider {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  color: var(--color-text-light);
-  font-size: var(--font-xs);
-  margin: var(--space-lg) 0 var(--space-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--color-text-light);
+    font-size: var(--font-xs);
+    margin: var(--space-lg) 0 var(--space-md);
 }
 
 .auth-divider::before,
 .auth-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--color-border);
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
 }
 
 .auth-socials {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
 }
 
 /* 로그인 성공 모달 (C-01-S01). 배경은 기존 .modal-backdrop을 그대로 쓴다. */
 .auth-success-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  width: 100%;
-  max-width: 420px;
-  padding: var(--space-xl) var(--space-lg) var(--space-lg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-md);
-  text-align: center;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    width: 100%;
+    max-width: 420px;
+    padding: var(--space-xl) var(--space-lg) var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+    text-align: center;
 }
 
 .auth-success-title {
-  font-size: var(--font-lg);
-  font-weight: 700;
+    font-size: var(--font-lg);
+    font-weight: 700;
 }
 
-/* ===== 상태 화면 (로딩 / 비어있음 / 오류) ===== */
+/* ============================= 상태 화면 (로딩 / 비어있음 / 오류) ============================= */
 .state-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-md);
-  padding: var(--space-2xl) var(--space-lg);
-  text-align: center;
-  color: var(--color-text-sub);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    padding: var(--space-2xl) var(--space-lg);
+    text-align: center;
+    color: var(--color-text-sub);
 }
 
-/* ===== 알림 배너 ===== */
+/* ============================= 알림 배너 ============================= */
 .alert {
-  display: flex;
-  gap: var(--space-sm);
-  padding: var(--space-md);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-sm);
+    display: flex;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-sm);
 }
 
 .alert-success {
-  background: var(--color-success-light);
-  color: var(--color-success);
+    background: var(--color-success-light);
+    color: var(--color-success);
 }
 
 .alert-error {
-  background: var(--color-danger-light);
-  color: var(--color-danger);
+    background: var(--color-danger-light);
+    color: var(--color-danger);
 }
 
 .alert-warning {
-  background: var(--color-warning-light);
-  color: var(--color-warning);
+    background: var(--color-warning-light);
+    color: var(--color-warning);
 }
 
-/* ===== 모달 ===== */
+/* ============================= 모달 ============================= */
 .modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-md);
-  z-index: 200;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-md);
+    z-index: 200;
 }
 
 .modal {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 520px;
-  max-height: 85vh;
-  overflow-y: auto;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 520px;
+    max-height: 85vh;
+    overflow-y: auto;
 }
 
 .modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-lg);
-  border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-lg);
+    border-bottom: 1px solid var(--color-border);
 }
 
 .modal-title {
-  font-size: var(--font-lg);
-  font-weight: 700;
+    font-size: var(--font-lg);
+    font-weight: 700;
 }
 
 .modal-body {
-  padding: var(--space-lg);
+    padding: var(--space-lg);
 }
 
 .modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-sm);
-  padding: var(--space-lg);
-  border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-sm);
+    padding: var(--space-lg);
+    border-top: 1px solid var(--color-border);
 }
 
-/* ===== 게시판 표 (발견제보 목록) ===== */
+/* ============================= 게시판 표 (발견제보 목록) ============================= */
 .board-table th,
 .board-table td {
-  padding: var(--space-md) var(--space-sm);
-  border-bottom: 1px solid var(--color-border);
-  font-size: var(--font-sm);
-  text-align: left;
+    padding: var(--space-md) var(--space-sm);
+    border-bottom: 1px solid var(--color-border);
+    font-size: var(--font-sm);
+    text-align: left;
 }
 
 .board-table th {
-  color: var(--color-text-sub);
-  font-weight: 600;
-  border-bottom-width: 2px;
+    color: var(--color-text-sub);
+    font-weight: 600;
+    border-bottom-width: 2px;
 }
 
 .board-table tbody tr:hover {
-  background: var(--color-bg);
+    background: var(--color-bg);
 }
 
-/* ===== 페이지네이션 ===== */
+/* ============================= 페이지네이션 ============================= */
 .pagination {
-  display: flex;
-  justify-content: center;
-  gap: var(--space-xs);
-  margin: var(--space-xl) 0;
+    display: flex;
+    justify-content: center;
+    gap: var(--space-xs);
+    margin: var(--space-xl) 0;
 }
 
 .pagination button {
-  min-width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  color: var(--color-text-sub);
-  font-size: var(--font-sm);
+    min-width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-sub);
+    font-size: var(--font-sm);
 }
 
 .pagination button.is-active {
-  background: var(--color-primary);
-  color: #fff;
-  font-weight: 600;
+    background: var(--color-primary);
+    color: #fff;
+    font-weight: 600;
 }
 
-/* ===== 자주 쓰는 배치 ===== */
+/* ============================= 자주 쓰는 배치 ============================= */
 .row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
 }
 
 .row-between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
 }
 
 .stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
 }
 
 .text-sub {
-  color: var(--color-text-sub);
-  font-size: var(--font-sm);
+    color: var(--color-text-sub);
+    font-size: var(--font-sm);
 }
 
-/* ===== 서비스소개 (피그마 C-07) =====
-   로그인/회원가입/약관 페이지처럼 좁은 카드 하나가 아니라, 폭 전체를 쓰는 랜딩 페이지 형태다.
-   그래서 .auth-card 계열 클래스를 재사용하지 않고 이 페이지 전용 클래스를 새로 만들었다. */
+/* ============================= 서비스소개 (피그마 C-07) =============================
+     로그인/회원가입/약관 페이지처럼 좁은 카드 하나가 아니라, 폭 전체를 쓰는 랜딩 페이지 형태다.
+     그래서 .auth-card 계열 클래스를 재사용하지 않고 이 페이지 전용 클래스를 새로 만들었다. */
 
 /* 맨 위 히어로 영역: 큰 제목 2줄 + 설명 + 버튼 2개, 전부 가운데 정렬 */
 .about-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-md);
-  text-align: center;
-  padding: var(--space-2xl) 0 var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+    text-align: center;
+    padding: var(--space-2xl) 0 var(--space-lg);
 }
 
 .about-hero-title {
-  /* 피그마 원본은 44px인데, 프로젝트 폰트 크기 토큰 중 가장 큰 값이 --font-2xl(36px)이라
-     새 픽셀값을 추가하는 대신 기존 토큰 스케일 안에서 가장 가까운 값을 그대로 썼다. */
-  font-size: var(--font-2xl);
-  font-weight: 800;
-  color: var(--color-text);
-  line-height: 1.3;
+    /* 피그마 원본은 44px인데, 프로젝트 폰트 크기 토큰 중 가장 큰 값이 --font-2xl(36px)이라
+         새 픽셀값을 추가하는 대신 기존 토큰 스케일 안에서 가장 가까운 값을 그대로 썼다. */
+    font-size: var(--font-2xl);
+    font-weight: 800;
+    color: var(--color-text);
+    line-height: 1.3;
 }
 
 .about-hero-subtitle {
-  max-width: 640px;
-  color: var(--color-text-sub);
-  font-size: var(--font-md);
-  line-height: 1.6;
+    max-width: 640px;
+    color: var(--color-text-sub);
+    font-size: var(--font-md);
+    line-height: 1.6;
 }
 
 .about-hero-actions {
-  display: flex;
-  gap: var(--space-md);
-  width: 100%;
-  max-width: 480px;
-  margin-top: var(--space-sm);
+    display: flex;
+    gap: var(--space-md);
+    width: 100%;
+    max-width: 480px;
+    margin-top: var(--space-sm);
 }
 
 .about-hero-actions .btn {
-  flex: 1;
+    flex: 1;
 }
 
 /* "서비스 흐름" 영역: 제목 + 3단 카드 */
 .about-steps {
-  margin-top: var(--space-2xl);
+    margin-top: var(--space-2xl);
 }
 
 .about-steps-title {
-  font-size: var(--font-lg);
-  font-weight: 800;
-  color: var(--color-text);
-  margin-bottom: var(--space-md);
+    font-size: var(--font-lg);
+    font-weight: 800;
+    color: var(--color-text);
+    margin-bottom: var(--space-md);
 }
 
 .about-steps-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-md);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-md);
 }
 
 .step-card {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
 }
 
 /* 1 / 2 / 3 숫자가 들어가는 동그란 뱃지 */
 .step-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-full);
-  background: var(--color-primary-light);
-  color: var(--color-primary);
-  font-weight: 800;
-  font-size: var(--font-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    font-weight: 800;
+    font-size: var(--font-md);
 }
 
 .step-meta {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
 }
 
 .step-title {
-  font-weight: 800;
-  font-size: var(--font-md);
-  color: var(--color-text);
+    font-weight: 800;
+    font-size: var(--font-md);
+    color: var(--color-text);
 }
 
 .step-desc {
-  font-size: var(--font-sm);
-  color: var(--color-text-sub);
-  line-height: 1.5;
+    font-size: var(--font-sm);
+    color: var(--color-text-sub);
+    line-height: 1.5;
 }
 
 /* "전국 공공 보호동물 연동 데이터 적용" 배너: 옅은 초록 배경 박스 */
 .about-banner {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  margin-top: var(--space-lg);
-  padding: var(--space-lg);
-  border-radius: var(--radius-lg);
-  background: var(--color-primary-light);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    margin-top: var(--space-lg);
+    padding: var(--space-lg);
+    border-radius: var(--radius-lg);
+    background: var(--color-primary-light);
 }
 
 .about-banner-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  color: var(--color-primary);
-  font-weight: 800;
-  font-size: var(--font-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--color-primary);
+    font-weight: 800;
+    font-size: var(--font-md);
 }
 
 .about-banner-desc {
-  color: var(--color-primary);
-  font-size: var(--font-sm);
-  line-height: 1.6;
+    color: var(--color-primary);
+    font-size: var(--font-sm);
+    line-height: 1.6;
 }
 
 .about-cta {
-  margin-top: var(--space-lg);
+    margin-top: var(--space-lg);
 }
 
-/* ===== 고객센터 (피그마 C-05) =====
-   왼쪽 문의 작성 폼 + 오른쪽 FAQ, 두 칸짜리 레이아웃이라 about-hero처럼 이 페이지 전용
-   클래스를 새로 추가했다. 폼 안의 input/select/textarea, 카드, 버튼, 결과 모달은 전부
-   기존 클래스(.card, .form-*, .btn, .auth-success-card 등)를 그대로 재사용한다. */
+/* ============================= 고객센터 (피그마 C-05) =============================
+     왼쪽 문의 작성 폼 + 오른쪽 FAQ, 두 칸짜리 레이아웃이라 about-hero처럼 이 페이지 전용
+     클래스를 새로 추가했다. 폼 안의 input/select/textarea, 카드, 버튼, 결과 모달은 전부
+     기존 클래스(.card, .form-*, .btn, .auth-success-card 등)를 그대로 재사용한다. */
 .support-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px; /* 피그마의 760:496 비율(약 3:2)에 맞춘 값 */
-  gap: var(--space-lg);
-  align-items: start;
-  padding-bottom: var(--space-2xl);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px; /* 피그마의 760:496 비율(약 3:2)에 맞춘 값 */
+    gap: var(--space-lg);
+    align-items: start;
+    padding-bottom: var(--space-2xl);
 }
 
 @media (max-width: 900px) {
-  .support-grid {
-    grid-template-columns: 1fr; /* 좁은 화면에서는 폼이 위, FAQ가 아래로 쌓인다 */
-  }
+    .support-grid {
+        grid-template-columns: 1fr; /* 좁은 화면에서는 폼이 위, FAQ가 아래로 쌓인다 */
+    }
 }
 
 /* 오른쪽 "자주 묻는 질문" 아코디언 (피그마 C-05-O01).
-   한때 이 자리를 "내 문의 내역"(문의 상세 + 답변)으로 바꿔봤던 적이 있어서, 그때는
-   .inquiry-* 라는 전용 이름을 썼었다. 다시 FAQ로 되돌리면서, 이 아코디언 모양 자체는
-   두 기능(문의 내역 / FAQ) 모두에 그대로 어울리는 범용 패턴이라는 게 분명해졌으므로
-   .accordion-* 라는 일반적인 이름으로 바꿔서, 나중에 또 다른 목록(예: 알림, 공지사항)에
-   같은 모양이 필요해지면 그대로 재사용할 수 있게 했다. */
+     한때 이 자리를 "내 문의 내역"(문의 상세 + 답변)으로 바꿔봤던 적이 있어서, 그때는
+     .inquiry-* 라는 전용 이름을 썼었다. 다시 FAQ로 되돌리면서, 이 아코디언 모양 자체는
+     두 기능(문의 내역 / FAQ) 모두에 그대로 어울리는 범용 패턴이라는 게 분명해졌으므로
+     .accordion-* 라는 일반적인 이름으로 바꿔서, 나중에 또 다른 목록(예: 알림, 공지사항)에
+     같은 모양이 필요해지면 그대로 재사용할 수 있게 했다. */
 .accordion-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-  margin-top: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
 }
 
 .accordion-item {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-md);
 }
 
 .accordion-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  width: 100%;
-  text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    width: 100%;
+    text-align: left;
 }
 
 .accordion-title {
-  font-size: var(--font-sm);
-  font-weight: 700;
+    font-size: var(--font-sm);
+    font-weight: 700;
 }
 
 .row-chevron {
-  flex-shrink: 0;
-  color: var(--color-text-light);
-  transition: transform 0.15s;
+    flex-shrink: 0;
+    color: var(--color-text-light);
+    transition: transform 0.15s;
 }
 
 /* 펼쳐진 항목의 화살표를 180도 돌려서 "닫으려면 누르세요"라는 느낌을 준다.
-   피그마에는 이 애니메이션이 없지만(정적 디자인이라 펼침/접힘 상태만 보여준다),
-   실제 아코디언에서는 흔히 쓰이는 상호작용이라 자연스럽게 추가했다. */
+     피그마에는 이 애니메이션이 없지만(정적 디자인이라 펼침/접힘 상태만 보여준다),
+     실제 아코디언에서는 흔히 쓰이는 상호작용이라 자연스럽게 추가했다. */
 .row-chevron.is-open {
-  transform: rotate(180deg);
+    transform: rotate(180deg);
 }
 
 .accordion-answer {
-  margin-top: var(--space-sm);
-  font-size: var(--font-xs);
-  color: var(--color-text-sub);
-  line-height: 1.6;
+    margin-top: var(--space-sm);
+    font-size: var(--font-xs);
+    color: var(--color-text-sub);
+    line-height: 1.6;
 }
 
-/* ===== 404 / 오류 (피그마 C-06) =====
-   사이트 전체에서 쓰는 공용 화면이라 다른 페이지 전용 클래스와 이름이 겹치지 않도록
-   notfound- 접두어를 붙였다. */
+/* ============================= 404 / 오류 (피그마 C-06) =============================
+     사이트 전체에서 쓰는 공용 화면이라 다른 페이지 전용 클래스와 이름이 겹치지 않도록
+     notfound- 접두어를 붙였다. */
 .notfound-page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: var(--space-xl);
-  padding: var(--space-2xl) var(--space-md);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-xl);
+    padding: var(--space-2xl) var(--space-md);
 }
 
 .notfound-icon-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 140px;
-  height: 140px;
-  border-radius: var(--radius-full);
-  /* 피그마 원래 색은 올리브 계열(#A9B782)을 20% 투명도로 깐 배경이지만, 프로젝트에는
-     그 색상 토큰이 없다. 아이콘 뒤에 옅은 초록 배경을 까는 같은 용도로 이미 쓰이고 있는
-     --color-primary-light를 대신 사용했다 (about-banner에서와 같은 결정). */
-  background: var(--color-primary-light);
-  color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 140px;
+    height: 140px;
+    border-radius: var(--radius-full);
+    /* 피그마 원래 색은 올리브 계열(#A9B782)을 20% 투명도로 깐 배경이지만, 프로젝트에는
+         그 색상 토큰이 없다. 아이콘 뒤에 옅은 초록 배경을 까는 같은 용도로 이미 쓰이고 있는
+         --color-primary-light를 대신 사용했다 (about-banner에서와 같은 결정). */
+    background: var(--color-primary-light);
+    color: var(--color-primary);
 }
 
 .notfound-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
 }
 
 .notfound-title {
-  /* 피그마 44px에 해당하는 토큰이 없어 about-hero-title과 같은 이유로 가장 가까운
-     --font-2xl(36px)을 사용했다. */
-  font-size: var(--font-2xl);
-  font-weight: 800;
+    /* 피그마 44px에 해당하는 토큰이 없어 about-hero-title과 같은 이유로 가장 가까운
+         --font-2xl(36px)을 사용했다. */
+    font-size: var(--font-2xl);
+    font-weight: 800;
+}
+
+
+/* ============================= Breadcrumb-location ============================= */
+.breadcrumb {
+    margin-bottom: var(--space-md);
+}
+
+.breadcrumb-list {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--font-sm);
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.breadcrumb-link {
+    color: var(--color-text-sub);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-link:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.breadcrumb-link:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+    border-radius: var(--radius-sm);
+}
+
+.breadcrumb-separator {
+    color: var(--color-text-light);
+    user-select: none;
+}
+
+.breadcrumb-current {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .breadcrumb {
+        margin-bottom: var(--space-sm);
+    }
+
+    .breadcrumb-list {
+        gap: var(--space-xs);
+        font-size: var(--font-sm);
+    }
+
+    .breadcrumb-item {
+        gap: var(--space-xs);
+    }
 }
