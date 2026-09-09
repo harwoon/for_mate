@@ -13,7 +13,7 @@ const FINISH_FRAME = "/loading/dog-run-6.png"
 const FRAME_INTERVAL = 160
 const PROGRESS_INTERVAL = 180
 const SMOOTH_INTERVAL = 60
-const COMPLETE_DELAY = 1500
+const COMPLETE_DELAY = 300
 
 export default function Loading({
     loading = true,
@@ -26,9 +26,11 @@ export default function Loading({
     const [complete, setComplete] = useState(false)
 
     // 새로운 로딩이 시작되면 초기화한다.
+    // API가 끝나면 애니메이션을 기다리지 않고 바로 100%로 완료한다.
     useEffect(() => {
         if (!loading) {
             setTargetProgress(100)
+            setDisplayProgress(100)
             return
         }
 
@@ -76,9 +78,15 @@ export default function Loading({
         }
     }, [visible, complete])
 
-    // 목표 progress까지 화면 progress를 부드럽게 따라가게 한다.
+    // API가 진행 중일 때 목표 progress까지 부드럽게 이동한다.
     useEffect(() => {
-        if (!visible || complete) return
+        if (
+            !visible ||
+            complete ||
+            !loading
+        ) {
+            return
+        }
 
         const smoothTimer = setInterval(() => {
             setDisplayProgress((current) => {
@@ -89,21 +97,10 @@ export default function Loading({
                 const difference =
                     targetProgress - current
 
-                let step = 0.5
-
-                // API가 끝나서 100%로 가야 할 때는
-                // 너무 오래 기다리지 않도록 조금 빠르게 이동한다.
-                if (targetProgress === 100) {
-                    if (difference > 30) {
-                        step = 2
-                    } else if (difference > 10) {
-                        step = 1.2
-                    } else {
-                        step = 0.6
-                    }
-                } else if (difference > 15) {
-                    step = 0.9
-                }
+                const step =
+                    difference > 15
+                        ? 0.9
+                        : 0.5
 
                 return Math.min(
                     current + step,
@@ -118,31 +115,32 @@ export default function Loading({
     }, [
         targetProgress,
         visible,
-        complete
+        complete,
+        loading
     ])
 
-    // 실제 API가 끝났고 화면 progress도 100%에 도착하면 완료 상태.
+    // API가 끝나고 100%가 되면 완료 이미지를 잠깐 보여준 뒤 닫는다.
     useEffect(() => {
-		if (
-			loading ||
-			displayProgress < 100
-		) {
-			return
-		}
+        if (
+            loading ||
+            displayProgress < 100
+        ) {
+            return
+        }
 
-		setComplete(true)
+        setComplete(true)
 
-		const timer = setTimeout(() => {
-			setVisible(false)
-		}, COMPLETE_DELAY)
+        const timer = setTimeout(() => {
+            setVisible(false)
+        }, COMPLETE_DELAY)
 
-		return () => {
-			clearTimeout(timer)
-		}
-	}, [
-		loading,
-		displayProgress
-	])
+        return () => {
+            clearTimeout(timer)
+        }
+    }, [
+        loading,
+        displayProgress
+    ])
 
     if (!visible) return null
 
@@ -195,7 +193,7 @@ export default function Loading({
 
                 <p className="loading-message">
                     {complete
-                        ? "완료! 잠시 후 이동합니다."
+                        ? "완료!"
                         : message}
                 </p>
             </div>
