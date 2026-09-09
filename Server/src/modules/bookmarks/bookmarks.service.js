@@ -1,3 +1,4 @@
+import { validateSourceType, parseAnimalId } from "../rescue-animals/animal-source.js"
 import * as repository from "./bookmarks.repository.js"
 
 function serviceError(message, status, code) {
@@ -9,32 +10,10 @@ function serviceError(message, status, code) {
     return error
 }
 
-function parseDesertionNo(desertionNo) {
-    const value = String(desertionNo ?? "").trim()
-
-    if (!/^\d+$/.test(value)) {
-        throw serviceError(
-            "desertion_no 값이 올바르지 않습니다.",
-            400,
-            "INVALID_DESERTION_NO"
-        )
-    }
-
-    if (BigInt(value) > 9223372036854775807n) {
-        throw serviceError(
-            "desertion_no 값이 올바르지 않습니다.",
-            400,
-            "INVALID_DESERTION_NO"
-        )
-    }
-
-    return value
-}
-
 function parseBookmarkId(bookmarkId) {
-    const id = Number(bookmarkId)
+    const id = parseAnimalId(bookmarkId, "INVALID_BOOKMARK_ID")
 
-    if (!Number.isInteger(id) || id <= 0) {
+    if (BigInt(id) <= 0n) {
         throw serviceError(
             "북마크 ID가 올바르지 않습니다.",
             400,
@@ -47,47 +26,31 @@ function parseBookmarkId(bookmarkId) {
 
 
 // 7.1 북마크 등록
-export async function addBookmark({ userId, desertionNo }) {
-    const parsedDesertionNo = parseDesertionNo(desertionNo)
-
-    const rescueAnimal =
-        await repository.findRescueAnimalByDesertionNo(parsedDesertionNo)
-
-    if (!rescueAnimal) {
-        throw serviceError(
-            "구조동물 공고를 찾을 수 없습니다.",
-            404,
-            "RESCUE_ANIMAL_NOT_FOUND"
-        )
+export async function addBookmark({ userId, desertionNo, sourceType, animalId }) {
+    const legacy = sourceType === undefined && animalId === undefined
+    const source = validateSourceType(legacy ? "rescue" : sourceType)
+    const id = parseAnimalId(legacy ? desertionNo : animalId,
+        legacy ? "INVALID_DESERTION_NO" : "INVALID_ANIMAL_ID")
+    if (!legacy && desertionNo !== undefined &&
+        (source !== "rescue" || BigInt(parseAnimalId(desertionNo)) !== BigInt(id))) {
+        throw serviceError("동물 식별자가 서로 일치하지 않습니다.", 400, "INVALID_ANIMAL_ID")
     }
-
-    const existingBookmark =
-        await repository.findByUserAndDesertionNo(
-            userId,
-            parsedDesertionNo
-        )
-
-    if (existingBookmark) {
-        throw serviceError(
-            "이미 북마크한 공고입니다.",
-            409,
-            "BOOKMARK_ALREADY_EXISTS"
-        )
+    if (!await repository.findAnimal(id, source)) {
+        throw serviceError("구조동물 공고를 찾을 수 없습니다.", 404, "RESCUE_ANIMAL_NOT_FOUND")
     }
-
-    const bookmark = await repository.create(
-        userId,
-        parsedDesertionNo
-    )
-
+    const bookmark = await repository.create(userId, id, source)
+    if (!bookmark) {
+        throw serviceError("이미 북마크한 공고입니다.", 409, "BOOKMARK_ALREADY_EXISTS")
+    }
     return {
         bookmark_id: bookmark.id,
+        source_type: bookmark.source_type,
+        animal_id: bookmark.animal_id,
         desertion_no: bookmark.desertion_no,
         created_at: bookmark.created_at
     }
 }
 
-// 7.2 북마크 목록 조회
 export async function getBookmarks(userId) {
     const items = await repository.findMany(userId)
 

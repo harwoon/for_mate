@@ -10,11 +10,14 @@ export function AuthProvider({ children }) {
 
   // 새로고침해도 로그인이 유지되도록, 처음 켤 때 내 정보를 한 번 불러온다.
   useEffect(() => {
+    const clearUser = () => setUser(null)
+    window.addEventListener("auth:expired", clearUser)
     authApi
-      .getMe()
+      .getMe({ redirectOnAuthFailure: false })
       .then((data) => setUser(data.user))
       .catch(() => setUser(null))
       .finally(() => setLoading(false))
+    return () => window.removeEventListener("auth:expired", clearUser)
   }, [])
 
   async function login(credentials) {

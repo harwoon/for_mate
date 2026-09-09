@@ -20,6 +20,7 @@ export function toPublicUser(user) {
     email: user.email,
     name: user.name,
     provider: user.provider,
+    is_admin: user.is_admin,
     createdAt: user.created_at,
     lastLogin: user.last_login,
   }

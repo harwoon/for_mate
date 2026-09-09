@@ -334,6 +334,9 @@ export async function getPosts(query) {
             no: total - offset - index,
             title: item.title,
             region: item.region,
+            primary_image_url: item.primary_image_url,
+            species: item.species, breed: item.breed, color: item.color,
+            find_date: item.find_date,
             created_at: item.created_at
         }))
     }

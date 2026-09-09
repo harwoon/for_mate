@@ -212,11 +212,19 @@ CREATE TABLE match_exclusions (
 -- 북마크
 CREATE TABLE bookmarks (
   id            BIGSERIAL PRIMARY KEY,
-  user_id       BIGINT    NOT NULL REFERENCES users(id),
-  desertion_no  BIGINT    NOT NULL REFERENCES rescue_animals(desertion_no) ON DELETE CASCADE,
+  user_id       BIGINT NOT NULL REFERENCES users(id),
+  source_type   VARCHAR(10) NOT NULL DEFAULT 'rescue',
+  desertion_no  BIGINT REFERENCES rescue_animals(desertion_no) ON DELETE CASCADE,
+  pawinhand_animal_id BIGINT REFERENCES pawinhand_animals(id) ON DELETE CASCADE,
   created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE (user_id, desertion_no)
+  UNIQUE (user_id, desertion_no),
+  CONSTRAINT bookmarks_source_reference_check CHECK (
+    (source_type = 'rescue' AND desertion_no IS NOT NULL AND pawinhand_animal_id IS NULL) OR
+    (source_type = 'pawinhand' AND desertion_no IS NULL AND pawinhand_animal_id IS NOT NULL)
+  )
 );
+CREATE UNIQUE INDEX bookmarks_user_pawinhand_unique
+  ON bookmarks (user_id, pawinhand_animal_id) WHERE source_type = 'pawinhand';
 
 -- 알림 (새벽 배치가 생성)
 CREATE TABLE notifications (
