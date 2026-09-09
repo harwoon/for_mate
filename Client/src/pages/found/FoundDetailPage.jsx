@@ -13,26 +13,18 @@ import Loading from "../../components/common/Loading.jsx"
 import ReportModal from "../../components/post/ReportModal.jsx"
 
 function formatDate(value) {
-    return value ? String(value).slice(0, 10) : "정보 없음"
+    return value
+        ? String(value).slice(0, 10)
+        : "정보 없음"
 }
 
 function formatCreatedAt(value) {
     if (!value) return "정보 없음"
 
-    const date = new Date(value)
-
-    if (Number.isNaN(date.getTime())) {
-        return String(value)
-    }
-
-    return date.toLocaleString("ko-KR", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-    })
+    return String(value)
+        .slice(0, 16)
+        .replace("T", " ")
+        .replaceAll("-", ".")
 }
 
 function displayValue(value) {
@@ -166,6 +158,7 @@ export default function FoundDetailPage() {
         setAlertMessage(
             "신고가 정상적으로 접수되었습니다."
         )
+
         setAlertOpen(true)
     }
 
@@ -180,7 +173,9 @@ export default function FoundDetailPage() {
             <ErrorState
                 message={error}
                 onRetry={() => (
-                    setRetryCount((count) => count + 1)
+                    setRetryCount(
+                        (count) => count + 1
+                    )
                 )}
                 onHome={() => navigate("/")}
             />
@@ -197,12 +192,17 @@ export default function FoundDetailPage() {
         <div className="container">
             <Breadcrumb
                 items={[
-                    { label: "홈", to: "/" },
+                    {
+                        label: "홈",
+                        to: "/"
+                    },
                     {
                         label: "발견제보",
                         to: "/found-posts"
                     },
-                    { label: "상세" }
+                    {
+                        label: "상세"
+                    }
                 ]}
             />
 
@@ -267,7 +267,10 @@ export default function FoundDetailPage() {
 
                     <dl>
                         <div>
-                            <dt>작성자</dt>
+                            <dt>
+                                작성자
+                            </dt>
+
                             <dd>
                                 {displayValue(
                                     post.author?.name
@@ -276,42 +279,70 @@ export default function FoundDetailPage() {
                         </div>
 
                         <div>
-                            <dt>동물 종류</dt>
+                            <dt>
+                                동물 종류
+                            </dt>
+
                             <dd>
-                                {displayValue(post.species)}
+                                {displayValue(
+                                    post.species
+                                )}
                             </dd>
                         </div>
 
                         <div>
-                            <dt>품종</dt>
+                            <dt>
+                                품종
+                            </dt>
+
                             <dd>
-                                {displayValue(post.breed)}
+                                {displayValue(
+                                    post.breed
+                                )}
                             </dd>
                         </div>
 
                         <div>
-                            <dt>색상</dt>
+                            <dt>
+                                색상
+                            </dt>
+
                             <dd>
-                                {displayColors(post.color)}
+                                {displayColors(
+                                    post.color
+                                )}
                             </dd>
                         </div>
 
                         <div>
-                            <dt>발견 위치</dt>
+                            <dt>
+                                발견 위치
+                            </dt>
+
                             <dd>
-                                {displayValue(post.region)}
+                                {displayValue(
+                                    post.region
+                                )}
                             </dd>
                         </div>
 
                         <div>
-                            <dt>발견 날짜</dt>
+                            <dt>
+                                발견 날짜
+                            </dt>
+
                             <dd>
-                                {formatDate(post.find_date)}
+                                {formatDate(
+                                    post.find_date
+                                )}
                             </dd>
                         </div>
 
                         <div>
-                            <dt>상세 내용</dt>
+                            <dt>
+                                상세 내용
+                            </dt>
+
                             <dd>
                                 {displayValue(
                                     post.description
@@ -358,7 +389,9 @@ export default function FoundDetailPage() {
                         <button
                             type="button"
                             className="btn btn-danger"
-                            onClick={() => setReportOpen(true)}
+                            onClick={() => (
+                                setReportOpen(true)
+                            )}
                         >
                             신고하기
                         </button>
@@ -370,7 +403,9 @@ export default function FoundDetailPage() {
                 <ReportModal
                     postId={id}
                     postType="found"
-                    onClose={() => setReportOpen(false)}
+                    onClose={() => (
+                        setReportOpen(false)
+                    )}
                     onSuccess={handleReportSuccess}
                 />
             )}
@@ -379,7 +414,9 @@ export default function FoundDetailPage() {
                 open={alertOpen}
                 title={alertTitle}
                 message={alertMessage}
-                onConfirm={() => setAlertOpen(false)}
+                onConfirm={() => (
+                    setAlertOpen(false)
+                )}
             />
         </div>
     )
