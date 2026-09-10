@@ -11,10 +11,10 @@ import { formatDate } from "../../utils/date.js"
 
 const RETRY_INTERVAL = 2000
 const MAX_RETRIES = 15
-const ANALYSIS_STEPS = [
-    { title: "이미지 특징 분석", description: "등록한 사진에서 AI 매칭을 위한 특징을 분석합니다." },
-    { title: "보호동물 이미지 비교", description: "보호 중인 동물 사진과 이미지 유사도를 비교합니다." },
-    { title: "매칭 후보 정리", description: "유사도가 높은 후보를 순서대로 정리합니다." }
+const MATCHING_MESSAGES = [
+    "등록한 이미지의 특징을 분석하고 있습니다.",
+    "보호동물 이미지와 유사도를 비교하고 있습니다.",
+    "유사한 보호동물 후보를 정리하고 있습니다."
 ]
 
 export default function AiSearchPage() {
@@ -31,6 +31,7 @@ export default function AiSearchPage() {
     const [delayed, setDelayed] = useState(false)
     const [matchError, setMatchError] = useState(null)
     const [failedImages, setFailedImages] = useState({})
+    const [messageIndex, setMessageIndex] = useState(0)
     const runRef = useRef(0)
     const timerRef = useRef(null)
     const pendingRef = useRef(null)
@@ -68,6 +69,21 @@ export default function AiSearchPage() {
             matchingRef.current = false
         }
     }, [initialPostId, reloadCount])
+
+    useEffect(() => {
+        if (!matching) {
+            setMessageIndex(0)
+            return
+        }
+
+        const interval = setInterval(() => {
+            setMessageIndex((index) =>
+                Math.min(index + 1, MATCHING_MESSAGES.length - 1)
+            )
+        }, 4000)
+
+        return () => clearInterval(interval)
+    }, [matching])
 
     function selectPost(id) {
         if (String(id) === selectedPostId) return
@@ -192,21 +208,28 @@ export default function AiSearchPage() {
 
                     {matching && (
                         <section className="card card-padded ai-analysis" aria-labelledby="ai-analysis-title">
-                            <div role="status" aria-live="polite">
-                                <h2 id="ai-analysis-title">AI가 유사한 보호동물을 찾고 있습니다.</h2>
-                                <p className="text-sub">{waiting ? "AI가 등록한 사진을 분석하고 있습니다. 잠시만 기다려주세요." : "매칭을 요청했습니다. 결과가 준비되면 자동으로 이동합니다."}</p>
+                            <div className="ai-analysis-loading" role="status" aria-live="polite">
+                                <div className="ai-loading-spinner" aria-hidden="true" />
+
+                                <h2 id="ai-analysis-title">
+                                    AI가 유사한 보호동물을 찾고 있습니다.
+                                </h2>
+
+                                <div className="ai-progress-track" aria-hidden="true">
+                                    <div className="ai-progress-bar" />
+                                </div>
+
+                                <p className="ai-analysis-message">
+                                    {MATCHING_MESSAGES[messageIndex]}
+                                </p>
+
+                                <p className="text-sub ai-analysis-help">
+                                    분석이 완료되면 매칭 결과로 자동 이동합니다.
+                                </p>
                             </div>
-                            <ol className="ai-analysis-steps">
-                                {ANALYSIS_STEPS.map((step, index) => (
-                                    <li key={step.title}>
-                                        <span className="ai-step-number" aria-hidden="true">{index + 1}</span>
-                                        <div><h3>{step.title}</h3><p className="text-sub">{step.description}</p></div>
-                                    </li>
-                                ))}
-                            </ol>
-                            <p className="text-sub">결과가 준비될 때까지 잠시만 기다려주세요.</p>
                         </section>
                     )}
+
                     {delayed && (
                         <div className="card card-padded stack" role="status">
                             <p>AI 분석 준비가 지연되고 있습니다. 잠시 후 다시 시도해주세요.</p>
