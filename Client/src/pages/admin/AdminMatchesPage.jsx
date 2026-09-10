@@ -87,7 +87,21 @@ export default function AdminMatchesPage() {
 
                 if (cancelled) return
                 if (!Array.isArray(result)) throw new Error("INVALID_RESPONSE")
-                setMatches(result)
+
+                const normalizedMatches = result.flatMap((group) => {
+                    if (!Array.isArray(group.matches)) {
+                        return [group]
+                    }
+
+                    return group.matches.map((match) => ({
+                        ...match,
+                        lost_post: group.lost_post,
+                        user: group.user
+                    }))
+                })
+
+                setMatches(normalizedMatches)
+                
             } catch {
                 if (!cancelled) setError("AI 매칭 기록을 불러오지 못했습니다.")
             } finally {

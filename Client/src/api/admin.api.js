@@ -1,7 +1,4 @@
-import {
-    get,
-    patch
-} from "./client.js"
+import { del, get, patch, post, put } from "./client.js"
 
 // 관리자 대시보드
 export const getAdminDashboard = () => (
@@ -120,3 +117,34 @@ export const getAdminMatches = (params = {}) => {
         `/admin/matches${query ? `?${query}` : ""}`
     )
 }
+
+// FAQ 관리
+export const getAdminFaqs = () => (
+    get("/admin/faqs")
+)
+
+export const createAdminFaq = (data) => (
+    post("/admin/faqs", data)
+)
+
+export const updateAdminFaq = (faqId, data) => (
+    put(`/admin/faqs/${faqId}`, data)
+)
+
+export const updateAdminFaqStatus = (faqId, status) => (
+    patch(
+        `/admin/faqs/${faqId}/status`,
+        { status }
+    )
+)
+
+export const updateAdminFaqOrder = (items) => (
+    patch(
+        "/admin/faqs/order",
+        { items }
+    )
+)
+
+export const deleteAdminFaq = (faqId) => (
+    del(`/admin/faqs/${faqId}`)
+)
