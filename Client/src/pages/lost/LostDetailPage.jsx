@@ -1,3 +1,4 @@
+import { formatTimestampDate } from "../../utils/date.js"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { deleteLostPost, getLostPost } from "../../api/lostPosts.api.js"
@@ -239,7 +240,7 @@ export default function LostDetailPage() {
                         </Badge>
 
                         <span className="text-sub">
-                            등록일 {formatDate(post.created_at)}
+                            등록일 {formatTimestampDate(post.created_at, "정보 없음")}
                         </span>
                     </div>
 

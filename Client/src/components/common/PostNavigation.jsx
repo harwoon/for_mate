@@ -1,3 +1,4 @@
+import { formatTimestampDate } from "../../utils/date.js"
 import { Link } from "react-router-dom"
 import "../../css/components.css"
 
@@ -23,7 +24,8 @@ export default function PostNavigation({
     basePath,
     getPath,
     getTitle = getDefaultTitle,
-    getDate = (post) => post.created_at
+    getDate,
+    formatNavigationDate = getDate ? formatDate : formatTimestampDate
 }) {
     function resolvePath(post) {
         if (getPath) {
@@ -56,8 +58,8 @@ export default function PostNavigation({
                     </span>
 
                     <span className="post-navigation-date">
-                        {formatDate(
-                            getDate(previousPost)
+                        {formatNavigationDate(
+                            getDate ? getDate(previousPost) : previousPost.created_at
                         )}
                     </span>
                 </Link>
@@ -95,8 +97,8 @@ export default function PostNavigation({
                     </span>
 
                     <span className="post-navigation-date">
-                        {formatDate(
-                            getDate(nextPost)
+                        {formatNavigationDate(
+                            getDate ? getDate(nextPost) : nextPost.created_at
                         )}
                     </span>
                 </Link>

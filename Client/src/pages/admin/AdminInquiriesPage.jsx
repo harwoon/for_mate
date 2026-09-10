@@ -1,3 +1,4 @@
+import { formatDateTime } from "../../utils/date.js"
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { getAdminInquiries } from "../../api/admin.api.js"
@@ -7,15 +8,6 @@ const PAGE_SIZE = 15
 const STATUS_LABELS = {
     pending: "답변 대기",
     answered: "답변 완료"
-}
-
-function formatDateTime(value) {
-    if (!value) return "-"
-
-    return String(value)
-        .slice(0, 16)
-        .replace("T", " ")
-        .replaceAll("-", ".")
 }
 
 export default function AdminInquiriesPage() {

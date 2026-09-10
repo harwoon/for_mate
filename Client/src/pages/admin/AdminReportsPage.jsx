@@ -1,3 +1,4 @@
+import { formatDateTime } from "../../utils/date.js"
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import {
@@ -16,15 +17,6 @@ const STATUS_LABELS = {
 const POST_TYPE_LABELS = {
     lost: "실종 공고",
     found: "발견제보"
-}
-
-function formatDateTime(value) {
-    if (!value) return "-"
-
-    return String(value)
-        .slice(0, 16)
-        .replace("T", " ")
-        .replaceAll("-", ".")
 }
 
 function getPostPath(report) {

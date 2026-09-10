@@ -1,3 +1,4 @@
+import { formatTimestampDate } from "../../utils/date.js"
 import {
     useEffect,
     useRef,
@@ -269,9 +270,7 @@ export default function Header() {
                                                             </p>
 
                                                             <span className="text-sub">
-                                                                {String(notification.created_at)
-                                                                    .slice(0, 10)
-                                                                    .replaceAll("-", ".")}
+                                                                {formatTimestampDate(notification.created_at)}
                                                             </span>
                                                         </div>
 

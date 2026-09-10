@@ -1,3 +1,4 @@
+import { formatDateTime } from "../../utils/date.js"
 import { useEffect, useState } from "react"
 import {
     Link,
@@ -11,15 +12,6 @@ import {
 const STATUS_LABELS = {
     pending: "답변 대기",
     answered: "답변 완료"
-}
-
-function formatDateTime(value) {
-    if (!value) return "-"
-
-    return String(value)
-        .slice(0, 16)
-        .replace("T", " ")
-        .replaceAll("-", ".")
 }
 
 export default function AdminInquiryDetailPage() {

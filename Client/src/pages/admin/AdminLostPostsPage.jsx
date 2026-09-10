@@ -1,26 +1,11 @@
+import { formatDate } from "../../utils/date.js"
+import { formatDateTime } from "../../utils/date.js"
 import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { imageUrl } from "../../api/client.js"
 import { getAdminLostPosts } from "../../api/admin.api.js"
 
 const PAGE_SIZE = 15
-
-function formatDate(value) {
-    if (!value) return "-"
-
-    return String(value)
-        .slice(0, 10)
-        .replaceAll("-", ".")
-}
-
-function formatDateTime(value) {
-    if (!value) return "-"
-
-    return String(value)
-        .slice(0, 16)
-        .replace("T", " ")
-        .replaceAll("-", ".")
-}
 
 function getStatusLabel(status) {
     if (status === "blind") return "블라인드"

@@ -149,7 +149,7 @@ export async function findMany({ filters, size, offset }) {
                     LIMIT 1
                 ) AS primary_image_url,
                 fp.region,
-                TO_CHAR(fp.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at
+                fp.created_at
             FROM found_posts fp
             ${whereClause}
             ORDER BY fp.created_at DESC, fp.id DESC
@@ -180,7 +180,7 @@ export async function findById(id) {
                 fp.find_date,
                 fp.description,
                 fp.status,
-                TO_CHAR(fp.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at,
+                fp.created_at,
                 r.reason AS blind_reason,
                 u.name AS author_name
             FROM found_posts fp
