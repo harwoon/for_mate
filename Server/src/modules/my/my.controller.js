@@ -38,3 +38,13 @@ export async function getMyFoundPosts(req, res, next) {
 		next(err)
 	}
 }
+
+// 8.4 내 매칭 기록 목록 조회
+export async function getMyMatches(req, res, next) {
+    try {
+        const result = await service.getMyMatches({ userId: req.userId, query: req.query })
+        ok(res, result)
+    } catch (err) {
+        next(err)
+    }
+}

@@ -19,6 +19,7 @@ const IMAGE_BASE_URL = "https://d12l2mexpetzlh.cloudfront.net/images/shelter/"
 const DEFAULT_LIMIT = 100
 const MAX_LIMIT = 500
 const DEFAULT_REFRESH_LIMIT = 100
+const SUPPORTED_SPECIES = new Set(["개", "고양이"])
 const DEFAULT_REQUEST_DELAY_MS = 300
 const REQUEST_TIMEOUT_MS = 10_000
 const MAX_IMAGES = 8
@@ -257,11 +258,11 @@ async function fetchLatestSourceIds(limit) {
 // RSS에 다시 나타나지 않더라도 기존 보호 중 공고의 상태와 사진 변경을 확인한다.
 // 이미 종료된 공고는 매일 재조회하지 않는다.
 async function findRefreshSourceIds(limit) {
-  const result = await pool.query(
+    const result = await pool.query(
     `SELECT source_id
      FROM pawinhand_animals
-     WHERE process_state = '보호중'
-        OR notice_edt >= CURRENT_DATE
+     WHERE up_kind_nm IN ('개', '고양이')
+       AND (process_state = '보호중' OR notice_edt >= CURRENT_DATE)
      ORDER BY last_seen_at ASC, id ASC
      LIMIT $1`,
     [limit],
@@ -473,6 +474,7 @@ async function run() {
     requested: sourceIds.length,
     inserted: 0,
     updated: 0,
+    skipped: 0,
     failed: 0,
     images: 0,
   }
@@ -480,6 +482,15 @@ async function run() {
   for (const [index, sourceId] of sourceIds.entries()) {
     try {
       const animal = await fetchAnimal(sourceId)
+
+      if (!SUPPORTED_SPECIES.has(animal.species)) {
+        summary.skipped += 1
+        console.log(
+          `[pawinhand] 지원하지 않는 축종 건너뜀 ${index + 1}/${sourceIds.length}: ${sourceId} (${animal.species})`,
+        )
+        continue
+      }
+
       summary.images += animal.imageUrls.length
 
       if (dryRun) {

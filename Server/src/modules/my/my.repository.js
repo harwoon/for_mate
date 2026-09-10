@@ -222,3 +222,60 @@ export async function findMyFoundPosts({ userId, status, size, offset }) {
         total: countResult.rows[0].total
     }
 }
+
+// 8.4 내 매칭 기록 목록 조회
+export async function findMyMatches({ userId, lostPostId, size, offset }) {
+    const params = [userId]
+    let lostPostCondition = ""
+
+    if (lostPostId) {
+        params.push(lostPostId)
+        lostPostCondition = `AND lp.id = $${params.length}`
+    }
+
+    const countResult = await query(
+        `SELECT COUNT(*)::int AS total
+        FROM matches m
+        JOIN lost_posts lp ON lp.id = m.source_post_id
+        WHERE lp.user_id = $1
+            ${lostPostCondition}`,
+        params
+    )
+
+    const listParams = [...params, size, offset]
+    const sizeParam = `$${params.length + 1}`
+    const offsetParam = `$${params.length + 2}`
+
+    const listResult = await query(
+        `SELECT
+            m.id, m.source_post_id AS lost_post_id, m.source_type,
+            m.desertion_no, m.pawinhand_animal_id,
+            m.similarity_score, m.matched_date, m.created_at,
+            lp.pet_name, lp.species AS lost_species,
+            COALESCE(ra.up_kind_nm, pa.up_kind_nm) AS up_kind_nm,
+            COALESCE(ra.kind_nm, pa.kind_nm) AS kind_nm,
+            animal_image.image_url AS animal_image_url
+        FROM matches m
+        JOIN lost_posts lp ON lp.id = m.source_post_id
+        LEFT JOIN rescue_animals ra ON m.source_type = 'rescue' AND ra.desertion_no = m.desertion_no
+        LEFT JOIN pawinhand_animals pa ON m.source_type = 'pawinhand' AND pa.id = m.pawinhand_animal_id
+        LEFT JOIN LATERAL (
+            SELECT image_url
+            FROM images
+            WHERE post_type = m.source_type
+              AND (
+                (m.source_type = 'rescue' AND desertion_no = m.desertion_no) OR
+                (m.source_type = 'pawinhand' AND pawinhand_animal_id = m.pawinhand_animal_id)
+              )
+            ORDER BY created_at ASC, id ASC
+            LIMIT 1
+        ) animal_image ON TRUE
+        WHERE lp.user_id = $1
+            ${lostPostCondition}
+        ORDER BY m.created_at DESC, m.id DESC
+        LIMIT ${sizeParam} OFFSET ${offsetParam}`,
+        listParams
+    )
+
+    return { items: listResult.rows, total: countResult.rows[0].total }
+}

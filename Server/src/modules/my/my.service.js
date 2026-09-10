@@ -127,3 +127,42 @@ export async function getMyFoundPosts({ userId, query }) {
         }
     }
 }
+
+// 8.4 내 매칭 기록 목록 조회
+export async function getMyMatches({ userId, query }) {
+    const page = parsePagingValue(query.page, 1, "page", Number.MAX_SAFE_INTEGER)
+    const size = parsePagingValue(query.size, 10, "size", 100)
+
+    let lostPostId = null
+    if (query.lost_post_id !== undefined) {
+        lostPostId = Number(query.lost_post_id)
+        if (!Number.isInteger(lostPostId) || lostPostId <= 0) {
+            throw serviceError("lost_post_id 값이 올바르지 않습니다.", 400, "INVALID_LOST_POST_ID")
+        }
+    }
+
+    const offset = (page - 1) * size
+    const { items, total } = await repository.findMyMatches({ userId, lostPostId, size, offset })
+
+    return {
+        items: items.map(toMatchItem),
+        pagination: { page, size, total, total_pages: Math.ceil(total / size) }
+    }
+}
+
+function toMatchItem(match) {
+    return {
+        id: Number(match.id),
+        lost_post: { id: Number(match.lost_post_id), pet_name: match.pet_name, species: match.lost_species },
+        animal: {
+            source_type: match.source_type,
+            id: Number(match.source_type === "rescue" ? match.desertion_no : match.pawinhand_animal_id),
+            up_kind_nm: match.up_kind_nm,
+            kind_nm: match.kind_nm,
+            image_url: match.animal_image_url
+        },
+        similarity_score: Number(match.similarity_score),
+        matched_date: match.matched_date,
+        created_at: match.created_at
+    }
+}
