@@ -116,7 +116,6 @@ async function saveAnimals(processed_animals) {
       notice_edt: animal.noticeEdt,
       updated_at: new Date().toISOString()
     }
-    console.log(record)
 
     const {error} = await supabase.from("rescue_animals").upsert(record, {onConflict:"desertion_no"})
 
