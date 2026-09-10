@@ -278,6 +278,16 @@ export async function findAllMatches(filters) {
         conditions.push(`m.matched_date = $${params.length}`)
     }
 
+    if (filters.sourceType) {
+        params.push(filters.sourceType)
+        conditions.push(`m.source_type = $${params.length}`)
+    }
+
+    if (filters.userSearch) {
+        params.push(`%${filters.userSearch}%`)
+        conditions.push(`(u.email ILIKE $${params.length} OR u.name ILIKE $${params.length})`)
+    }
+
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""
 
     params.push(filters.limit)
@@ -296,11 +306,15 @@ export async function findAllMatches(filters) {
             lp.pet_name,
             lp.species AS lost_species,
             lost_image.image_url AS lost_image_url,
+            u.id AS user_id,
+            u.name AS user_name,
+            u.email AS user_email,
             COALESCE(ra.up_kind_nm, pa.up_kind_nm) AS up_kind_nm,
             COALESCE(ra.kind_nm, pa.kind_nm) AS kind_nm,
             animal_image.image_url AS animal_image_url
         FROM matches m
         JOIN lost_posts lp ON lp.id = m.source_post_id
+        JOIN users u ON u.id = lp.user_id
         LEFT JOIN rescue_animals ra ON m.source_type = 'rescue' AND ra.desertion_no = m.desertion_no
         LEFT JOIN pawinhand_animals pa ON m.source_type = 'pawinhand' AND pa.id = m.pawinhand_animal_id
         LEFT JOIN LATERAL (
@@ -322,7 +336,7 @@ export async function findAllMatches(filters) {
             LIMIT 1
         ) animal_image ON TRUE
         ${whereClause}
-        ORDER BY m.created_at DESC
+        ORDER BY m.source_post_id, m.similarity_score DESC
         LIMIT $${limitParamIndex}`,
         params
     )
