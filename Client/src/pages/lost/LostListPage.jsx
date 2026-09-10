@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { imageUrl } from "../../api/client.js"
-import { getRescueAnimals } from "../../api/rescueAnimals.api.js"
+import { Link } from "react-router-dom"
+import { getLostPosts } from "../../api/lostPosts.api.js"
 import Breadcrumb from "../../components/common/Breadcrumb.jsx"
 import Empty from "../../components/common/Empty.jsx"
 import ErrorState from "../../components/common/ErrorState.jsx"
@@ -24,84 +23,73 @@ const EMPTY_FILTERS = {
     end_date: ""
 }
 
-function isEndingSoon(daysUntilEnd) {
-    const days = Number(daysUntilEnd)
-
-    return (
-        Number.isFinite(days) &&
-        days >= 0 &&
-        days <= 3
-    )
-}
-
-function getDetailPath(animal) {
-    if (
-        animal.source_type &&
-        animal.animal_id
-    ) {
-        return (
-            `/rescue-animals/${animal.source_type}/${animal.animal_id}`
-        )
-    }
-
-    return (
-        `/rescue-animals/${animal.desertion_no}`
-    )
-}
-
-export default function RescueListPage() {
-    const navigate = useNavigate()
-
+export default function LostListPage() {
+    // 모달 안의 임시 선택과 구분되는, 실제 목록 조회에 적용된 필터이다.
     const [filters, setFilters] = useState(EMPTY_FILTERS)
     const [isFilterOpen, setIsFilterOpen] = useState(false)
     const [sort, setSort] = useState("latest")
     const [page, setPage] = useState(1)
 
-    const [animals, setAnimals] = useState([])
-    const [total, setTotal] = useState(0)
-    const [responsePage, setResponsePage] = useState(1)
-    const [responseSize, setResponseSize] = useState(PAGE_SIZE)
+    const [posts, setPosts] = useState([])
+    const [pagination, setPagination] = useState({
+        page: 1,
+        size: PAGE_SIZE,
+        total: 0,
+        total_pages: 0
+    })
 
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
     const [retryCount, setRetryCount] = useState(0)
 
+    // 페이지 또는 적용 필터가 바뀔 때마다 서버에서 목록을 다시 가져온다.
     useEffect(() => {
         let cancelled = false
 
-        async function loadAnimals() {
+        async function loadPosts() {
             setLoading(true)
             setError("")
 
+            // 화면에서는 시/도와 시/군/구를 따로 관리하지만 서버에는 region 하나로 보낸다.
+            const region = [
+                filters.sido,
+                filters.sigungu
+            ]
+                .filter(Boolean)
+                .join(" ")
+
             try {
-                const result = await getRescueAnimals({
+                const result = await getLostPosts({
                     page,
                     size: PAGE_SIZE,
                     species: filters.species,
                     breed: filters.breed,
-                    color: filters.colors,
-                    sido: filters.sido,
-                    sigungu: filters.sigungu,
+                    colors: filters.colors.join(","),
+                    region,
                     start_date: filters.start_date,
-                    end_date: filters.end_date
+                    end_date: filters.end_date,
+                    sort
                 })
 
                 if (cancelled) return
 
-                setAnimals(result?.items ?? [])
-                setTotal(result?.total ?? 0)
-                setResponsePage(result?.page ?? page)
-                setResponseSize(
-                    result?.size ?? PAGE_SIZE
+                setPosts(result?.items ?? [])
+
+                setPagination(
+                    result?.pagination ?? {
+                        page,
+                        size: PAGE_SIZE,
+                        total: 0,
+                        total_pages: 0
+                    }
                 )
             } catch (error) {
                 if (!cancelled) {
-                    setAnimals([])
-                    setTotal(0)
+                    setPosts([])
 
                     setError(
                         error.message ||
-                        "보호중인 동물을 불러오지 못했습니다."
+                        "실종 공고를 불러오지 못했습니다."
                     )
                 }
             } finally {
@@ -111,7 +99,7 @@ export default function RescueListPage() {
             }
         }
 
-        loadAnimals()
+        loadPosts()
 
         return () => {
             cancelled = true
@@ -123,12 +111,14 @@ export default function RescueListPage() {
         retryCount
     ])
 
+    // 모달의 검색하기 버튼이 전달한 값을 실제 필터로 확정한다.
     function handleApplyFilters(nextFilters) {
         setFilters(nextFilters)
         setPage(1)
         setIsFilterOpen(false)
     }
 
+    // 필터 값만 초기화하고 모달은 그대로 유지한다.
     function handleResetFilters() {
         setFilters({
             ...EMPTY_FILTERS,
@@ -143,6 +133,7 @@ export default function RescueListPage() {
         setPage(1)
     }
 
+    // 적용된 필터 chip의 X를 눌렀을 때 해당 조건만 제거한다.
     function handleRemoveFilter(field, value) {
         setFilters((current) => {
             if (field === "colors") {
@@ -230,139 +221,124 @@ export default function RescueListPage() {
     ].filter(Boolean)
 
     return (
-        <div className="container">
-            <Breadcrumb
-                items={[
-                    {
-                        label: "홈",
-                        to: "/"
-                    },
-                    {
-                        label: "보호중이에요"
-                    }
-                ]}
-            />
+        <div className="lost-list-page">
+            <div className="container">
+                <Breadcrumb
+                    items={[
+                        {
+                            label: "홈",
+                            to: "/"
+                        },
+                        {
+                            label: "찾고있어요"
+                        }
+                    ]}
+                />
 
-            <div className="page-header">
-                <div>
+                <div className="page-header">
                     <h1 className="page-title">
-                        보호중이에요
+                        찾고있어요
                     </h1>
 
-                    <p className="page-desc">
-                        현재 보호 중인 구조동물을 확인할 수 있습니다.
-                    </p>
+                    <Link
+                        to="/lost-posts/new"
+                        className="btn btn-primary"
+                    >
+                        실종 공고 등록
+                    </Link>
                 </div>
-            </div>
 
-            <FilterBar
-                total={total}
-                onOpenFilter={() => (
-                    setIsFilterOpen(true)
-                )}
-                sort={sort}
-                onChangeSort={handleChangeSort}
-                chips={filterChips}
-            />
-
-            {isFilterOpen && (
-                <FilterModal
-                    initialFilters={filters}
-                    dateTitle="구조 날짜"
-                    onClose={() => (
-                        setIsFilterOpen(false)
+                <FilterBar
+                    total={pagination.total}
+                    onOpenFilter={() => (
+                        setIsFilterOpen(true)
                     )}
-                    onApply={handleApplyFilters}
-                    onReset={handleResetFilters}
+                    sort={sort}
+                    onChangeSort={handleChangeSort}
+                    chips={filterChips}
                 />
-            )}
 
-            {!error && (
-                <Loading
-                    loading={loading}
-                    message="보호중인 동물을 불러오는 중입니다."
-                />
-            )}
-
-            {!loading && error && (
-                <ErrorState
-                    message={error}
-                    onRetry={() => (
-                        setRetryCount(
-                            (count) => count + 1
-                        )
-                    )}
-                    onHome={() => navigate("/")}
-                />
-            )}
-
-            {!loading &&
-                !error &&
-                animals.length === 0 && (
-                    <Empty message="조건에 맞는 보호동물이 없습니다." />
+                {isFilterOpen && (
+                    <FilterModal
+                        initialFilters={filters}
+                        dateTitle="실종 날짜"
+                        onClose={() => (
+                            setIsFilterOpen(false)
+                        )}
+                        onApply={handleApplyFilters}
+                        onReset={handleResetFilters}
+                    />
                 )}
 
-            {!loading &&
-                !error &&
-                animals.length > 0 && (
-                    <>
-                        <PostGrid>
-                            {animals.map((animal) => {
-                                const endingSoon =
-                                    isEndingSoon(
-                                        animal.days_until_end
-                                    )
+                {loading && (
+                    <Loading message="실종 공고를 불러오는 중입니다." />
+                )}
 
-                                return (
+                {!loading && error && (
+                    <ErrorState
+                        message={error}
+                        onRetry={() => (
+                            setRetryCount(
+                                (count) => count + 1
+                            )
+                        )}
+                    />
+                )}
+
+                {!loading &&
+                    !error &&
+                    posts.length === 0 && (
+                        <Empty message="조건에 맞는 실종 공고가 없습니다." />
+                    )}
+
+                {!loading &&
+                    !error &&
+                    posts.length > 0 && (
+                        <>
+                            <PostGrid>
+                                {posts.map((post) => (
                                     <PostCard
-                                        key={
-                                            `${animal.source_type}-${animal.animal_id}`
-                                        }
-                                        to={
-                                            getDetailPath(
-                                                animal
-                                            )
-                                        }
+                                        key={post.id}
+                                        to={`/lost-posts/${post.id}`}
                                         thumbnail={
-                                            imageUrl(
-                                                animal.image_url
-                                            )
+                                            post.first_image_url
                                         }
-                                        badgeType={
-                                            endingSoon
-                                                ? "ending"
-                                                : "rescue"
-                                        }
-                                        badgeText={
-                                            endingSoon
-                                                ? "보호종료 예정"
-                                                : "보호중"
-                                        }
+                                        badgeType="lost"
+                                        badgeText="실종"
                                         breed={
-                                            animal.breed ||
-                                            animal.species
+                                            post.breed ||
+                                            post.species
                                         }
                                         region={
-                                            animal.happen_place ||
+                                            post.region ||
                                             "-"
                                         }
                                         date={
-                                            animal.happen_dt ||
+                                            post.event_date?.slice(
+                                                0,
+                                                10
+                                            ) ||
                                             "-"
                                         }
                                     />
-                                )
-                            })}
-                        </PostGrid>
+                                ))}
+                            </PostGrid>
 
-                        <Pagination
-                            page={responsePage}
-                            total={total}
-                            size={responseSize}
-                            onChange={setPage}
-                        />
-                    </>
-                )}
+                            <Pagination
+                                page={
+                                    pagination.page ??
+                                    page
+                                }
+                                total={pagination.total}
+                                size={
+                                    pagination.size ??
+                                    PAGE_SIZE
+                                }
+                                onChange={setPage}
+                            />
+                        </>
+                    )}
+            </div>
         </div>
     )
 }
