@@ -16,10 +16,12 @@ export async function getMatches(lostPostId) {
     throw error
   }
 
-  const bestByAnimal = new Map() // key: `${source_type}:${ref_id}`
+  const species = await repository.findLostPostSpecies(lostPostId)   // 추가
+
+  const bestByAnimal = new Map()
 
   for (const vector of vectors) {
-    const candidates = await repository.findNearestCandidates(vector, CANDIDATE_LIMIT_PER_VECTOR)
+    const candidates = await repository.findNearestCandidates(vector, species, CANDIDATE_LIMIT_PER_VECTOR)  // species 전달
     for (const { ref_id, source_type, distance } of candidates) {
       const key = `${source_type}:${ref_id}`
       const current = bestByAnimal.get(key)

@@ -1,5 +1,11 @@
 import { query } from "../../db/pool.js"
 
+// 실종 공고 종 조회
+export async function findLostPostSpecies(lostPostId) {
+  const { rows } = await query(`SELECT species FROM lost_posts WHERE id = $1`, [lostPostId])
+  return rows[0]?.species ?? null
+}
+
 // 실종 공고에 연결된 임베딩 벡터들을 가져온다 (사진 장수만큼 나옴).
 export async function findLostPostEmbeddings(lostPostId) {
   const { rows } = await query(
@@ -16,7 +22,7 @@ export async function findLostPostEmbeddings(lostPostId) {
 
 // 벡터 하나를 기준으로 가장 가까운 구조동물 후보 K개를 조회한다.
 // "ORDER BY 거리 LIMIT" 형태를 유지해야 pgvector HNSW 인덱스가 실제로 사용된다.
-export async function findNearestCandidates(embeddingLiteral, limit = 20) {
+export async function findNearestCandidates(embeddingLiteral, species, limit = 20) {
   const [rescueResult, pawinhandResult] = await Promise.all([
     query(
       `
@@ -24,11 +30,12 @@ export async function findNearestCandidates(embeddingLiteral, limit = 20) {
       FROM embeddings e
       JOIN images i ON i.id = e.image_id AND i.post_type = 'rescue'
       JOIN rescue_animals ra ON ra.desertion_no = i.desertion_no
-      WHERE ra.notice_edt IS NULL OR ra.notice_edt >= CURRENT_DATE
+      WHERE (ra.notice_edt IS NULL OR ra.notice_edt >= CURRENT_DATE)
+        AND ra.up_kind_nm = $2
       ORDER BY e.embedding <=> $1::vector
-      LIMIT $2
+      LIMIT $3
       `,
-      [embeddingLiteral, limit],
+      [embeddingLiteral, species, limit],
     ),
     query(
       `
@@ -36,11 +43,12 @@ export async function findNearestCandidates(embeddingLiteral, limit = 20) {
       FROM embeddings e
       JOIN images i ON i.id = e.image_id AND i.post_type = 'pawinhand'
       JOIN pawinhand_animals pa ON pa.id = i.pawinhand_animal_id
-      WHERE pa.notice_edt IS NULL OR pa.notice_edt >= CURRENT_DATE
+      WHERE (pa.notice_edt IS NULL OR pa.notice_edt >= CURRENT_DATE)
+        AND pa.up_kind_nm = $2
       ORDER BY e.embedding <=> $1::vector
-      LIMIT $2
+      LIMIT $3
       `,
-      [embeddingLiteral, limit],
+      [embeddingLiteral, species, limit],
     ),
   ])
   return [...rescueResult.rows, ...pawinhandResult.rows]
