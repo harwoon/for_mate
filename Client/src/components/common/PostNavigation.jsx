@@ -9,7 +9,7 @@ function formatDate(value) {
         .replaceAll("-", ".")
 }
 
-function getLostTitle(post) {
+function getDefaultTitle(post) {
     const name = post.pet_name || "이름 없음"
     const species = post.species || "종류 미상"
     const breed = post.breed || "품종 미상"
@@ -20,8 +20,19 @@ function getLostTitle(post) {
 export default function PostNavigation({
     previousPost,
     nextPost,
-    basePath
+    basePath,
+    getPath,
+    getTitle = getDefaultTitle,
+    getDate = (post) => post.created_at
 }) {
+    function resolvePath(post) {
+        if (getPath) {
+            return getPath(post)
+        }
+
+        return `${basePath}/${post.id}`
+    }
+
     return (
         <nav
             className="post-navigation"
@@ -29,25 +40,35 @@ export default function PostNavigation({
         >
             {previousPost ? (
                 <Link
-                    to={`${basePath}/${previousPost.id}`}
+                    to={resolvePath(previousPost)}
                     className="post-navigation-row"
                 >
                     <span className="post-navigation-label">
-                        ▲ 이전글
+                        <i
+                            className="ri-arrow-up-s-line"
+                            aria-hidden="true"
+                        />
+                        이전글
                     </span>
 
                     <span className="post-navigation-title">
-                        {getLostTitle(previousPost)}
+                        {getTitle(previousPost)}
                     </span>
 
                     <span className="post-navigation-date">
-                        {formatDate(previousPost.created_at)}
+                        {formatDate(
+                            getDate(previousPost)
+                        )}
                     </span>
                 </Link>
             ) : (
-                <div className="post-navigation-row">
+                <div className="post-navigation-row is-disabled">
                     <span className="post-navigation-label">
-                        ▲ 이전글
+                        <i
+                            className="ri-arrow-up-s-line"
+                            aria-hidden="true"
+                        />
+                        이전글
                     </span>
 
                     <span className="post-navigation-title">
@@ -58,25 +79,35 @@ export default function PostNavigation({
 
             {nextPost ? (
                 <Link
-                    to={`${basePath}/${nextPost.id}`}
+                    to={resolvePath(nextPost)}
                     className="post-navigation-row"
                 >
                     <span className="post-navigation-label">
-                        ▼ 다음글
+                        <i
+                            className="ri-arrow-down-s-line"
+                            aria-hidden="true"
+                        />
+                        다음글
                     </span>
 
                     <span className="post-navigation-title">
-                        {getLostTitle(nextPost)}
+                        {getTitle(nextPost)}
                     </span>
 
                     <span className="post-navigation-date">
-                        {formatDate(nextPost.created_at)}
+                        {formatDate(
+                            getDate(nextPost)
+                        )}
                     </span>
                 </Link>
             ) : (
-                <div className="post-navigation-row">
+                <div className="post-navigation-row is-disabled">
                     <span className="post-navigation-label">
-                        ▼ 다음글
+                        <i
+                            className="ri-arrow-down-s-line"
+                            aria-hidden="true"
+                        />
+                        다음글
                     </span>
 
                     <span className="post-navigation-title">

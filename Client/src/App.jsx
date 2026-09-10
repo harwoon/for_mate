@@ -53,6 +53,11 @@ import AdminPage from "./pages/admin/AdminPage.jsx"
 import AdminLoginPage from "./pages/admin/AdminLoginPage.jsx"
 import AdminLayout from "./components/layout/AdminLayout.jsx"
 import AdminRoute from "./components/layout/AdminRoute.jsx"
+import AdminLostPostsPage from "./pages/admin/AdminLostPostsPage.jsx"
+import AdminFoundPostsPage from "./pages/admin/AdminFoundPostsPage.jsx"
+import AdminReportsPage from "./pages/admin/AdminReportsPage.jsx"
+import AdminInquiriesPage from "./pages/admin/AdminInquiriesPage.jsx"
+import AdminInquiryDetailPage from "./pages/admin/AdminInquiryDetailPage.jsx"
 
 export default function App() {
     return (
@@ -61,10 +66,11 @@ export default function App() {
             <Route element={<AdminRoute />}>
                 <Route element={<AdminLayout />}>
                     <Route path="/admin" element={<AdminPage />} />
-                    <Route path="/admin/lost-posts" element={<AdminPage />} />
-                    <Route path="/admin/found-posts" element={<AdminPage />} />
-                    <Route path="/admin/reports" element={<AdminPage />} />
-                    <Route path="/admin/inquiries" element={<AdminPage />} />
+                    <Route path="/admin/lost-posts" element={<AdminLostPostsPage />} />
+                    <Route path="/admin/found-posts" element={<AdminFoundPostsPage  />} />
+                    <Route path="/admin/reports" element={<AdminReportsPage />} />
+                    <Route path="/admin/inquiries" element={<AdminInquiriesPage  />} />
+                    <Route path="/admin/inquiries/:inquiryId" element={<AdminInquiryDetailPage />}/>
                 </Route>
             </Route>
             <Route element={<Layout />}>
