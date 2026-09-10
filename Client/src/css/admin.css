@@ -1396,3 +1396,412 @@
         padding: 0 12px 12px;
     }
 }
+
+/* ============================= FAQ 관리 ============================= */
+
+.admin-faq-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.admin-faq-create-button {
+    display: inline-flex;
+    min-height: 42px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 16px;
+    border: 1px solid var(--color-primary);
+    border-radius: 9px;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 14px;
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+}
+
+.admin-faq-create-button:hover {
+    background: var(--color-primary-dark);
+}
+
+.admin-faq-create-button i {
+    font-size: 18px;
+}
+
+.admin-faq-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.admin-faq-summary > span:last-child {
+    color: var(--color-text-light);
+    font-size: 12px;
+}
+
+.admin-faq-table {
+    min-width: 1080px;
+}
+
+.admin-faq-table th:first-child {
+    width: 110px;
+}
+
+.admin-faq-table th:nth-child(3) {
+    width: 90px;
+}
+
+.admin-faq-table th:nth-child(4) {
+    width: 150px;
+}
+
+.admin-faq-table th:last-child {
+    width: 240px;
+}
+
+.admin-faq-order {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.admin-faq-order > strong {
+    min-width: 20px;
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: var(--weight-bold);
+    text-align: center;
+}
+
+.admin-faq-order-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.admin-faq-order-buttons button {
+    display: inline-flex;
+    width: 25px;
+    height: 22px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    background: var(--color-surface);
+    color: var(--color-text-sub);
+    cursor: pointer;
+}
+
+.admin-faq-order-buttons button:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.admin-faq-order-buttons button:disabled {
+    color: var(--color-text-disabled);
+    cursor: default;
+    opacity: 0.4;
+}
+
+.admin-faq-order-buttons i {
+    font-size: 16px;
+}
+
+.admin-faq-content {
+    max-width: 610px;
+}
+
+.admin-faq-question-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.admin-faq-question-row > span {
+    flex: 0 0 auto;
+    color: var(--color-primary);
+    font-size: 14px;
+    font-weight: var(--weight-bold);
+}
+
+.admin-faq-question-row strong {
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: var(--weight-semibold);
+    line-height: 1.5;
+}
+
+.admin-faq-content > p {
+    display: -webkit-box;
+    max-width: 580px;
+    margin-top: 6px;
+    overflow: hidden;
+    color: var(--color-text-light);
+    font-size: 12px;
+    line-height: 1.55;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.admin-status-badge.is-published {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.admin-status-badge.is-draft {
+    background: var(--color-surface-hover);
+    color: var(--color-text-sub);
+}
+
+.admin-faq-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.admin-faq-action-button {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 9px;
+    border: 1px solid var(--color-border);
+    border-radius: 7px;
+    background: var(--color-surface);
+    color: var(--color-text-sub);
+    font-size: 12px;
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+}
+
+.admin-faq-action-button:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.admin-faq-action-button.is-delete {
+    color: var(--color-danger);
+}
+
+.admin-faq-action-button.is-delete:hover {
+    border-color: var(--color-danger);
+    background: var(--color-danger-light);
+}
+
+.admin-faq-action-button i {
+    font-size: 14px;
+}
+
+
+/* ============================= FAQ 등록 / 수정 ============================= */
+
+.admin-faq-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(24, 31, 26, 0.38);
+}
+
+.admin-faq-modal {
+    width: 100%;
+    max-width: 640px;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    background: var(--color-surface);
+    box-shadow: 0 18px 45px rgba(24, 31, 26, 0.12);
+}
+
+.admin-faq-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 22px 24px;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.admin-faq-modal-header span {
+    color: var(--color-primary);
+    font-size: 11px;
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.08em;
+}
+
+.admin-faq-modal-header h3 {
+    margin-top: 4px;
+    color: var(--color-text);
+    font-size: 20px;
+    font-weight: var(--weight-bold);
+}
+
+.admin-faq-modal-close {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-sub);
+    cursor: pointer;
+}
+
+.admin-faq-modal-close:hover:not(:disabled) {
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+}
+
+.admin-faq-modal-close i {
+    font-size: 21px;
+}
+
+.admin-faq-form {
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+}
+
+.admin-faq-form label {
+    margin-top: 20px;
+    margin-bottom: 8px;
+    color: var(--color-text);
+    font-size: 13px;
+    font-weight: var(--weight-bold);
+}
+
+.admin-faq-form label:first-child {
+    margin-top: 0;
+}
+
+.admin-faq-form label span {
+    color: var(--color-danger);
+}
+
+.admin-faq-form input,
+.admin-faq-form textarea,
+.admin-faq-form select {
+    width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-family: inherit;
+    font-size: 14px;
+    outline: 0;
+}
+
+.admin-faq-form input,
+.admin-faq-form select {
+    height: 44px;
+    padding: 0 13px;
+}
+
+.admin-faq-form textarea {
+    min-height: 210px;
+    resize: vertical;
+    padding: 13px;
+    line-height: 1.7;
+}
+
+.admin-faq-form input:focus,
+.admin-faq-form textarea:focus,
+.admin-faq-form select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(71, 120, 79, 0.08);
+}
+
+.admin-faq-form input::placeholder,
+.admin-faq-form textarea::placeholder {
+    color: var(--color-text-light);
+}
+
+.admin-faq-character-count {
+    margin-top: 5px;
+    color: var(--color-text-light);
+    font-size: 11px;
+    text-align: right;
+}
+
+.admin-faq-form-help {
+    margin-top: 7px;
+    color: var(--color-text-light);
+    font-size: 11px;
+}
+
+.admin-faq-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--color-border-light);
+}
+
+.admin-faq-cancel-button,
+.admin-faq-submit-button {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 15px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+}
+
+.admin-faq-cancel-button {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-sub);
+}
+
+.admin-faq-submit-button {
+    border: 1px solid var(--color-primary);
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.admin-faq-submit-button:hover:not(:disabled) {
+    background: var(--color-primary-dark);
+}
+
+.admin-faq-cancel-button:disabled,
+.admin-faq-submit-button:disabled {
+    cursor: default;
+    opacity: 0.55;
+}
+
+@media (max-width: 700px) {
+    .admin-faq-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-faq-create-button {
+        align-self: flex-start;
+    }
+
+    .admin-faq-modal-backdrop {
+        padding: 12px;
+    }
+
+    .admin-faq-modal {
+        max-height: calc(100vh - 24px);
+    }
+}
