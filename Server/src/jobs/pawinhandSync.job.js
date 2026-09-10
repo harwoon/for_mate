@@ -2,6 +2,9 @@ import "dotenv/config"
 import { pool } from "../db/pool.js"
 import { parseRegion } from "./regionParser.js"
 import { notifyNewMatches } from "./notifyNewMatches.js"
+import { setGlobalDispatcher, Agent } from "undici"
+
+setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }))
 
 // 포인핸드가 공개한 최신 구조동물 RSS와 상세 JSON을 이용해 DB를 동기화한다.
 // 기본값은 안전한 확인을 위해 최신 5건이며, 환경변수로 건수와 요청 간격을 조정할 수 있다.

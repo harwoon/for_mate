@@ -10,6 +10,9 @@ import csv from "csv-parser"
 import { createClient } from "@supabase/supabase-js"
 import { parseRegion } from "./regionParser.js"
 import { notifyNewMatches } from "./notifyNewMatches.js"
+import { setGlobalDispatcher, Agent } from "undici"
+
+setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }))
 
 const execAsync = promisify(exec)
 
