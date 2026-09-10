@@ -1,3 +1,4 @@
+import { formatTimestampDate as formatDate } from "../../utils/date.js"
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { getInquiries } from "../../api/inquiries.api.js"
@@ -8,14 +9,6 @@ import Loading from "../../components/common/Loading.jsx"
 import Pagination from "../../components/common/Pagination.jsx"
 
 const PAGE_SIZE = 20
-
-function formatDate(value) {
-    if (!value) return "-"
-
-    return String(value)
-        .slice(0, 10)
-        .replaceAll("-", ".")
-}
 
 function getStatusLabel(status) {
     return status === "answered"

@@ -1,3 +1,4 @@
+import { formatDateTime as formatDate } from "../../utils/date.js"
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
@@ -11,13 +12,6 @@ import Loading from "../../components/common/Loading.jsx"
 import Pagination from "../../components/common/Pagination.jsx"
 
 const PAGE_SIZE = 20
-
-function formatDate(value) {
-    if (!value) return "-"
-
-    return new Date(value)
-        .toLocaleString("ko-KR")
-}
 
 function formatSimilarity(value) {
     const score = Number(value)

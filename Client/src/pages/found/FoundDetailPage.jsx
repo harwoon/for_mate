@@ -1,3 +1,4 @@
+import { formatDateTime as formatCreatedAt } from "../../utils/date.js"
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { imageUrl } from "../../api/client.js"
@@ -16,15 +17,6 @@ function formatDate(value) {
     return value
         ? String(value).slice(0, 10)
         : "정보 없음"
-}
-
-function formatCreatedAt(value) {
-    if (!value) return "정보 없음"
-
-    return String(value)
-        .slice(0, 16)
-        .replace("T", " ")
-        .replaceAll("-", ".")
 }
 
 function displayValue(value) {
@@ -257,7 +249,7 @@ export default function FoundDetailPage() {
                         </span>
 
                         <span className="text-sub">
-                            등록일 {formatCreatedAt(post.created_at)}
+                            등록일 {formatCreatedAt(post.created_at, "정보 없음")}
                         </span>
                     </div>
 

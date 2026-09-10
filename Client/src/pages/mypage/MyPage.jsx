@@ -1,3 +1,4 @@
+import { formatDate } from "../../utils/date.js"
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { imageUrl } from "../../api/client.js"
@@ -10,14 +11,6 @@ import Loading from "../../components/common/Loading.jsx"
 import PostCard from "../../components/post/PostCard.jsx"
 import PostGrid from "../../components/post/PostGrid.jsx"
 
-
-function formatDate(value) {
-    if (!value) return "-"
-
-    return String(value)
-        .slice(0, 10)
-        .replaceAll("-", ".")
-}
 
 function getBookmarkPath(bookmark) {
     if (

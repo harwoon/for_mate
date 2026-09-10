@@ -1,3 +1,4 @@
+import { formatDateTime as formatCreatedAt } from "../../utils/date.js"
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { getFoundPosts } from "../../api/foundPosts.api.js"
@@ -19,15 +20,6 @@ const EMPTY_FILTERS = {
     sigungu: "",
     start_date: "",
     end_date: ""
-}
-
-function formatCreatedAt(value) {
-    if (!value) return "-"
-
-    return String(value)
-        .slice(0, 16)
-        .replace("T", " ")
-        .replaceAll("-", ".")
 }
 
 export default function FoundListPage() {

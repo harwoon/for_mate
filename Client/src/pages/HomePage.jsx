@@ -1,3 +1,4 @@
+import { formatRelativeTime } from "../utils/date.js"
 ﻿import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { imageUrl } from "../api/client.js"
@@ -26,37 +27,6 @@ function getRescueDetailPath(animal) {
     }
 
     return `/rescue-animals/${animal.desertion_no}`
-}
-
-function formatCreatedAt(value) {
-    if (!value) return "-"
-
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return String(value)
-
-    return date.toLocaleString("ko-KR", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-    })
-}
-
-function formatRelativeTime(value) {
-    if (!value) return "-"
-
-    const createdAt = new Date(value).getTime()
-    if (Number.isNaN(createdAt)) return formatCreatedAt(value)
-
-    const elapsedSeconds = Math.max(0, Math.floor((Date.now() - createdAt) / 1000))
-    if (elapsedSeconds < 60) return "방금 전"
-    if (elapsedSeconds < 3600) return `${Math.floor(elapsedSeconds / 60)}분 전`
-    if (elapsedSeconds < 86400) return `${Math.floor(elapsedSeconds / 3600)}시간 전`
-    if (elapsedSeconds < 604800) return `${Math.floor(elapsedSeconds / 86400)}일 전`
-
-    return new Date(value).toLocaleDateString("ko-KR")
 }
 
 function renderCard(type, item) {

@@ -1,3 +1,4 @@
+import { formatTimestampDate as formatDate } from "../../utils/date.js"
 import { useEffect, useState } from "react"
 import {
     Link,
@@ -9,14 +10,6 @@ import Breadcrumb from "../../components/common/Breadcrumb.jsx"
 import Empty from "../../components/common/Empty.jsx"
 import ErrorState from "../../components/common/ErrorState.jsx"
 import Loading from "../../components/common/Loading.jsx"
-
-function formatDate(value) {
-    if (!value) return "-"
-
-    return String(value)
-        .slice(0, 10)
-        .replaceAll("-", ".")
-}
 
 export default function MyInquiryDetailPage() {
     const { inquiryId } = useParams()

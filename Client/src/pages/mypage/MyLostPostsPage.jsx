@@ -1,3 +1,4 @@
+import { formatDate } from "../../utils/date.js"
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { imageUrl } from "../../api/client.js"
@@ -26,14 +27,6 @@ const STATUS_OPTIONS = [
         label: "블라인드"
     }
 ]
-
-function formatDate(value) {
-    if (!value) return "-"
-
-    return String(value)
-        .slice(0, 10)
-        .replaceAll("-", ".")
-}
 
 export default function MyLostPostsPage() {
     const navigate = useNavigate()
