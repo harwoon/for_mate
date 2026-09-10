@@ -1,6 +1,6 @@
 import { pool } from "../db/pool.js"
 
-const SIMILARITY_THRESHOLD = 0.70 // 이 이상일 때만 알림 생성 (조정 가능)
+const SIMILARITY_THRESHOLD = 0.50 // 이 이상일 때만 알림 생성 (조정 가능)
 const CANDIDATE_LIMIT_PER_VECTOR = 20
 
 // postType: 'rescue' | 'pawinhand'
