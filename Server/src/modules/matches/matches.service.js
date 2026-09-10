@@ -22,6 +22,7 @@ export async function getMatches(lostPostId, userId) {
     }
 
     const vectors = await repository.findLostPostEmbeddings(lostPostId)
+
     if (vectors.length === 0) {
         const error = new Error("이미지 임베딩이 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.")
         error.status = 409
@@ -29,13 +30,21 @@ export async function getMatches(lostPostId, userId) {
         throw error
     }
 
+    const species = await repository.findLostPostSpecies(lostPostId)
+
     const bestByAnimal = new Map() // key: `${source_type}:${ref_id}`
 
     for (const vector of vectors) {
-        const candidates = await repository.findNearestCandidates(vector, CANDIDATE_LIMIT_PER_VECTOR)
+        const candidates = await repository.findNearestCandidates(
+            vector,
+            species,
+            CANDIDATE_LIMIT_PER_VECTOR
+        )
+
         for (const { ref_id, source_type, distance } of candidates) {
             const key = `${source_type}:${ref_id}`
             const current = bestByAnimal.get(key)
+
             if (current === undefined || distance < current.distance) {
                 bestByAnimal.set(key, { distance, source_type, ref_id: Number(ref_id) })
             }
