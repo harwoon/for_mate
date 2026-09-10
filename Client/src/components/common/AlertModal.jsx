@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react"
-import "../../css/AlertModal.css"
+import "../../css/components/AlertModal.css"
 
 export default function AlertModal({
     open,

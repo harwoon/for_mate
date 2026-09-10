@@ -1,11 +1,15 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
 
-@import "./variables.css";
-@import "./reset.css";
-@import "./layout.css";
-@import "./components.css";
-@import "./filter.css";
-@import "./lost.css";
-@import "./match.css";
-@import "./mypage.css";
-@import "./admin.css";
+@import "./base/variables.css";
+@import "./base/reset.css";
+@import "./base/layout.css";
+
+@import "./components/components.css";
+@import "./components/filter.css";
+
+@import "./pages/lost.css";
+@import "./pages/found.css";
+@import "./pages/rescue.css";
+@import "./pages/match.css";
+@import "./pages/mypage.css";
+@import "./pages/admin.css";

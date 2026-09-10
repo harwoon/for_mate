@@ -1,6 +1,5 @@
 import { formatTimestampDate } from "../../utils/date.js"
 import { Link } from "react-router-dom"
-import "../../css/components.css"
 
 function formatDate(value) {
     if (!value) return ""
