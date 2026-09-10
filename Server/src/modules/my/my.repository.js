@@ -83,7 +83,9 @@ export async function findSummary(userId) {
                 `SELECT
                     m.id AS match_id,
                     m.source_post_id AS lost_post_id,
+                    m.source_type,
                     m.desertion_no,
+                    m.pawinhand_animal_id,
                     first_image.image_url AS thumbnail_url,
                     m.similarity_score
                 FROM matches m
@@ -91,7 +93,18 @@ export async function findSummary(userId) {
                 LEFT JOIN LATERAL (
                     SELECT image_url
                     FROM images
-                    WHERE post_type = 'rescue' AND desertion_no = m.desertion_no
+                    WHERE post_type = m.source_type
+                        AND (
+                            (
+                                m.source_type = 'rescue'
+                                AND desertion_no = m.desertion_no
+                            )
+                            OR
+                            (
+                                m.source_type = 'pawinhand'
+                                AND pawinhand_animal_id = m.pawinhand_animal_id
+                            )
+                        )
                     ORDER BY created_at ASC, id ASC
                     LIMIT 1
                 ) first_image ON TRUE

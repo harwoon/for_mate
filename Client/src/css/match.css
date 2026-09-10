@@ -679,3 +679,220 @@
         font-size: var(--font-xl);
     }
 }
+
+
+/* ============================= 마이페이지 AI 매칭 기록 ============================= */
+
+.my-matches-page {
+    padding-bottom: var(--space-2xl);
+}
+
+.my-match-toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-lg);
+}
+
+.my-match-filter {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    width: min(100%, 320px);
+}
+
+.my-match-filter label {
+    color: var(--color-text-sub);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+}
+
+.my-match-filter select {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 var(--space-md);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font: inherit;
+}
+
+.my-match-filter select:focus {
+    outline: 2px solid var(--color-primary-light);
+    border-color: var(--color-primary);
+}
+
+.my-match-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+}
+
+.my-match-history-card {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-lg);
+    padding: var(--space-md);
+    transition:
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.my-match-history-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.my-match-image {
+    width: 150px;
+    height: 112px;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-soft);
+}
+
+.my-match-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.my-match-image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    width: 100%;
+    height: 100%;
+    color: var(--color-text-light);
+    font-size: var(--font-sm);
+}
+
+.my-match-image-placeholder i {
+    font-size: var(--font-24);
+}
+
+.my-match-history-body {
+    min-width: 0;
+}
+
+.my-match-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+}
+
+.my-match-source-badge,
+.my-match-lost-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 var(--space-12);
+    border-radius: var(--radius-full);
+    font-size: var(--font-xs);
+    font-weight: var(--weight-bold);
+}
+
+.my-match-source-badge {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.my-match-lost-badge {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.my-match-history-body h2 {
+    margin-bottom: var(--space-md);
+    font-size: var(--font-lg);
+}
+
+.my-match-history-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xl);
+}
+
+.my-match-history-meta > div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.my-match-history-meta span {
+    color: var(--color-text-sub);
+    font-size: var(--font-xs);
+}
+
+.my-match-history-meta strong {
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+}
+
+.my-match-history-meta > div:first-child strong {
+    color: var(--color-primary);
+    font-size: var(--font-lg);
+    font-weight: var(--weight-bold);
+}
+
+.my-match-history-action {
+    display: flex;
+    align-items: center;
+}
+
+.my-match-history-action .btn {
+    min-width: 112px;
+}
+
+@media (max-width: 768px) {
+    .my-match-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .my-match-filter {
+        width: 100%;
+    }
+
+    .my-match-history-card {
+        grid-template-columns: 112px minmax(0, 1fr);
+        gap: var(--space-md);
+    }
+
+    .my-match-image {
+        width: 112px;
+        height: 100px;
+    }
+
+    .my-match-history-action {
+        grid-column: 1 / -1;
+    }
+
+    .my-match-history-action .btn {
+        width: 100%;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 480px) {
+    .my-match-history-card {
+        grid-template-columns: 1fr;
+    }
+
+    .my-match-image {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16 / 9;
+    }
+
+    .my-match-history-meta {
+        gap: var(--space-lg);
+    }
+}
