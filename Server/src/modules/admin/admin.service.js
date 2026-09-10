@@ -298,6 +298,14 @@ export async function getDashboard() {
             total: Number(stats.inquiries_total),
             pending: Number(stats.inquiries_pending),
             answered: Number(stats.inquiries_answered)
+        },
+        rescue_animals: {
+            total: Number(stats.rescue_total),
+            active: Number(stats.rescue_active)
+        },
+        pawinhand_animals: {
+            total: Number(stats.pawinhand_total),
+            active: Number(stats.pawinhand_active)
         }
     }
 }

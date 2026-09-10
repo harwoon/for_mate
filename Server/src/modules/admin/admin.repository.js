@@ -197,7 +197,13 @@ export async function getDashboardStats() {
 
             (SELECT COUNT(*) FROM inquiries) AS inquiries_total,
             (SELECT COUNT(*) FROM inquiries WHERE status = 'pending') AS inquiries_pending,
-            (SELECT COUNT(*) FROM inquiries WHERE status = 'answered') AS inquiries_answered`
+            (SELECT COUNT(*) FROM inquiries WHERE status = 'answered') AS inquiries_answered,
+
+            (SELECT COUNT(*) FROM rescue_animals) AS rescue_total,
+            (SELECT COUNT(*) FROM rescue_animals WHERE notice_edt IS NULL OR notice_edt >= CURRENT_DATE) AS rescue_active,
+
+            (SELECT COUNT(*) FROM pawinhand_animals) AS pawinhand_total,
+            (SELECT COUNT(*) FROM pawinhand_animals WHERE notice_edt IS NULL OR notice_edt >= CURRENT_DATE) AS pawinhand_active`
     )
 
     return result.rows[0]
