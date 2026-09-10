@@ -81,7 +81,7 @@ def crop(img_bgr):
 
 def download(url):
     try:
-        r = requests.get(url, timeout=15)
+        r = requests.get(url, timeout=5)
         r.raise_for_status()
         return cv2.imdecode(np.frombuffer(r.content, np.uint8), cv2.IMREAD_COLOR)
     except Exception as e:
