@@ -56,36 +56,36 @@ def save_embedding(image_id: int, embedding) -> None:
 def embed_images(req: EmbedRequest):
     results = []
     for image in req.images:
-        img = download(image.image_url)
-        cropped = crop(img) if img is not None else None
-        if cropped is None:
-            results.append({"image_id": image.id, "status": "detect_failed"})
-            continue
-        embedding = extract_embedding(cropped)
-        save_embedding(image.id, embedding)
-        results.append({"image_id": image.id, "status": "ok"})
+        try:
+            img = download(image.image_url)
+            cropped = crop(img) if img is not None else None
+            if cropped is None:
+                results.append({"image_id": image.id, "status": "detect_failed"})
+                continue
+            embedding = extract_embedding(cropped)
+            save_embedding(image.id, embedding)
+            results.append({"image_id": image.id, "status": "ok"})
+        except Exception as e:
+            print(f"에러 (image_id={image.id}): {e}")
+            results.append({"image_id": image.id, "status": "error"})
     return {"results": results}
-
 
 # 구조 동물 임베딩
 @app.post("/embeddings/rescue-animals")
 def embed_rescue_animals(req: RescueEmbedRequest):
     results = []
-    total = len(req.animals)
-
-    for idx, animal in enumerate(req.animals, 1):
-        print(f"[{idx}/{total}] desertion_no={animal.desertion_no}")
-        
+    for animal in req.animals:
         for url in animal.image_urls:
-            img = download(url)
-            cropped = crop(img) if img is not None else None
-
-            if cropped is None:
-                results.append({"desertion_no": animal.desertion_no, "status": "detect_failed"})
-                continue
-
-            embedding = extract_embedding(cropped)
-            save_to_db(animal.desertion_no, url, embedding)
-            results.append({"desertion_no": animal.desertion_no, "status": "ok"})
-            
+            try:
+                img = download(url)
+                cropped = crop(img) if img is not None else None
+                if cropped is None:
+                    results.append({"desertion_no": animal.desertion_no, "status": "detect_failed"})
+                    continue
+                embedding = extract_embedding(cropped)
+                save_to_db(animal.desertion_no, url, embedding)
+                results.append({"desertion_no": animal.desertion_no, "status": "ok"})
+            except Exception as e:
+                print(f"에러 (desertion_no={animal.desertion_no}): {e}")
+                results.append({"desertion_no": animal.desertion_no, "status": "error"})
     return {"results": results}
