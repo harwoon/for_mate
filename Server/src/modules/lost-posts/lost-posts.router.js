@@ -1,18 +1,11 @@
 import express from "express"
-import crypto from "node:crypto"
-import { mkdirSync } from "node:fs"
-import { unlink } from "node:fs/promises"
-import path from "node:path"
 import multer from "multer"
 import { requireAuth, optionalAuth } from "../../middleware/auth.middleware.js"
 import * as controller from "./lost-posts.controller.js"
+import sharp from "sharp"
+import { uploadToR2, deleteFromR2 } from "../../utils/r2.js"
 
 const router = express.Router()
-
-// app.js가 /uploads 경로를 정적 파일로 제공하므로 그 하위에 실종 공고 사진을 저장한다.
-// 서버를 처음 실행했을 때 폴더가 없어도 자동으로 생성된다.
-const LOST_IMAGE_DIRECTORY = path.resolve("uploads", "lost-posts")
-mkdirSync(LOST_IMAGE_DIRECTORY, { recursive: true })
 
 const IMAGE_EXTENSIONS = {
   "image/jpeg": ".jpg",
@@ -20,19 +13,8 @@ const IMAGE_EXTENSIONS = {
   "image/webp": ".webp",
 }
 
-// 원본 파일명 대신 UUID를 사용해 한글·공백·중복 파일명 문제를 방지한다.
-const storage = multer.diskStorage({
-  destination(req, file, callback) {
-    callback(null, LOST_IMAGE_DIRECTORY)
-  },
-  filename(req, file, callback) {
-    callback(null, `${crypto.randomUUID()}${IMAGE_EXTENSIONS[file.mimetype]}`)
-  },
-})
-
-// 실종 공고는 이미지 파일만, 한 장당 10MB 이하, 최대 8장까지 받는다.
 const uploadLost = multer({
-  storage,
+  storage: multer.memoryStorage(), // 디스크 대신 메모리에만 잠깐 들고 있다가 바로 R2로 올림
   limits: {
     files: 8,
     fileSize: 10 * 1024 * 1024,
@@ -47,48 +29,58 @@ const uploadLost = multer({
   },
 }).array("images", 8)
 
-// DB 검증이나 저장이 실패했을 때 로컬에 남은 파일을 정리한다.
-async function removeUploadedFiles(files = []) {
-  await Promise.allSettled(files.map((file) => unlink(file.path)))
+// 실패 시 이미 R2에 올라간 파일들을 되돌린다.
+async function removeUploadedFiles(keys = []) {
+  await Promise.allSettled(keys.map((key) => deleteFromR2(key)))
 }
 
-// Multer로 파일을 로컬에 저장하고, repository가 DB에 저장할 URL을 만든다.
-// 등록과 수정 요청에서 함께 사용하며, 수정 요청은 새 이미지가 없어도 통과한다.
 function uploadLostImagesLocally(req, res, next) {
   uploadLost(req, res, async (error) => {
-    if (!error) {
-      // DB에는 운영체제의 실제 경로가 아닌 웹에서 접근할 수 있는 URL 경로를 저장한다.
-      req.imageUrls = (req.files || []).map((file) => `/uploads/lost-posts/${file.filename}`)
+    if (error) {
+      if (error.code === "LIMIT_UNEXPECTED_FILE" || error.code === "LIMIT_FILE_COUNT") {
+        error.status = 400
+        error.code = "TOO_MANY_IMAGES"
+        error.message = "이미지는 최대 8장까지 등록할 수 있습니다."
+      } else if (error.code === "LIMIT_FILE_SIZE") {
+        error.status = 400
+        error.code = "IMAGE_TOO_LARGE"
+        error.message = "이미지는 한 장당 10MB 이하여야 합니다."
+      } else if (error.code === "INVALID_IMAGE_TYPE") {
+        error.status = 422
+        error.code = "IMAGE_PROCESSING_FAILED"
+      } else {
+        error.status = 422
+        error.code = "IMAGE_PROCESSING_FAILED"
+        error.message = "이미지 처리에 실패했습니다."
+      }
+      return next(error)
+    }
+
+    try {
+      const uploaded = await Promise.all(
+        (req.files || []).map(async (file) => {
+          const compressed = await sharp(file.buffer)
+            .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+            .jpeg({ quality: 80 })
+            .toBuffer()
+          return uploadToR2(compressed, "lost-posts")
+        }),
+      )
+      req.imageUrls = uploaded.map((u) => u.url)
+      req.uploadedKeys = uploaded.map((u) => u.key) // 실패 시 롤백용으로 보관
       return next()
+    } catch (uploadError) {
+      uploadError.status = 422
+      uploadError.code = "IMAGE_PROCESSING_FAILED"
+      uploadError.message = "이미지 업로드에 실패했습니다."
+      return next(uploadError)
     }
-
-    // 일부 파일이 저장된 뒤 Multer 오류가 발생했다면 먼저 삭제한다.
-    await removeUploadedFiles(req.files)
-
-    if (error.code === "LIMIT_UNEXPECTED_FILE" || error.code === "LIMIT_FILE_COUNT") {
-      error.status = 400
-      error.code = "TOO_MANY_IMAGES"
-      error.message = "이미지는 최대 8장까지 등록할 수 있습니다."
-    } else if (error.code === "LIMIT_FILE_SIZE") {
-      error.status = 400
-      error.code = "IMAGE_TOO_LARGE"
-      error.message = "이미지는 한 장당 10MB 이하여야 합니다."
-    } else if (error.code === "INVALID_IMAGE_TYPE") {
-      error.status = 422
-      error.code = "IMAGE_PROCESSING_FAILED"
-    } else {
-      error.status = 422
-      error.code = "IMAGE_PROCESSING_FAILED"
-      error.message = "이미지 처리에 실패했습니다."
-    }
-
-    return next(error)
   })
 }
 
-// controller/service/repository에서 오류가 발생하면 이번 요청에서 저장한 파일만 삭제한다.
+// DB 검증/저장 실패 시, 이번 요청에서 R2에 올린 파일만 정리한다.
 async function cleanupLostImagesOnError(error, req, res, next) {
-  await removeUploadedFiles(req.files)
+  await removeUploadedFiles(req.uploadedKeys)
   next(error)
 }
 

@@ -12,6 +12,7 @@
     "job:backfill-region": "node src/jobs/backfillRegion.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1129.0",
     "@supabase/supabase-js": "^2.112.4",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
@@ -23,6 +24,7 @@
     "multer": "^1.4.5-lts.1",
     "node-cron": "^4.6.0",
     "pg": "^8.11.5",
+    "sharp": "^0.35.4",
     "undici": "^8.10.2"
   }
 }

@@ -1,141 +1,81 @@
 import multer from "multer"
-import path from "path"
-import fs from "fs"
-import { unlink } from "fs/promises"
-
-// 발견제보 이미지 로컬 저장 폴더
-export const foundUploadDir = path.join(
-    process.cwd(),
-    "uploads",
-    "found-posts"
-)
-
-fs.mkdirSync(foundUploadDir, { recursive: true })
+import sharp from "sharp"
+import { uploadToR2, deleteFromR2, extractR2Key } from "../../utils/r2.js"
 
 const IMAGE_EXTENSIONS = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/webp": ".webp"
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
 }
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, foundUploadDir)
-    },
-
-    filename: (req, file, cb) => {
-        const ext = IMAGE_EXTENSIONS[file.mimetype]
-        const filename = `${Date.now()}-${Math.round(Math.random() * 1000000)}${ext}`
-
-        cb(null, filename)
-    }
-})
 
 const uploadFound = multer({
-    storage,
-    limits: {
-        files: 3,
-        fileSize: 10 * 1024 * 1024
-    },
-    fileFilter: (req, file, cb) => {
-        if (!IMAGE_EXTENSIONS[file.mimetype]) {
-            const error = new Error("JPG, PNG, WEBP 이미지만 등록할 수 있습니다.")
-            error.code = "INVALID_IMAGE_TYPE"
-
-            return cb(error)
-        }
-
-        cb(null, true)
+  storage: multer.memoryStorage(),
+  limits: {
+    files: 3,
+    fileSize: 10 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    if (!IMAGE_EXTENSIONS[file.mimetype]) {
+      const error = new Error("JPG, PNG, WEBP 이미지만 등록할 수 있습니다.")
+      error.code = "INVALID_IMAGE_TYPE"
+      return cb(error)
     }
+    cb(null, true)
+  },
 }).array("images", 3)
 
-// 등록/수정 시 이미지 업로드
 export function uploadFoundImages(req, res, next) {
-    uploadFound(req, res, async (err) => {
-        if (err) {
-            await removeUploadedFoundFiles(req.files ?? [])
+  uploadFound(req, res, async (err) => {
+    if (err) {
+      if (err.code === "LIMIT_UNEXPECTED_FILE" || err.code === "LIMIT_FILE_COUNT") {
+        err.status = 400
+        err.code = "TOO_MANY_IMAGES"
+        err.message = "이미지는 최대 3장까지 등록할 수 있습니다."
+      } else if (err.code === "LIMIT_FILE_SIZE") {
+        err.status = 422
+        err.code = "IMAGE_PROCESSING_FAILED"
+        err.message = "이미지는 한 장당 최대 10MB까지 등록할 수 있습니다."
+      } else if (err.code === "INVALID_IMAGE_TYPE") {
+        err.status = 422
+        err.code = "IMAGE_PROCESSING_FAILED"
+        err.message = "JPG, JPEG, PNG, WEBP 이미지만 등록할 수 있습니다."
+      } else {
+        err.status = 422
+        err.code = "IMAGE_PROCESSING_FAILED"
+        err.message = "이미지 처리에 실패했습니다."
+      }
+      return next(err)
+    }
 
-            // 최대 3장 초과 → API 명세 400
-            if (
-                err.code === "LIMIT_UNEXPECTED_FILE" ||
-                err.code === "LIMIT_FILE_COUNT"
-            ) {
-                err.status = 400
-                err.code = "TOO_MANY_IMAGES"
-                err.message = "이미지는 최대 3장까지 등록할 수 있습니다."
-
-                return next(err)
-            }
-
-            if (err.code === "LIMIT_FILE_SIZE") {
-                err.status = 422
-                err.code = "IMAGE_PROCESSING_FAILED"
-                err.message = "이미지는 한 장당 최대 10MB까지 등록할 수 있습니다."
-
-                return next(err)
-            }
-
-            if (err.code === "INVALID_IMAGE_TYPE") {
-                err.status = 422
-                err.code = "IMAGE_PROCESSING_FAILED"
-                err.message = "JPG, JPEG, PNG, WEBP 이미지만 등록할 수 있습니다."
-
-                return next(err)
-            }
-
-            // 그 외 이미지 처리 오류 → API 명세 422
-            err.status = 422
-            err.code = "IMAGE_PROCESSING_FAILED"
-            err.message = "이미지 처리에 실패했습니다."
-
-            return next(err)
-        }
-
-        req.imageUrls = (req.files ?? []).map(
-            (file) => `/found-posts/images/${file.filename}`
-        )
-
-        next()
-    })
+    try {
+      const uploaded = await Promise.all(
+        (req.files ?? []).map(async (file) => {
+          const compressed = await sharp(file.buffer)
+            .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
+            .jpeg({ quality: 80 })
+            .toBuffer()
+          return uploadToR2(compressed, "found-posts")
+        }),
+      )
+      req.imageUrls = uploaded.map((u) => u.url)
+      req.uploadedKeys = uploaded.map((u) => u.key)
+      next()
+    } catch (uploadError) {
+      uploadError.status = 422
+      uploadError.code = "IMAGE_PROCESSING_FAILED"
+      uploadError.message = "이미지 업로드에 실패했습니다."
+      next(uploadError)
+    }
+  })
 }
 
-// 요청 실패 시 이미 저장된 새 파일 정리
-export async function removeUploadedFoundFiles(files = []) {
-    await removeFiles(
-        files
-            .map((file) => file?.path)
-            .filter(Boolean)
-    )
+// 요청 실패 시 이미 R2에 올린 파일 정리 (함수명 유지 — 다른 파일에서 그대로 import 중)
+export async function removeUploadedFoundFiles(req = {}) {
+  await Promise.allSettled((req.uploadedKeys ?? []).map((key) => deleteFromR2(key)))
 }
 
-// DB에서 삭제된 이미지의 실제 로컬 파일도 삭제
+// DB에서 삭제된 이미지의 R2 파일도 삭제 (함수명 유지)
 export async function removeFoundImageFiles(imageUrls = []) {
-    const filePaths = imageUrls
-        .filter((imageUrl) => (
-            typeof imageUrl === "string" &&
-            imageUrl.startsWith("/found-posts/images/")
-        ))
-        .map((imageUrl) => (
-            path.join(foundUploadDir, path.basename(imageUrl))
-        ))
-
-    await removeFiles(filePaths)
-}
-
-async function removeFiles(filePaths) {
-    const results = await Promise.allSettled(
-        filePaths.map((filePath) => unlink(filePath))
-    )
-
-    results.forEach((result, index) => {
-        if (
-            result.status === "rejected" &&
-            result.reason?.code !== "ENOENT"
-        ) {
-            console.error(
-                `발견제보 이미지 파일 삭제 실패: ${filePaths[index]}`,
-                result.reason
-            )
-        }
-    })
+  const keys = imageUrls.map(extractR2Key).filter(Boolean)
+  await Promise.allSettled(keys.map((key) => deleteFromR2(key)))
 }
