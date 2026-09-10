@@ -176,15 +176,6 @@ async function extractEmbeddings(processed) {
   console.log("임베딩 추출 전체 완료")
 }
 
-async function resetMatchesAndNotifications() {
-  // TODO: matches, notifications 초기화
-  // 단, match_exclusions(사용자가 제외한 후보)는 지우지 않는다
-}
-
-async function createNotifications() {
-  // TODO: 실종 공고별로 유사도를 계산해서 임계값 이상이면 알림 생성
-}
-
 async function run() {
   console.log("배치 시작")
 
@@ -192,8 +183,6 @@ async function run() {
   console.log('processed', processed)
   await saveAnimals(processed)
   await extractEmbeddings(processed)
-  await resetMatchesAndNotifications()
-  await createNotifications()
 
   console.log("배치 완료")
   await pool.end()
