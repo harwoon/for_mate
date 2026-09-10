@@ -1,12 +1,9 @@
 import express from "express"
 import { optionalAuth, requireAuth } from "../../middleware/auth.middleware.js"
 import * as controller from "./found-posts.controller.js"
-import { uploadFoundImages,foundUploadDir,} from "./found-posts.upload.js"
+import { uploadFoundImages} from "./found-posts.upload.js"
 
 const router = express.Router()
-
-// 발견제보 이미지 조회
-router.use("/images", express.static(foundUploadDir))
 
 // 4.1 발견제보 등록 (사진 최대 3장)
 router.post("/", requireAuth, uploadFoundImages, controller.createPost)

@@ -1,6 +1,7 @@
 import * as repository from "./lost-posts.repository.js"
 import { unlink } from "node:fs/promises"
 import path from "node:path"
+import { deleteFromR2, extractR2Key } from "../../utils/r2.js"
 
 // 공통 error.middleware가 HTTP 상태와 오류 코드를 응답에 사용할 수 있도록
 // 일반 Error 객체에 status와 code를 추가해서 만든다.
@@ -125,7 +126,6 @@ export async function createPost({ userId, body, imageUrls }) {
 
   // AI 서버에 임베딩 추출을 요청
   // 등록 응답을 지연시키지 않도록 await 없이 비동기로 요청
-  const SERVER_BASE_URL = process.env.SERVER_BASE_URL ?? "http://localhost:4000"
   const AI_SERVER_URL = process.env.AI_SERVER_URL ?? "http://localhost:8001"
 
   fetch(`${AI_SERVER_URL}/embeddings/images`, {
@@ -134,7 +134,7 @@ export async function createPost({ userId, body, imageUrls }) {
     body: JSON.stringify({
       images: createdPost.images.map((img) => ({
         id: img.id,
-        image_url: `${SERVER_BASE_URL}${img.image_url}`,   // 절대 URL로 변환
+        image_url: img.image_url,   // 절대 URL로 변환
       })),
     }),
   }).catch((error) => {
@@ -304,18 +304,15 @@ function parseDeleteImageIds(value) {
 
 // DB에서 삭제된 이미지 중 로컬 업로드 경로만 실제 디스크에서도 제거한다.
 // 과거 Supabase URL은 로컬 파일이 아니므로 이 함수에서 건드리지 않는다.
+// DB에서 삭제된 이미지 중 R2에 올라간 것도 실제로 지운다.
 async function removeOldLocalImages(images) {
-  const localPrefix = "/uploads/lost-posts/"
   for (const image of images) {
-    if (!image.image_url?.startsWith(localPrefix)) continue
-
-    const filename = path.basename(image.image_url)
-    const filePath = path.resolve("uploads", "lost-posts", filename)
+    const key = extractR2Key(image.image_url)
+    if (!key) continue // R2 URL이 아니면(과거 데이터 등) 건드리지 않음
     try {
-      await unlink(filePath)
+      await deleteFromR2(key)
     } catch (error) {
-      // DB 수정은 이미 완료됐으므로 파일 정리 실패는 기록만 남긴다.
-      if (error.code !== "ENOENT") console.error("기존 실종 이미지 삭제 실패:", error)
+      console.error("기존 실종 이미지 삭제 실패:", error)
     }
   }
 }

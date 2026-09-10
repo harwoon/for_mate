@@ -60,7 +60,7 @@ export async function updatePost(req, res, next) {
     } catch (err) {
         // 수정 실패 시 새로 올린 파일만 제거
         if (!err.dbCommitted) {
-            await removeUploadedFoundFiles(req.files ?? [])
+            await removeUploadedFoundFiles(req)
         }
         next(err)
     }

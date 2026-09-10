@@ -1,7 +1,6 @@
 import express from "express"
 import cors from "cors"
 import { config } from "./config.js"
-
 import authRouter from "./modules/auth/auth.router.js"
 import catalogRouter from "./modules/catalog/catalog.router.js"
 import lostPostsRouter from "./modules/lost-posts/lost-posts.router.js"
@@ -24,7 +23,6 @@ const app = express()
 app.use(cors({ origin: config.frontendUrl, credentials: true }))
 app.use(express.json())
 app.use("/faqs", faqsRouter)
-app.use("/uploads", express.static("uploads"))
 
 // 서버 상태 확인용
 app.get("/health", (req, res) => {
