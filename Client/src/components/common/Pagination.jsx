@@ -76,7 +76,10 @@ export default function Pagination({
                 aria-label="첫 페이지"
                 title="첫 페이지"
             >
-                «
+                <i
+                    className="ri-arrow-left-double-line"
+                    aria-hidden="true"
+                />
             </button>
 
             <button
@@ -87,7 +90,10 @@ export default function Pagination({
                 aria-label="이전 페이지"
                 title="이전 페이지"
             >
-                ‹
+                <i
+                    className="ri-arrow-left-s-line"
+                    aria-hidden="true"
+                />
             </button>
 
             {pageItems.map((item) => {
@@ -131,7 +137,10 @@ export default function Pagination({
                 aria-label="다음 페이지"
                 title="다음 페이지"
             >
-                ›
+                <i
+                    className="ri-arrow-right-s-line"
+                    aria-hidden="true"
+                />
             </button>
 
             <button
@@ -142,7 +151,10 @@ export default function Pagination({
                 aria-label="마지막 페이지"
                 title="마지막 페이지"
             >
-                »
+                <i
+                    className="ri-arrow-right-double-line"
+                    aria-hidden="true"
+                />
             </button>
         </nav>
     )
