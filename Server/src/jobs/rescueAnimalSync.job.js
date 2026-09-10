@@ -9,6 +9,7 @@ import { fileURLToPath } from "url"
 import csv from "csv-parser"
 import { createClient } from "@supabase/supabase-js"
 import { parseRegion } from "./regionParser.js"
+import { notifyNewMatches } from "./notifyNewMatches.js"
 
 const execAsync = promisify(exec)
 
@@ -145,6 +146,7 @@ async function extractEmbeddings(processed) {
 
   const AI_SERVER_URL = process.env.AI_SERVER_URL ?? "http://localhost:8001"
   const CHUNK_SIZE = 30
+  const processedDesertionNos = new Set()
   console.log(`임베딩 추출 요청: 신규 ${animals.length}마리, ${CHUNK_SIZE}마리씩 나눠서 처리`)
 
   for (let i = 0; i < animals.length; i += CHUNK_SIZE) {
@@ -157,6 +159,8 @@ async function extractEmbeddings(processed) {
         body: JSON.stringify({ animals: chunk }),
       })
       const data = await response.json()
+      data.results.forEach((r) => processedDesertionNos.add(Number(r.desertion_no)))
+
       const failed = data.results.filter((r) => r.status !== "ok").length
       console.log(`  완료: 성공 ${data.results.length - failed}건, 실패 ${failed}건`)
     } catch (error) {
@@ -164,6 +168,8 @@ async function extractEmbeddings(processed) {
       // 이 청크만 건너뛰고 다음 청크는 계속 진행
     }
   }
+
+  await notifyNewMatches("rescue", [...processedDesertionNos])
   console.log("임베딩 추출 전체 완료")
 }
 

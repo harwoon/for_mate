@@ -1,6 +1,7 @@
 import "dotenv/config"
 import { pool } from "../db/pool.js"
 import { parseRegion } from "./regionParser.js"
+import { notifyNewMatches } from "./notifyNewMatches.js"
 
 // 포인핸드가 공개한 최신 구조동물 RSS와 상세 JSON을 이용해 DB를 동기화한다.
 // 기본값은 안전한 확인을 위해 최신 5건이며, 환경변수로 건수와 요청 간격을 조정할 수 있다.
@@ -416,7 +417,7 @@ async function saveAnimal(animal) {
 async function extractEmbeddings() {
   // 아직 임베딩이 없는 pawinhand 사진들만 골라낸다 (syncImages가 이미 images는 다 만들어둔 상태).
   const { rows: pending } = await pool.query(
-    `SELECT i.id, i.image_url
+    `SELECT i.id, i.image_url, i.pawinhand_animal_id
      FROM images i
      LEFT JOIN embeddings e ON e.image_id = i.id
      WHERE i.post_type = 'pawinhand' AND e.id IS NULL`,
@@ -449,6 +450,9 @@ async function extractEmbeddings() {
       console.error(`  청크 처리 실패 (${i}~${i + chunk.length}):`, error.message)
     }
   }
+
+  const animalIds = [...new Set(pending.map((row) => Number(row.pawinhand_animal_id)))]
+  await notifyNewMatches("pawinhand", animalIds)
   console.log("[pawinhand] 임베딩 추출 전체 완료")
 }
 
