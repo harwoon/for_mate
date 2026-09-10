@@ -15,9 +15,7 @@ export async function createPost(req, res, next) {
         created(res, post)
     } catch (err) {
         // DB/입력 검증 실패 시 먼저 저장된 로컬 이미지 정리
-        await removeUploadedFoundFiles(
-            req.files ?? [],
-        )
+        await removeUploadedFoundFiles(req)
         next(err)
     }
 }
