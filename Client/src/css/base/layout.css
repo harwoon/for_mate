@@ -204,6 +204,14 @@
     pointer-events: none;
 }
 
+.header-icon-button.has-notification i {
+    color: var(--color-primary);
+}
+
+.header-icon-button.has-notification {
+    border-color: var(--color-primary-light);
+    background: var(--color-primary-soft);
+}
 
 /* ============================= 알림 드롭다운 ============================= */
 

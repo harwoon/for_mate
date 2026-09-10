@@ -125,8 +125,16 @@ export default function Header() {
 
             setIsNotificationOpen(false)
 
+            const animalId =
+                notification.animal_id ||
+                (
+                    notification.source_type === "pawinhand"
+                        ? notification.pawinhand_animal_id
+                        : notification.desertion_no
+                )
+
             navigate(
-                `/lost-posts/${notification.lost_post_id}/matches`
+                `/rescue-animals/${notification.source_type}/${animalId}`
             )
         } catch (error) {
             setNotificationError(
@@ -187,7 +195,11 @@ export default function Header() {
                             >
                                 <button
                                     type="button"
-                                    className="header-icon-button"
+                                    className={
+                                        unreadCount > 0
+                                            ? "header-icon-button has-notification"
+                                            : "header-icon-button"
+                                    }
                                     aria-label="알림"
                                     onClick={handleToggleNotification}
                                 >
