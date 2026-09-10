@@ -12,6 +12,7 @@ export async function createPostWithImages({ userId, post, imageUrls }) {
 
     try {
         await client.query("BEGIN")
+
         const postResult = await client.query(
             `
                 INSERT INTO found_posts (
@@ -69,7 +70,6 @@ export async function createPostWithImages({ userId, post, imageUrls }) {
     } catch (error) {
         await client.query("ROLLBACK")
         throw error
-
     } finally {
         client.release()
     }
@@ -136,13 +136,20 @@ export async function findMany({ filters, size, offset }) {
             SELECT
                 fp.id,
                 fp.title,
-                fp.species, fp.breed, fp.color,
+                fp.species,
+                fp.breed,
+                fp.color,
                 TO_CHAR(fp.find_date, 'YYYY-MM-DD') AS find_date,
-                (SELECT i.image_url FROM images i
-                 WHERE i.post_type = 'found' AND i.found_post_id = fp.id
-                 ORDER BY i.created_at ASC, i.id ASC LIMIT 1) AS primary_image_url,
+                (
+                    SELECT i.image_url
+                    FROM images i
+                    WHERE i.post_type = 'found'
+                        AND i.found_post_id = fp.id
+                    ORDER BY i.created_at ASC, i.id ASC
+                    LIMIT 1
+                ) AS primary_image_url,
                 fp.region,
-                fp.created_at
+                TO_CHAR(fp.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at
             FROM found_posts fp
             ${whereClause}
             ORDER BY fp.created_at DESC, fp.id DESC
@@ -173,7 +180,7 @@ export async function findById(id) {
                 fp.find_date,
                 fp.description,
                 fp.status,
-                fp.created_at,
+                TO_CHAR(fp.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at,
                 r.reason AS blind_reason,
                 u.name AS author_name
             FROM found_posts fp
@@ -246,7 +253,12 @@ export async function findImagesByPostId(id) {
 }
 
 // 발견제보 내용 + 이미지 수정
-export async function updatePostWithImages({ id, fields, deleteImageUrls, newImageUrls }) {
+export async function updatePostWithImages({
+    id,
+    fields,
+    deleteImageUrls,
+    newImageUrls
+}) {
     const client = await pool.connect()
 
     try {
@@ -267,12 +279,18 @@ export async function updatePostWithImages({ id, fields, deleteImageUrls, newIma
 
         if (!post) {
             await client.query("ROLLBACK")
-            return { outcome: "not_found" }
+
+            return {
+                outcome: "not_found"
+            }
         }
 
         if (post.status === "blind") {
             await client.query("ROLLBACK")
-            return { outcome: "blinded" }
+
+            return {
+                outcome: "blinded"
+            }
         }
 
         // 일반 게시글 필드 수정
@@ -383,12 +401,20 @@ export async function remove(id) {
 
         if (!post) {
             await client.query("ROLLBACK")
-            return { outcome: "not_found", imageUrls: [] }
+
+            return {
+                outcome: "not_found",
+                imageUrls: []
+            }
         }
 
         if (post.status === "blind") {
             await client.query("ROLLBACK")
-            return { outcome: "blinded", imageUrls: [] }
+
+            return {
+                outcome: "blinded",
+                imageUrls: []
+            }
         }
 
         // 실제 파일 삭제를 위해 URL 먼저 확보
@@ -425,7 +451,9 @@ export async function remove(id) {
         return {
             outcome: "ok",
             post: postResult.rows[0],
-            imageUrls: imageResult.rows.map((image) => image.image_url)
+            imageUrls: imageResult.rows.map(
+                (image) => image.image_url
+            )
         }
     } catch (error) {
         await client.query("ROLLBACK")

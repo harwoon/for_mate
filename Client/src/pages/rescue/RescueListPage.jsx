@@ -39,14 +39,10 @@ function getDetailPath(animal) {
         animal.source_type &&
         animal.animal_id
     ) {
-        return (
-            `/rescue-animals/${animal.source_type}/${animal.animal_id}`
-        )
+        return `/rescue-animals/${animal.source_type}/${animal.animal_id}`
     }
 
-    return (
-        `/rescue-animals/${animal.desertion_no}`
-    )
+    return `/rescue-animals/${animal.desertion_no}`
 }
 
 export default function RescueListPage() {
@@ -129,6 +125,7 @@ export default function RescueListPage() {
         setIsFilterOpen(false)
     }
 
+    // 필터 값만 초기화하고 모달은 그대로 유지한다.
     function handleResetFilters() {
         setFilters({
             ...EMPTY_FILTERS,
@@ -136,7 +133,6 @@ export default function RescueListPage() {
         })
 
         setPage(1)
-        setIsFilterOpen(false)
     }
 
     function handleChangeSort(nextSort) {
@@ -144,17 +140,91 @@ export default function RescueListPage() {
         setPage(1)
     }
 
-    const filterLabels = [
-        filters.species,
-        filters.breed,
-        ...filters.colors,
-        [filters.sido, filters.sigungu]
-            .filter(Boolean)
-            .join(" "),
-        filters.start_date &&
-            `시작일 ${filters.start_date}`,
-        filters.end_date &&
-            `종료일 ${filters.end_date}`
+    // 적용된 필터 chip의 X를 눌렀을 때 해당 조건만 제거한다.
+    function handleRemoveFilter(field, value) {
+        setFilters((current) => {
+            if (field === "colors") {
+                return {
+                    ...current,
+                    colors: current.colors.filter(
+                        (color) => color !== value
+                    )
+                }
+            }
+
+            if (field === "region") {
+                return {
+                    ...current,
+                    sido: "",
+                    sigungu: ""
+                }
+            }
+
+            return {
+                ...current,
+                [field]: ""
+            }
+        })
+
+        setPage(1)
+    }
+
+    const filterChips = [
+        filters.species && {
+            key: "species",
+            label: filters.species,
+            onRemove: () => (
+                handleRemoveFilter("species")
+            )
+        },
+
+        filters.breed && {
+            key: "breed",
+            label: filters.breed,
+            onRemove: () => (
+                handleRemoveFilter("breed")
+            )
+        },
+
+        ...filters.colors.map((color) => ({
+            key: `color-${color}`,
+            label: color,
+            onRemove: () => (
+                handleRemoveFilter(
+                    "colors",
+                    color
+                )
+            )
+        })),
+
+        (filters.sido || filters.sigungu) && {
+            key: "region",
+            label: [
+                filters.sido,
+                filters.sigungu
+            ]
+                .filter(Boolean)
+                .join(" "),
+            onRemove: () => (
+                handleRemoveFilter("region")
+            )
+        },
+
+        filters.start_date && {
+            key: "start-date",
+            label: `시작일 ${filters.start_date}`,
+            onRemove: () => (
+                handleRemoveFilter("start_date")
+            )
+        },
+
+        filters.end_date && {
+            key: "end-date",
+            label: `종료일 ${filters.end_date}`,
+            onRemove: () => (
+                handleRemoveFilter("end_date")
+            )
+        }
     ].filter(Boolean)
 
     return (
@@ -172,13 +242,15 @@ export default function RescueListPage() {
             />
 
             <div className="page-header">
-                <h1 className="page-title">
-                    보호중이에요
-                </h1>
+                <div>
+                    <h1 className="page-title">
+                        보호중이에요
+                    </h1>
 
-                <p className="page-desc">
-                    현재 보호 중인 구조동물을 확인할 수 있습니다.
-                </p>
+                    <p className="page-desc">
+                        현재 보호 중인 구조동물을 확인할 수 있습니다.
+                    </p>
+                </div>
             </div>
 
             <FilterBar
@@ -188,16 +260,7 @@ export default function RescueListPage() {
                 )}
                 sort={sort}
                 onChangeSort={handleChangeSort}
-                chips={filterLabels.map(
-                    (label, index) => (
-                        <span
-                            className="chip"
-                            key={`${label}-${index}`}
-                        >
-                            {label}
-                        </span>
-                    )
-                )}
+                chips={filterChips}
             />
 
             {isFilterOpen && (
@@ -250,19 +313,11 @@ export default function RescueListPage() {
 
                                 return (
                                     <PostCard
-                                        key={
-                                            `${animal.source_type}-${animal.animal_id}`
-                                        }
-                                        to={
-                                            getDetailPath(
-                                                animal
-                                            )
-                                        }
-                                        thumbnail={
-                                            imageUrl(
-                                                animal.image_url
-                                            )
-                                        }
+                                        key={`${animal.source_type}-${animal.animal_id}`}
+                                        to={getDetailPath(animal)}
+                                        thumbnail={imageUrl(
+                                            animal.image_url
+                                        )}
                                         badgeType={
                                             endingSoon
                                                 ? "ending"

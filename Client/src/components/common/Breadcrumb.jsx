@@ -16,12 +16,10 @@ export default function Breadcrumb({ items = [] }) {
                             className="breadcrumb-item"
                         >
                             {index > 0 && (
-                                <span
-                                    className="breadcrumb-separator"
+                                <i
+                                    className="ri-arrow-right-s-line breadcrumb-separator"
                                     aria-hidden="true"
-                                >
-                                    &gt;
-                                </span>
+                                />
                             )}
 
                             {isCurrent || !item.to ? (
@@ -29,6 +27,13 @@ export default function Breadcrumb({ items = [] }) {
                                     className="breadcrumb-current"
                                     aria-current={isCurrent ? "page" : undefined}
                                 >
+                                    {index === 0 && (
+                                        <i
+                                            className="ri-home-4-line"
+                                            aria-hidden="true"
+                                        />
+                                    )}
+
                                     {item.label}
                                 </span>
                             ) : (
@@ -36,6 +41,13 @@ export default function Breadcrumb({ items = [] }) {
                                     to={item.to}
                                     className="breadcrumb-link"
                                 >
+                                    {index === 0 && (
+                                        <i
+                                            className="ri-home-4-line"
+                                            aria-hidden="true"
+                                        />
+                                    )}
+
                                     {item.label}
                                 </Link>
                             )}

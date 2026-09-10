@@ -391,22 +391,30 @@
 /* ============================= 페이지 제목 ============================= */
 
 .page-header {
-    padding: var(--space-xl) 0 var(--space-lg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-lg);
+    min-height: 58px;
+    padding: 0 0 18px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--color-border);
 }
 
 .page-title {
     color: var(--color-text);
-    font-size: var(--font-xl);
+    font-size: 28px;
     font-weight: var(--weight-bold);
-    letter-spacing: -0.02em;
+    line-height: 1.3;
+    letter-spacing: -0.03em;
 }
 
 .page-desc {
-    margin-top: var(--space-xs);
+    margin-top: 6px;
     color: var(--color-text-sub);
     font-size: var(--font-sm);
+    line-height: 1.5;
 }
-
 
 /* ============================= 반응형 ============================= */
 

@@ -38,7 +38,10 @@ export default function ReportModal({
 
     async function handleSubmit() {
         if (!reason) {
-            setError("신고 사유를 선택해 주세요.")
+            setError(
+                "신고 사유를 선택해 주세요."
+            )
+
             return
         }
 
@@ -55,7 +58,10 @@ export default function ReportModal({
 
             onSuccess()
         } catch (error) {
-            setError(error.message || "신고 접수에 실패했습니다.")
+            setError(
+                error.message ||
+                "신고 접수에 실패했습니다."
+            )
         } finally {
             setSubmitting(false)
         }
@@ -64,27 +70,23 @@ export default function ReportModal({
     return (
         <Modal
             title="게시글 신고"
-            onClose={submitting ? undefined : onClose}
+            onClose={
+                submitting
+                    ? undefined
+                    : onClose
+            }
+            iconClose
             footer={
-                <>
-                    <button
-                        type="button"
-                        className="btn btn-outline"
-                        onClick={onClose}
-                        disabled={submitting}
-                    >
-                        취소
-                    </button>
-
-                    <button
-                        type="button"
-                        className="btn btn-danger"
-                        onClick={handleSubmit}
-                        disabled={submitting}
-                    >
-                        {submitting ? "신고 중..." : "신고하기"}
-                    </button>
-                </>
+                <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={handleSubmit}
+                    disabled={submitting}
+                >
+                    {submitting
+                        ? "신고 중..."
+                        : "신고하기"}
+                </button>
             }
         >
             <div className="stack">
@@ -98,22 +100,36 @@ export default function ReportModal({
                     </legend>
 
                     <div className="stack">
-                        {REPORT_REASONS.map((item) => (
-                            <label key={item.value}>
-                                <input
-                                    type="radio"
-                                    name="report-reason"
-                                    value={item.value}
-                                    checked={reason === item.value}
-                                    onChange={(event) => {
-                                        setReason(event.target.value)
-                                        setError("")
-                                    }}
-                                />
+                        {REPORT_REASONS.map(
+                            (item) => (
+                                <label
+                                    key={item.value}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="report-reason"
+                                        value={item.value}
+                                        checked={
+                                            reason ===
+                                            item.value
+                                        }
+                                        onChange={(
+                                            event
+                                        ) => {
+                                            setReason(
+                                                event
+                                                    .target
+                                                    .value
+                                            )
 
-                                {item.label}
-                            </label>
-                        ))}
+                                            setError("")
+                                        }}
+                                    />
+
+                                    {item.label}
+                                </label>
+                            )
+                        )}
                     </div>
                 </fieldset>
 
@@ -130,12 +146,19 @@ export default function ReportModal({
                         className="form-textarea"
                         value={detail}
                         placeholder="신고 사유에 대한 상세 내용을 입력해 주세요. (선택)"
-                        onChange={(event) => setDetail(event.target.value)}
+                        onChange={(event) => (
+                            setDetail(
+                                event.target.value
+                            )
+                        )}
                     />
                 </div>
 
                 {error && (
-                    <p role="alert" className="form-error">
+                    <p
+                        role="alert"
+                        className="form-error"
+                    >
                         {error}
                     </p>
                 )}
