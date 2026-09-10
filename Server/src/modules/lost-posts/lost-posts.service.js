@@ -126,9 +126,9 @@ export async function createPost({ userId, body, imageUrls }) {
 
   // AI 서버에 임베딩 추출을 요청
   // 등록 응답을 지연시키지 않도록 await 없이 비동기로 요청
-  const AI_SERVER_URL = process.env.AI_SERVER_URL ?? "http://localhost:8001"
+  const AI_SERVER_URL = (process.env.AI_SERVER_URL ?? "http://localhost:8001").replace(/\/+$/, "")
 
-  fetch(`${AI_SERVER_URL}/embeddings/images`, {
+  fetch(`${AI_SERVER_URL}/embeddings/lost-posts`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
