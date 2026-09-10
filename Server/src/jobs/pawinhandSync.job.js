@@ -25,8 +25,9 @@ const REQUEST_TIMEOUT_MS = 10_000
 const MAX_IMAGES = 8
 
 function parsePositiveInteger(value, fallback, max) {
+  if (value === undefined || value === "") return fallback   // 아예 안 준 경우만 기본값
   const number = Number(value)
-  if (!Number.isInteger(number) || number <= 0) return fallback
+  if (!Number.isInteger(number) || number < 0) return fallback  // 0은 이제 허용, 음수/문자만 무효
   return Math.min(number, max)
 }
 
