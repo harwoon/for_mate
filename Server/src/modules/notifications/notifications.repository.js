@@ -1,4 +1,5 @@
 import { query } from "../../db/pool.js"
+import { animalsSql } from "../rescue-animals/animal-source.js"
 
 // 사용 테이블: notifications
 
