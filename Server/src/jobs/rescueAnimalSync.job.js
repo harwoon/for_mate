@@ -84,7 +84,6 @@ async function preprocess() {
 }
 
 async function saveAnimals(processed_animals) {
-  // TODO: desertion_no 기준으로 upsert
 
   const {results, jsonData} = processed_animals
   const animals=results
