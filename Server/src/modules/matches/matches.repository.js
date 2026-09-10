@@ -16,37 +16,61 @@ export async function findLostPostEmbeddings(lostPostId) {
 
 // 벡터 하나를 기준으로 가장 가까운 구조동물 후보 K개를 조회한다.
 // "ORDER BY 거리 LIMIT" 형태를 유지해야 pgvector HNSW 인덱스가 실제로 사용된다.
-export async function findNearestRescueCandidates(embeddingLiteral, limit = 20) {
-  const { rows } = await query(
-    `
-    SELECT
-      ra.desertion_no,
-      (e.embedding <=> $1::vector) AS distance
-    FROM embeddings e
-    JOIN images i ON i.id = e.image_id AND i.post_type = 'rescue'
-    JOIN rescue_animals ra ON ra.desertion_no = i.desertion_no
-    WHERE ra.notice_edt IS NULL OR ra.notice_edt >= CURRENT_DATE
-    ORDER BY e.embedding <=> $1::vector
-    LIMIT $2
-    `,
-    [embeddingLiteral, limit],
-  )
-  return rows
+export async function findNearestCandidates(embeddingLiteral, limit = 20) {
+  const [rescueResult, pawinhandResult] = await Promise.all([
+    query(
+      `
+      SELECT ra.desertion_no AS ref_id, 'rescue' AS source_type, (e.embedding <=> $1::vector) AS distance
+      FROM embeddings e
+      JOIN images i ON i.id = e.image_id AND i.post_type = 'rescue'
+      JOIN rescue_animals ra ON ra.desertion_no = i.desertion_no
+      WHERE ra.notice_edt IS NULL OR ra.notice_edt >= CURRENT_DATE
+      ORDER BY e.embedding <=> $1::vector
+      LIMIT $2
+      `,
+      [embeddingLiteral, limit],
+    ),
+    query(
+      `
+      SELECT pa.id AS ref_id, 'pawinhand' AS source_type, (e.embedding <=> $1::vector) AS distance
+      FROM embeddings e
+      JOIN images i ON i.id = e.image_id AND i.post_type = 'pawinhand'
+      JOIN pawinhand_animals pa ON pa.id = i.pawinhand_animal_id
+      WHERE pa.notice_edt IS NULL OR pa.notice_edt >= CURRENT_DATE
+      ORDER BY e.embedding <=> $1::vector
+      LIMIT $2
+      `,
+      [embeddingLiteral, limit],
+    ),
+  ])
+  return [...rescueResult.rows, ...pawinhandResult.rows]
 }
 
 // 계산 결과를 이력으로 저장한다. 같은 날 같은 쌍이면 최신 값으로 덮어쓴다(캐시 아님, append 성격의 upsert).
 export async function upsertMatches(sourcePostId, ranked) {
   const today = new Date().toISOString().slice(0, 10)
-  for (const { desertion_no, similarity } of ranked) {
-    await query(
-      `
-      INSERT INTO matches (source_post_id, desertion_no, similarity_score, matched_date)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (source_post_id, desertion_no, matched_date)
-      DO UPDATE SET similarity_score = EXCLUDED.similarity_score, created_at = NOW()
-      `,
-      [sourcePostId, desertion_no, similarity, today],
-    )
+  for (const { source_type, ref_id, similarity } of ranked) {
+    if (source_type === "rescue") {
+      await query(
+        `
+        INSERT INTO matches (source_post_id, source_type, desertion_no, similarity_score, matched_date)
+        VALUES ($1, 'rescue', $2, $3, $4)
+        ON CONFLICT (source_post_id, desertion_no, matched_date) WHERE source_type = 'rescue'
+        DO UPDATE SET similarity_score = EXCLUDED.similarity_score, created_at = NOW()
+        `,
+        [sourcePostId, ref_id, similarity, today],
+      )
+    } else {
+      await query(
+        `
+        INSERT INTO matches (source_post_id, source_type, pawinhand_animal_id, similarity_score, matched_date)
+        VALUES ($1, 'pawinhand', $2, $3, $4)
+        ON CONFLICT (source_post_id, pawinhand_animal_id, matched_date) WHERE source_type = 'pawinhand'
+        DO UPDATE SET similarity_score = EXCLUDED.similarity_score, created_at = NOW()
+        `,
+        [sourcePostId, ref_id, similarity, today],
+      )
+    }
   }
 }
 
@@ -55,14 +79,22 @@ export async function findMatchById(matchId) {
   const { rows } = await query(
     `
     SELECT
-      m.id, m.similarity_score, m.matched_date,
+      m.id, m.similarity_score, m.matched_date, m.source_type,
       lp.id AS lost_post_id, lp.user_id AS lost_post_owner_id,
       lp.pet_name, lp.species, lp.breed, lp.color, lp.sex, lp.region, lp.event_date,
-      ra.desertion_no, ra.up_kind_nm, ra.kind_nm, ra.color_tags, ra.sex_cd,
-      ra.region_sido, ra.region_sigungu, ra.happen_place, ra.happen_dt
+      COALESCE(ra.desertion_no, pa.id) AS animal_ref_id,
+      COALESCE(ra.up_kind_nm, pa.up_kind_nm) AS up_kind_nm,
+      COALESCE(ra.kind_nm, pa.kind_nm) AS kind_nm,
+      COALESCE(ra.color_tags, pa.color_tags) AS color_tags,
+      COALESCE(ra.sex_cd, pa.sex_cd) AS sex_cd,
+      COALESCE(ra.region_sido, pa.region_sido) AS region_sido,
+      COALESCE(ra.region_sigungu, pa.region_sigungu) AS region_sigungu,
+      COALESCE(ra.happen_place, pa.happen_place) AS happen_place,
+      COALESCE(ra.happen_dt, pa.happen_dt) AS happen_dt
     FROM matches m
     JOIN lost_posts lp ON lp.id = m.source_post_id
-    JOIN rescue_animals ra ON ra.desertion_no = m.desertion_no
+    LEFT JOIN rescue_animals ra ON m.source_type = 'rescue' AND ra.desertion_no = m.desertion_no
+    LEFT JOIN pawinhand_animals pa ON m.source_type = 'pawinhand' AND pa.id = m.pawinhand_animal_id
     WHERE m.id = $1
     `,
     [matchId],

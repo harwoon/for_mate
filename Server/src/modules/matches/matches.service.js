@@ -9,7 +9,6 @@ const RESULT_LIMIT = 10
 // 캐시 조회가 아니라 요청마다 실시간으로 계산한다.
 export async function getMatches(lostPostId) {
   const vectors = await repository.findLostPostEmbeddings(lostPostId)
-
   if (vectors.length === 0) {
     const error = new Error("이미지 임베딩이 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.")
     error.status = 409
@@ -17,33 +16,38 @@ export async function getMatches(lostPostId) {
     throw error
   }
 
-  // 사진 벡터마다 후보를 조회해서, desertion_no별로 가장 가까웠던 거리만 남긴다.
-  const bestByAnimal = new Map()
+  const bestByAnimal = new Map() // key: `${source_type}:${ref_id}`
 
   for (const vector of vectors) {
-    const candidates = await repository.findNearestRescueCandidates(
-      vector,
-      CANDIDATE_LIMIT_PER_VECTOR,
-    )
-    for (const { desertion_no, distance } of candidates) {
-      const key = Number(desertion_no)
+    const candidates = await repository.findNearestCandidates(vector, CANDIDATE_LIMIT_PER_VECTOR)
+    for (const { ref_id, source_type, distance } of candidates) {
+      const key = `${source_type}:${ref_id}`
       const current = bestByAnimal.get(key)
-      if (current === undefined || distance < current) {
-        bestByAnimal.set(key, distance)
+      if (current === undefined || distance < current.distance) {
+        bestByAnimal.set(key, { distance, source_type, ref_id: Number(ref_id) })
       }
     }
   }
 
-  const ranked = [...bestByAnimal.entries()]
-    .map(([desertion_no, distance]) => ({
-      desertion_no,
+  const ranked = [...bestByAnimal.values()]
+    .map(({ source_type, ref_id, distance }) => ({
+      source_type,
+      desertion_no: source_type === "rescue" ? ref_id : null,
+      pawinhand_animal_id: source_type === "pawinhand" ? ref_id : null,
       similarity: 1 - distance,
     }))
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, RESULT_LIMIT)
 
   if (ranked.length > 0) {
-    await repository.upsertMatches(lostPostId, ranked)
+    await repository.upsertMatches(
+      lostPostId,
+      ranked.map((r) => ({
+        source_type: r.source_type,
+        ref_id: r.source_type === "rescue" ? r.desertion_no : r.pawinhand_animal_id,
+        similarity: r.similarity,
+      })),
+    )
   }
 
   return ranked
@@ -128,22 +132,19 @@ export async function getMatchDetail(matchId, userId) {
   }
 
   return {
-    similarity_score: row.similarity_score,
-    lost_post: {
-      id: row.lost_post_id,
-      pet_name: row.pet_name,
-      species: row.species,
-    },
-    rescue_animal: {
-      desertion_no: row.desertion_no,
-      up_kind_nm: row.up_kind_nm,
-    },
-    comparison: [
-      compareBreed(row.breed, row.kind_nm),
-      compareSex(row.sex, row.sex_cd),
-      compareColor(row.color, row.color_tags),
-      compareRegion(row.region, row.region_sido, row.region_sigungu, row.happen_place),
-      compareDate(row.event_date, row.happen_dt),
+  similarity_score: row.similarity_score,
+  lost_post: { id: row.lost_post_id, pet_name: row.pet_name, species: row.species },
+  animal: {
+    source_type: row.source_type,
+    id: Number(row.animal_ref_id),
+    up_kind_nm: row.up_kind_nm,
+  },
+  comparison: [
+    compareBreed(row.breed, row.kind_nm),
+    compareSex(row.sex, row.sex_cd),
+    compareColor(row.color, row.color_tags),
+    compareRegion(row.region, row.region_sido, row.region_sigungu, row.happen_place),
+    compareDate(row.event_date, row.happen_dt),
     ],
   }
 }

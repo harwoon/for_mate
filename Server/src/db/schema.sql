@@ -188,16 +188,26 @@ CREATE TABLE embeddings (
   created_at     TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
--- 매칭 결과 (실종 공고 <-> 구조동물)
+
+-- 매칭 결과 (실종 공고 <-> 구조동물/포인핸드)
 CREATE TABLE matches (
-  id                BIGSERIAL PRIMARY KEY,
-  source_post_id    BIGINT    NOT NULL REFERENCES lost_posts(id) ON DELETE CASCADE,
-  desertion_no      BIGINT    NOT NULL REFERENCES rescue_animals(desertion_no) ON DELETE CASCADE,
-  similarity_score  REAL      NOT NULL,
-  matched_date      DATE      NOT NULL,
-  created_at        TIMESTAMP NOT NULL DEFAULT NOW(),
-  UNIQUE (source_post_id, desertion_no, matched_date)
+  id                  BIGSERIAL PRIMARY KEY,
+  source_post_id      BIGINT      NOT NULL REFERENCES lost_posts(id) ON DELETE CASCADE,
+  source_type         VARCHAR(10) NOT NULL DEFAULT 'rescue',
+  desertion_no        BIGINT REFERENCES rescue_animals(desertion_no) ON DELETE CASCADE,
+  pawinhand_animal_id BIGINT REFERENCES pawinhand_animals(id) ON DELETE CASCADE,
+  similarity_score    REAL        NOT NULL,
+  matched_date        DATE        NOT NULL,
+  created_at          TIMESTAMP   NOT NULL DEFAULT NOW(),
+  CONSTRAINT matches_source_reference_check CHECK (
+    (source_type = 'rescue' AND desertion_no IS NOT NULL AND pawinhand_animal_id IS NULL) OR
+    (source_type = 'pawinhand' AND desertion_no IS NULL AND pawinhand_animal_id IS NOT NULL)
+  )
 );
+CREATE UNIQUE INDEX matches_lost_rescue_daily_unique
+  ON matches (source_post_id, desertion_no, matched_date) WHERE source_type = 'rescue';
+CREATE UNIQUE INDEX matches_lost_pawinhand_daily_unique
+  ON matches (source_post_id, pawinhand_animal_id, matched_date) WHERE source_type = 'pawinhand';
 
 -- 매칭 후보 제외 (배치가 돌아도 유지된다)
 CREATE TABLE match_exclusions (
@@ -228,14 +238,24 @@ CREATE UNIQUE INDEX bookmarks_user_pawinhand_unique
 
 -- 알림 (새벽 배치가 생성)
 CREATE TABLE notifications (
-  id                BIGSERIAL PRIMARY KEY,
-  user_id           BIGINT    NOT NULL REFERENCES users(id),
-  lost_post_id      BIGINT    NOT NULL REFERENCES lost_posts(id) ON DELETE CASCADE,
-  desertion_no      BIGINT    NOT NULL REFERENCES rescue_animals(desertion_no) ON DELETE CASCADE,
-  similarity_score  REAL      NOT NULL,
-  is_read           BOOLEAN   NOT NULL DEFAULT FALSE,
-  created_at        TIMESTAMP NOT NULL DEFAULT NOW()
+  id                  BIGSERIAL PRIMARY KEY,
+  user_id             BIGINT      NOT NULL REFERENCES users(id),
+  lost_post_id        BIGINT      NOT NULL REFERENCES lost_posts(id) ON DELETE CASCADE,
+  source_type         VARCHAR(10) NOT NULL DEFAULT 'rescue',
+  desertion_no        BIGINT REFERENCES rescue_animals(desertion_no) ON DELETE CASCADE,
+  pawinhand_animal_id BIGINT REFERENCES pawinhand_animals(id) ON DELETE CASCADE,
+  similarity_score    REAL        NOT NULL,
+  is_read             BOOLEAN     NOT NULL DEFAULT FALSE,
+  created_at          TIMESTAMP   NOT NULL DEFAULT NOW(),
+  CONSTRAINT notifications_source_reference_check CHECK (
+    (source_type = 'rescue' AND desertion_no IS NOT NULL AND pawinhand_animal_id IS NULL) OR
+    (source_type = 'pawinhand' AND desertion_no IS NULL AND pawinhand_animal_id IS NOT NULL)
+  )
 );
+CREATE UNIQUE INDEX notifications_lost_rescue_unique
+  ON notifications (lost_post_id, desertion_no) WHERE source_type = 'rescue';
+CREATE UNIQUE INDEX notifications_lost_pawinhand_unique
+  ON notifications (lost_post_id, pawinhand_animal_id) WHERE source_type = 'pawinhand';
 
 -- 고객센터 문의
 CREATE TABLE inquiries (
