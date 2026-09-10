@@ -2,6 +2,7 @@ import express from "express"
 import { requireAuth } from "../../middleware/auth.middleware.js"
 import { requireAdmin } from "../../middleware/requireAdmin.js"
 import * as controller from "./admin.controller.js"
+import * as faqController from "../faqs/faqs.controller.js"
 
 const router = express.Router()
 
@@ -17,5 +18,13 @@ router.get("/inquiries/:inquiryId", requireAuth, requireAdmin, controller.getInq
 router.patch("/inquiries/:inquiryId", requireAuth, requireAdmin, controller.answerInquiry) // 11.3 문의 답변 등록(관리자)
 
 router.get("/matches", requireAuth, requireAdmin, controller.getMatches)  // 관리자 매칭 기록 조회
+
+// FAQ 관리
+router.get("/faqs", requireAuth, requireAdmin, faqController.getAdminFaqs)
+router.post("/faqs", requireAuth, requireAdmin, faqController.createFaq)
+router.patch("/faqs/order", requireAuth, requireAdmin, faqController.updateFaqOrder)
+router.put("/faqs/:faqId", requireAuth, requireAdmin, faqController.updateFaq)
+router.patch("/faqs/:faqId/status", requireAuth, requireAdmin, faqController.updateFaqStatus)
+router.delete("/faqs/:faqId", requireAuth, requireAdmin, faqController.deleteFaq)
 
 export default router
