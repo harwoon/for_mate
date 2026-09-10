@@ -9,15 +9,18 @@ export async function findMany(userId) {
             SELECT
                 n.id AS notification_id,
                 n.lost_post_id,
+                n.source_type,
                 n.desertion_no,
-                ra.kind_nm AS breed,
-                ra.happen_place AS region,
+                n.pawinhand_animal_id,
+                r.kind_nm AS breed,
+                r.happen_place AS region,
                 n.similarity_score,
                 n.is_read,
                 n.created_at
             FROM notifications n
-            JOIN rescue_animals ra
-                ON ra.desertion_no = n.desertion_no
+            JOIN (${animalsSql}) r
+                ON r.source_type = n.source_type
+                AND r.animal_id = COALESCE(n.desertion_no, n.pawinhand_animal_id)
             WHERE n.user_id = $1
             ORDER BY n.created_at DESC, n.id DESC
         `,
