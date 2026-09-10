@@ -303,9 +303,13 @@ export async function getDashboard() {
 }
 
 // 관리자 매칭 기록 조회
+const VALID_SOURCE_TYPES = ["rescue", "pawinhand"]
+
 export async function getMatches(query) {
     const minSimilarity = query.min_similarity ? Number(query.min_similarity) : null
     const matchedDate = query.matched_date?.trim() || null
+    const sourceType = query.source_type?.trim() || null
+    const userSearch = query.user?.trim() || null
     const limit = query.limit ? Number(query.limit) : 100
 
     if (minSimilarity !== null && (Number.isNaN(minSimilarity) || minSimilarity < 0 || minSimilarity > 1)) {
@@ -315,8 +319,74 @@ export async function getMatches(query) {
         throw error
     }
 
-    const matches = await repository.findAllMatches({ minSimilarity, matchedDate, limit })
-    return matches.map(toMatchListItem)
+    if (sourceType !== null && !VALID_SOURCE_TYPES.includes(sourceType)) {
+        const error = new Error("source_type은 rescue 또는 pawinhand여야 합니다.")
+        error.status = 400
+        error.code = "INVALID_QUERY"
+        throw error
+    }
+
+    const matches = await repository.findAllMatches({
+        minSimilarity,
+        matchedDate,
+        sourceType,
+        userSearch,
+        limit
+    })
+
+    return groupByLostPost(matches.map(toMatchListItem))
+}
+
+function toMatchListItem(match) {
+    return {
+        id: Number(match.id),
+        lost_post: {
+            id: Number(match.source_post_id),
+            pet_name: match.pet_name,
+            species: match.lost_species,
+            image_url: match.lost_image_url
+        },
+        user: {
+            id: Number(match.user_id),
+            name: match.user_name,
+            email: match.user_email
+        },
+        animal: {
+            source_type: match.source_type,
+            id: Number(match.source_type === "rescue" ? match.desertion_no : match.pawinhand_animal_id),
+            up_kind_nm: match.up_kind_nm,
+            kind_nm: match.kind_nm,
+            image_url: match.animal_image_url
+        },
+        similarity_score: Number(match.similarity_score),
+        matched_date: match.matched_date,
+        created_at: match.created_at
+    }
+}
+
+// 같은 실종 공고끼리 묶어서 반환한다 (관리자 화면에서 공고 단위로 펼쳐보기 위함).
+function groupByLostPost(items) {
+    const groups = new Map()
+
+    for (const item of items) {
+        const key = item.lost_post.id
+        if (!groups.has(key)) {
+            groups.set(key, {
+                lost_post: item.lost_post,
+                user: item.user,
+                matches: []
+            })
+        }
+        groups.get(key).matches.push({
+            id: item.id,
+            animal: item.animal,
+            similarity_score: item.similarity_score,
+            matched_date: item.matched_date,
+            created_at: item.created_at
+        })
+    }
+
+    return [...groups.values()]
 }
 
 function toMatchListItem(match) {
