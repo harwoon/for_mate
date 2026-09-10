@@ -992,3 +992,407 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================= AI 매칭 관리 ============================= */
+
+.admin-matches-page {
+    font-size: 15px;
+}
+
+.admin-matches-page .admin-page-heading h2 {
+    font-size: 26px;
+}
+
+.admin-matches-page .admin-page-heading p,
+.admin-matches-page .admin-list-state {
+    font-size: 15px;
+}
+
+.admin-matches-page .admin-detail-id,
+.admin-matches-page .admin-list-summary {
+    font-size: 14px;
+}
+
+.admin-matches-page .admin-table-link {
+    font-size: 14px;
+}
+
+.admin-matches-page .admin-back-button,
+.admin-matches-page .btn {
+    min-height: 44px;
+    padding: 0 16px;
+    font-size: 15px;
+}
+
+.admin-matches-page .admin-table-pagination button {
+    width: 42px;
+    height: 42px;
+}
+
+.admin-matches-page .admin-table-pagination span {
+    font-size: 14px;
+}
+
+.admin-match-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-match-summary .admin-summary-item {
+    padding: 26px;
+    row-gap: 8px;
+}
+
+.admin-match-summary .admin-summary-item span {
+    font-size: 15px;
+}
+
+.admin-match-summary .admin-summary-item strong {
+    font-size: 32px;
+    line-height: 1.2;
+}
+
+.admin-match-summary .admin-summary-item small {
+    font-size: 13px;
+}
+
+.admin-match-filters {
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.admin-match-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 130px;
+    color: var(--color-text-sub);
+    font-size: 14px;
+}
+
+.admin-match-field > input,
+.admin-match-field > select {
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font: inherit;
+    font-size: 15px;
+}
+
+.admin-match-search {
+    flex: 1;
+    min-width: 230px;
+}
+
+.admin-match-search .admin-search-box {
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+}
+
+.admin-match-search .admin-search-box input {
+    font-size: 15px;
+}
+
+.admin-match-list-summary {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.admin-match-list-summary > span:last-child {
+    color: var(--color-text-light);
+    font-size: 14px;
+}
+
+.admin-match-notice {
+    padding: 12px 20px;
+    background: var(--color-warning-light);
+    color: var(--color-text-sub);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.admin-match-group {
+    border-top: 1px solid var(--color-border-light);
+}
+
+.admin-match-row {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 24px;
+}
+
+.admin-match-row:hover {
+    background: var(--color-surface-hover);
+}
+
+.admin-match-identity {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex: 1;
+    min-width: 220px;
+}
+
+.admin-match-identity > div,
+.admin-match-animal {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.admin-match-identity h3 {
+    margin: 6px 0;
+    font-size: 20px;
+    font-weight: var(--weight-bold);
+}
+
+.admin-match-identity > div > span:last-child {
+    color: var(--color-text-sub);
+    font-size: 14px;
+}
+
+.admin-match-image {
+    flex-shrink: 0;
+    width: 104px;
+    height: 104px;
+    border: 1px solid var(--color-border-light);
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.admin-match-image.is-empty {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 3px;
+    background: var(--color-bg);
+    color: var(--color-text-light);
+    font-size: 13px;
+}
+
+.admin-match-image.is-empty i {
+    font-size: 28px;
+}
+
+.admin-match-metrics {
+    display: grid;
+    grid-template-columns: auto auto auto auto;
+    gap: 24px;
+}
+
+.admin-match-metrics dt,
+.admin-match-candidate-score > span {
+    margin-bottom: 6px;
+    color: var(--color-text-light);
+    font-size: 13px;
+}
+
+.admin-match-metrics dd {
+    margin: 0;
+    font-size: 15px;
+    font-weight: var(--weight-semibold);
+    white-space: nowrap;
+}
+
+.admin-match-score {
+    color: var(--color-text-sub);
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-match-metrics .admin-match-score,
+.admin-match-candidate-score .admin-match-score {
+    font-size: 26px;
+    font-weight: var(--weight-bold);
+    line-height: 1.2;
+}
+
+.admin-match-score.is-high {
+    color: var(--color-success);
+}
+
+.admin-match-score.is-primary {
+    color: var(--color-primary);
+}
+
+.admin-match-toggle {
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.admin-match-group.is-open .admin-match-toggle {
+    border-color: var(--color-primary);
+    color: var(--color-primary-dark);
+    background: var(--color-primary-soft);
+}
+
+.admin-match-candidates {
+    padding: 0 24px 24px;
+}
+
+.admin-match-candidate-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 18px 0;
+    border-top: 1px solid var(--color-border-light);
+}
+
+.admin-match-candidate-heading h4 {
+    font-size: 16px;
+}
+
+.admin-match-candidate-heading strong {
+    margin-left: 4px;
+    color: var(--color-primary);
+}
+
+.admin-match-candidate-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.admin-match-candidate {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 24px;
+    row-gap: 12px;
+    padding: 18px 20px;
+    background: var(--color-surface);
+}
+
+.admin-match-candidate + .admin-match-candidate {
+    border-top: 1px solid var(--color-border-light);
+}
+
+.admin-match-candidate .admin-match-image {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 140px;
+    height: 140px;
+}
+
+.admin-match-rank {
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-light);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-match-animal {
+    display: flex;
+    flex-direction: column;
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    gap: 8px;
+}
+
+.admin-match-animal strong {
+    font-size: 18px;
+}
+
+.admin-match-animal span,
+.admin-match-animal small {
+    color: var(--color-text-sub);
+    font-size: 14px;
+}
+
+.admin-match-candidate-score {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    grid-column: 3;
+    grid-row: 1;
+    align-self: end;
+    min-width: 100px;
+    font-size: 15px;
+}
+
+.admin-match-candidate .admin-table-link {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+    align-self: start;
+    white-space: nowrap;
+}
+
+.admin-matches-page :is(button, a, select, input):focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+}
+
+@media (max-width: 1400px) {
+    .admin-match-row {
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+    .admin-match-metrics {
+        order: 3;
+        width: 100%;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1000px) {
+    .admin-match-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+    .admin-match-candidate {
+        grid-template-columns: 120px minmax(0, 1fr);
+        column-gap: 16px;
+        padding: 16px;
+    }
+    .admin-match-candidate .admin-match-image {
+        width: 120px;
+        height: 120px;
+    }
+    .admin-match-animal {
+        grid-row: 1;
+    }
+    .admin-match-candidate-score {
+        grid-column: 2;
+        grid-row: 2;
+        align-items: flex-start;
+        min-width: 0;
+    }
+    .admin-match-candidate .admin-table-link {
+        grid-column: 1 / -1;
+        grid-row: 3;
+    }
+}
+
+@media (max-width: 800px) {
+    .admin-match-summary {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .admin-match-field {
+        flex: 1;
+        min-width: 0;
+    }
+    .admin-match-search {
+        flex-basis: 100%;
+    }
+    .admin-match-row {
+        padding: 16px;
+    }
+    .admin-match-candidates {
+        padding: 0 12px 12px;
+    }
+}

@@ -58,6 +58,7 @@ import AdminFoundPostsPage from "./pages/admin/AdminFoundPostsPage.jsx"
 import AdminReportsPage from "./pages/admin/AdminReportsPage.jsx"
 import AdminInquiriesPage from "./pages/admin/AdminInquiriesPage.jsx"
 import AdminInquiryDetailPage from "./pages/admin/AdminInquiryDetailPage.jsx"
+import AdminMatchesPage from "./pages/admin/AdminMatchesPage.jsx"
 
 export default function App() {
     return (
@@ -71,6 +72,7 @@ export default function App() {
                     <Route path="/admin/reports" element={<AdminReportsPage />} />
                     <Route path="/admin/inquiries" element={<AdminInquiriesPage  />} />
                     <Route path="/admin/inquiries/:inquiryId" element={<AdminInquiryDetailPage />}/>
+                    <Route path="/admin/matches" element={<AdminMatchesPage />} />
                 </Route>
             </Route>
             <Route element={<Layout />}>

@@ -6,7 +6,8 @@ const MENU_ITEMS = [
     { to: "/admin/lost-posts", label: "실종 공고", icon: "ri-search-eye-line" },
     { to: "/admin/found-posts", label: "발견제보", icon: "ri-file-list-3-line" },
     { to: "/admin/reports", label: "신고 관리", icon: "ri-alarm-warning-line" },
-    { to: "/admin/inquiries", label: "문의 관리", icon: "ri-question-answer-line" }
+    { to: "/admin/inquiries", label: "문의 관리", icon: "ri-question-answer-line" },
+    { to: "/admin/matches", label: "AI 매칭 관리", icon: "ri-sparkling-2-line" }
 ]
 
 export default function AdminLayout() {
