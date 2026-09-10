@@ -77,3 +77,17 @@ export async function markAsRead(notificationId) {
 
     return result.rows[0]
 }
+
+// 9.3 알림 삭제
+export async function remove(notificationId) {
+    const result = await query(
+        `
+            DELETE FROM notifications
+            WHERE id = $1
+            RETURNING id
+        `,
+        [notificationId]
+    )
+
+    return result.rows[0]
+}

@@ -58,3 +58,30 @@ export async function readNotification({ userId, notificationId }) {
 
     return repository.markAsRead(id)
 }
+
+// 9.3 알림 삭제
+export async function deleteNotification({ userId, notificationId }) {
+    const id = parseNotificationId(notificationId)
+
+    const notification = await repository.findById(id)
+
+    if (!notification) {
+        throw serviceError(
+            "알림을 찾을 수 없습니다.",
+            404,
+            "NOTIFICATION_NOT_FOUND"
+        )
+    }
+
+    if (String(notification.user_id) !== String(userId)) {
+        throw serviceError(
+            "본인의 알림만 삭제할 수 있습니다.",
+            403,
+            "FORBIDDEN"
+        )
+    }
+
+    await repository.remove(id)
+
+    return null
+}

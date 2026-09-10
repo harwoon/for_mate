@@ -10,4 +10,7 @@ router.get("/", requireAuth, controller.getNotifications)
 // 9.2 알림 읽음 처리
 router.put("/:id/read", requireAuth, controller.readNotification)  
 
+// 9.3 알림 삭제
+router.delete("/:id", requireAuth, controller.deleteNotification)
+
 export default router
