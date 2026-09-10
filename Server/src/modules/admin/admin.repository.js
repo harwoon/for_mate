@@ -287,19 +287,22 @@ export async function findAllMatches(filters) {
         `SELECT
             m.id,
             m.source_post_id,
+            m.source_type,
             m.desertion_no,
+            m.pawinhand_animal_id,
             m.similarity_score,
             m.matched_date,
             m.created_at,
             lp.pet_name,
             lp.species AS lost_species,
             lost_image.image_url AS lost_image_url,
-            ra.up_kind_nm,
-            ra.kind_nm,
-            rescue_image.image_url AS rescue_image_url
+            COALESCE(ra.up_kind_nm, pa.up_kind_nm) AS up_kind_nm,
+            COALESCE(ra.kind_nm, pa.kind_nm) AS kind_nm,
+            animal_image.image_url AS animal_image_url
         FROM matches m
         JOIN lost_posts lp ON lp.id = m.source_post_id
-        JOIN rescue_animals ra ON ra.desertion_no = m.desertion_no
+        LEFT JOIN rescue_animals ra ON m.source_type = 'rescue' AND ra.desertion_no = m.desertion_no
+        LEFT JOIN pawinhand_animals pa ON m.source_type = 'pawinhand' AND pa.id = m.pawinhand_animal_id
         LEFT JOIN LATERAL (
             SELECT image_url
             FROM images
@@ -310,10 +313,14 @@ export async function findAllMatches(filters) {
         LEFT JOIN LATERAL (
             SELECT image_url
             FROM images
-            WHERE post_type = 'rescue' AND desertion_no = ra.desertion_no
+            WHERE post_type = m.source_type
+              AND (
+                (m.source_type = 'rescue' AND desertion_no = m.desertion_no) OR
+                (m.source_type = 'pawinhand' AND pawinhand_animal_id = m.pawinhand_animal_id)
+              )
             ORDER BY created_at ASC, id ASC
             LIMIT 1
-        ) rescue_image ON TRUE
+        ) animal_image ON TRUE
         ${whereClause}
         ORDER BY m.created_at DESC
         LIMIT $${limitParamIndex}`,

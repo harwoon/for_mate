@@ -328,11 +328,12 @@ function toMatchListItem(match) {
             species: match.lost_species,
             image_url: match.lost_image_url
         },
-        rescue_animal: {
-            desertion_no: Number(match.desertion_no),
+        animal: {
+            source_type: match.source_type,
+            id: Number(match.source_type === "rescue" ? match.desertion_no : match.pawinhand_animal_id),
             up_kind_nm: match.up_kind_nm,
             kind_nm: match.kind_nm,
-            image_url: match.rescue_image_url
+            image_url: match.animal_image_url
         },
         similarity_score: Number(match.similarity_score),
         matched_date: match.matched_date,
