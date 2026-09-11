@@ -1,11 +1,11 @@
 import * as service from "./matches.service.js"
-import { ok, created, fail } from "../../utils/response.js"
+import { ok} from "../../utils/response.js"
 
 // 6.1 AI 매칭 결과 조회
 export async function getMatches(req, res, next) {
     try {
         const lostPostId = Number(req.params.id)
-        const results = await service.getMatches(lostPostId, req.userId)
+        const results = await service.getMatches(lostPostId, req.userId, req.query.limit)
         ok(res, results)
     } catch (err) {
         next(err)
