@@ -132,6 +132,40 @@ export default function Header() {
             )
         }
     }, [])
+    
+    useEffect(() => {
+        function handleReadNotification(event) {
+            const notificationId =
+                event.detail?.notificationId
+
+            if (!notificationId) return
+
+            setNotifications((current) =>
+                current.map((notification) =>
+                    String(
+                        notification.notification_id
+                    ) === String(notificationId)
+                        ? {
+                            ...notification,
+                            is_read: true
+                        }
+                        : notification
+                )
+            )
+        }
+
+        window.addEventListener(
+            "notifications:read",
+            handleReadNotification
+        )
+
+        return () => {
+            window.removeEventListener(
+                "notifications:read",
+                handleReadNotification
+            )
+        }
+    }, [])
 
     async function loadNotifications() {
         setNotificationLoading(true)

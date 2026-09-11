@@ -8,9 +8,10 @@
 //
 // ↓ 아래에 "왜 이렇게 만들었는지"를 블록마다 주석으로 설명해둔다.
 
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { useFetch } from "../../hooks/useFetch.js"
 import * as pagesApi from "../../api/pages.api.js"
+import Breadcrumb from "../../components/common/Breadcrumb.jsx"
 
 // 약관 본문은 피그마 디자인에 있는 실제 문구를 그대로 옮겨왔다.
 // 백엔드에서 값을 받아오기 전까지 화면에 보여줄 "기본값"으로 쓰인다. (아래 컴포넌트 본문 참고)
@@ -46,6 +47,9 @@ const AGREE_SIGNAL_KEY = "formate:agree-terms"
 
 export default function TermsPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  const isSignupFlow = searchParams.get("from") === "signup"
 
   // 화면에 들어오자마자 백엔드에 실제 약관 데이터를 요청한다.
   // → 이게 "백엔드와 연결"하는 부분이다. 다만 이 글을 쓰는 시점엔 백엔드(pages.controller.js)가
@@ -78,37 +82,86 @@ export default function TermsPage() {
     navigate("/signup")
   }
 
-  return (
-    <div className="container auth-page">
-      <div className="card card-padded auth-card">
-        <div className="auth-card-header">
-          <p className="auth-card-title">{terms.title}</p>
-        </div>
 
-        <div className="legal-sections">
-          {terms.sections.map((section) => (
-            <div className="legal-section" key={section.heading}>
-              <h2>{section.heading}</h2>
-              {/* 피그마를 보면 한 조항의 본문이 여러 줄(예: 제2조의 "1. ..." / "2. ...")이어도
-                  그 줄들은 서로 붙어서 줄바꿈만 되어 있을 뿐, 별도 문단처럼 떨어져 있지 않다.
-                  그런데 .legal-section 자체가 gap을 쓰는 flex 컨테이너라, <p>들을 바로 자식으로 두면
-                  형제 사이(제목-본문은 물론, 본문 줄과 줄 사이까지) 전부에 똑같은 간격이 생겨버린다.
-                  그래서 본문 줄들을 별도 래퍼(.legal-section-body, flex가 아닌 일반 블록)로 한 번 더
-                  감싸서, .legal-section의 flex gap이 "제목 - 본문 묶음" 사이에만 걸리게 만들었다. */}
-              <div className="legal-section-body">
-                {section.body.map((paragraph, index) => (
-                  // 조항 번호(1./2. 등)까지 포함된 문장이라 key는 배열 인덱스를 그대로 쓴다.
-                  // (문단 순서가 바뀔 일이 없는 정적 텍스트라 인덱스를 key로 써도 안전하다)
-                  <p key={index}>{paragraph}</p>
-                ))}
-              </div>
+  const legalContent = (
+    <>
+      <div className="auth-card-header">
+        <p className="auth-card-title">
+          {terms.title}
+        </p>
+      </div>
+
+      <div className="legal-sections">
+        {terms.sections.map((section) => (
+          <div
+            className="legal-section"
+            key={section.heading}
+          >
+            <h2>
+              {section.heading}
+            </h2>
+
+            <div className="legal-section-body">
+              {section.body.map(
+                (paragraph, index) => (
+                  <p key={index}>
+                    {paragraph}
+                  </p>
+                )
+              )}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
 
-        <button type="button" className="btn btn-primary btn-block" onClick={handleConfirm}>
-          내용을 모두 확인했습니다
-        </button>
+  if (isSignupFlow) {
+    return (
+      <div className="container auth-page">
+        <div className="card card-padded auth-card">
+          {legalContent}
+
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={handleConfirm}
+          >
+            내용을 모두 확인했습니다
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container">
+      <Breadcrumb
+        items={[
+          {
+            label: "홈",
+            to: "/"
+          },
+          {
+            label: "이용약관"
+          }
+        ]}
+      />
+
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">
+            이용약관
+          </h1>
+
+          <p className="page-desc">
+            For Mate 서비스 이용약관을 확인할 수 있습니다.
+          </p>
+        </div>
+      </div>
+
+      <div className="card card-padded">
+        {legalContent}
       </div>
     </div>
   )
