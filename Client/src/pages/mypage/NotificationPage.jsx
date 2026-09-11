@@ -97,6 +97,59 @@ export default function NotificationPage() {
         setPage(1)
     }, [filter])
 
+    useEffect(() => {
+        function handleReadNotification(event) {
+            const notificationId =
+                event.detail?.notificationId
+
+            if (!notificationId) return
+
+            setNotifications((current) =>
+                current.map((notification) =>
+                    String(
+                        notification.notification_id
+                    ) === String(notificationId)
+                        ? {
+                            ...notification,
+                            is_read: true
+                        }
+                        : notification
+                )
+            )
+        }
+
+        function handleReadAllNotifications() {
+            setNotifications((current) =>
+                current.map((notification) => ({
+                    ...notification,
+                    is_read: true
+                }))
+            )
+        }
+
+        window.addEventListener(
+            "notifications:read",
+            handleReadNotification
+        )
+
+        window.addEventListener(
+            "notifications:read-all",
+            handleReadAllNotifications
+        )
+
+        return () => {
+            window.removeEventListener(
+                "notifications:read",
+                handleReadNotification
+            )
+
+            window.removeEventListener(
+                "notifications:read-all",
+                handleReadAllNotifications
+            )
+        }
+    }, [])
+
     const unreadCount = notifications.filter(
         (notification) => !notification.is_read
     ).length
@@ -237,7 +290,9 @@ export default function NotificationPage() {
 
             <section className="card notification-summary">
                 <div>
-                    <span>전체 알림</span>
+                    <span>
+                        전체 알림
+                    </span>
 
                     <strong>
                         {notifications.length}
@@ -246,7 +301,9 @@ export default function NotificationPage() {
                 </div>
 
                 <div>
-                    <span>읽지 않은 알림</span>
+                    <span>
+                        읽지 않은 알림
+                    </span>
 
                     <strong>
                         {unreadCount}

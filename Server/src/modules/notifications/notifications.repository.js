@@ -78,16 +78,20 @@ export async function markAsRead(notificationId) {
     return result.rows[0]
 }
 
-// 9.3 알림 삭제
-export async function remove(notificationId) {
+// 9.3 모든 알림 읽음 처리
+export async function markAllAsRead(userId) {
     const result = await query(
         `
-            DELETE FROM notifications
-            WHERE id = $1
+            UPDATE notifications
+            SET is_read = true
+            WHERE user_id = $1
+                AND is_read = false
             RETURNING id
         `,
-        [notificationId]
+        [userId]
     )
 
-    return result.rows[0]
+    return {
+        updated_count: result.rows.length
+    }
 }

@@ -24,7 +24,6 @@ function parseNotificationId(notificationId) {
     return id
 }
 
-
 // 9.1 알림 목록 조회
 export async function getNotifications(userId) {
     const items = await repository.findMany(userId)
@@ -35,10 +34,14 @@ export async function getNotifications(userId) {
 }
 
 // 9.2 알림 읽음 처리
-export async function readNotification({ userId, notificationId }) {
+export async function readNotification({
+    userId,
+    notificationId
+}) {
     const id = parseNotificationId(notificationId)
 
-    const notification = await repository.findById(id)
+    const notification =
+        await repository.findById(id)
 
     if (!notification) {
         throw serviceError(
@@ -48,7 +51,10 @@ export async function readNotification({ userId, notificationId }) {
         )
     }
 
-    if (String(notification.user_id) !== String(userId)) {
+    if (
+        String(notification.user_id) !==
+        String(userId)
+    ) {
         throw serviceError(
             "본인의 알림만 확인할 수 있습니다.",
             403,
@@ -59,29 +65,7 @@ export async function readNotification({ userId, notificationId }) {
     return repository.markAsRead(id)
 }
 
-// 9.3 알림 삭제
-export async function deleteNotification({ userId, notificationId }) {
-    const id = parseNotificationId(notificationId)
-
-    const notification = await repository.findById(id)
-
-    if (!notification) {
-        throw serviceError(
-            "알림을 찾을 수 없습니다.",
-            404,
-            "NOTIFICATION_NOT_FOUND"
-        )
-    }
-
-    if (String(notification.user_id) !== String(userId)) {
-        throw serviceError(
-            "본인의 알림만 삭제할 수 있습니다.",
-            403,
-            "FORBIDDEN"
-        )
-    }
-
-    await repository.remove(id)
-
-    return null
+// 9.3 모든 알림 읽음 처리
+export async function readAllNotifications(userId) {
+    return repository.markAllAsRead(userId)
 }
