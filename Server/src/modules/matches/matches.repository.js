@@ -46,6 +46,7 @@ export async function findNearestCandidates(embeddingLiteral, species, limit = 2
       JOIN pawinhand_animals pa ON pa.id = i.pawinhand_animal_id
       WHERE (pa.notice_edt IS NULL OR pa.notice_edt >= CURRENT_DATE)
         AND pa.up_kind_nm = $2
+        AND pa.duplicate_of_desertion_no IS NULL
       ORDER BY e.embedding <=> $1::vector
       LIMIT $3
       `,
