@@ -1,16 +1,19 @@
 """
-zero-shot 백본 비교 — 우리 하드 eval 에서 케이스 단위 Recall (학습 없이 feature + 코사인).
+백본/모델 비교 — 우리 하드 eval 에서 케이스 단위 Recall (feature + 코사인, 대부분 zero-shot).
 
   petreco   : open-noodle/pet-recognition-large (frozen DINOv2-large + 학습된 512d projection, ONNX)
   dinov2    : facebook/dinov2-large 원본 (projection 없음, pooler_output 1024d) <- projection 이 얼마나 보태는지
   siglip2   : google/siglip2-* (foundation, get_image_features)
+  ours      : 우리가 train_dinov2_projection.py 로 직접 학습한 체크포인트 (frozen dinov2-large + 학습된 Linear projection).
+              petreco/raw dinov2 와 나란히 비교하려고 있음 -- --ours_ckpt 로 dog/cat 체크포인트 지정.
 
-전처리는 각 모델 관례대로 (petreco = 224 + ImageNet, dinov2/siglip2 = 각자 HF processor).
+전처리는 각 모델 관례대로 (petreco/ours = 224 + ImageNet, dinov2/siglip2 = 각자 HF processor).
 채점은 eval_case_level_wildlife.py 와 동일: query 여러 장 평균+정규화, 개체 유사도 = max.
 
   python scripts/compare_backbones.py                                   # dogs, cats
   python scripts/compare_backbones.py --sets dogs cats corrupt --models petreco dinov2 siglip2
   python scripts/compare_backbones.py --siglip_id google/siglip2-so400m-patch14-384
+  python scripts/compare_backbones.py --sets cats --models ours petreco dinov2 --ours_ckpt ML/checkpoints/dinov2_proj_cat.pth
 """
 import argparse
 import re
@@ -62,6 +65,34 @@ def make_petreco():
             out.append(sess.run([oname], {iname: np.stack(arr).astype(np.float32)})[0])
         v = np.concatenate(out)
         return v / (np.linalg.norm(v, axis=1, keepdims=True) + 1e-12)
+    return embed
+
+
+def make_ours(ckpt_path):
+    """train_dinov2_projection.py 가 저장한 체크포인트: frozen dinov2-large + 학습된 Linear projection."""
+    import torch.nn as nn
+    import torchvision.transforms as T
+    from transformers import AutoModel
+
+    ck = torch.load(ckpt_path, map_location=DEV, weights_only=False)
+    backbone = AutoModel.from_pretrained(ck.get("backbone", "facebook/dinov2-large")).eval().to(DEV)
+    for p in backbone.parameters():
+        p.requires_grad_(False)
+    proj = nn.Linear(1024, ck["proj_dim"], bias=False).to(DEV)
+    proj.load_state_dict(ck["proj"])
+    proj.eval()
+    print(f"  [ours] {ckpt_path}  (best epoch {ck.get('epoch')}, 학습 당시 R@1 {ck.get('r1', 0):.1%})")
+    tf = T.Compose([T.Resize((224, 224)), T.ToTensor(),
+                    T.Normalize(IMAGENET_MEAN.tolist(), IMAGENET_STD.tolist())])
+
+    @torch.no_grad()
+    def embed(paths, bs=64):
+        out = []
+        for i in range(0, len(paths), bs):
+            batch = torch.stack([tf(Image.open(p).convert("RGB")) for p in paths[i:i + bs]]).to(DEV)
+            feat = backbone(pixel_values=batch).pooler_output
+            out.append(F.normalize(proj(feat), dim=1).cpu().numpy())
+        return np.concatenate(out)
     return embed
 
 
@@ -133,16 +164,22 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sets", nargs="+", default=["dogs", "cats"], choices=list(SETS))
     ap.add_argument("--models", nargs="+", default=["petreco", "dinov2", "siglip2"],
-                    choices=["petreco", "dinov2", "siglip2"])
+                    choices=["petreco", "dinov2", "siglip2", "ours"])
     ap.add_argument("--siglip_id", default="google/siglip2-giant-opt-patch16-384")
     ap.add_argument("--dinov2_id", default="facebook/dinov2-large")
+    ap.add_argument("--ours_ckpt", default=None,
+                    help="ours 모델용 train_dinov2_projection.py 체크포인트. "
+                         "예: ML/checkpoints/dinov2_proj_cat.pth (--sets cats), dinov2_proj_dog.pth (--sets dogs)")
     args = ap.parse_args()
+    if "ours" in args.models and not args.ours_ckpt:
+        ap.error("--models ours 는 --ours_ckpt 필요 (예: ML/checkpoints/dinov2_proj_cat.pth)")
     print(f"device={DEV}")
 
     builders = {
         "petreco": make_petreco,
         "dinov2": lambda: _hf_image_embed(args.dinov2_id, "dinov2"),
         "siglip2": lambda: _hf_image_embed(args.siglip_id, "siglip2"),
+        "ours": lambda: make_ours(args.ours_ckpt),
     }
     embedders = {}
     for m in args.models:

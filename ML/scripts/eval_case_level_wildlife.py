@@ -23,7 +23,8 @@ from torch.utils.data import DataLoader, Dataset
 
 FN_RE = re.compile(r"(\d+)_c(\d+)s(\d+)_(\d+)\.jpg$", re.I)
 MEAN, STD = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
-MODEL_IMG_SIZE = {"megadescriptor": 224, "petface": 224, "arbase": 384, "petreco": 224}
+MODEL_IMG_SIZE = {"megadescriptor": 224, "megadescriptor_l": 384,
+                  "petface": 224, "arbase": 384, "petreco": 224}
 
 PETRECO_REPO = "open-noodle/pet-recognition-large"   # DINOv2-large(frozen) + 512d projection, Apache-2.0
 PETRECO_FILE = "recognition/model.onnx"
@@ -75,12 +76,18 @@ def build_model(model_name, ckpt_path, device, zeroshot=False):
         onnx_path = ckpt_path or hf_hub_download(PETRECO_REPO, PETRECO_FILE)
         return OnnxEmbedder(onnx_path, device)
 
-    ck = None if zeroshot else torch.load(ckpt_path, map_location=device, weights_only=False)
+    no_ckpt = zeroshot or model_name == "megadescriptor_l"   # 파인튜닝 ckpt 없이 사전학습 그대로
+    ck = None if no_ckpt else torch.load(ckpt_path, map_location=device, weights_only=False)
     if model_name == "megadescriptor":
         import timm
         # zeroshot: 파인튜닝 없이 사전학습 가중치 그대로 (파인튜닝 이득 대조용)
         model = timm.create_model("hf-hub:BVRA/MegaDescriptor-B-224", num_classes=0,
                                   pretrained=zeroshot)
+    elif model_name == "megadescriptor_l":
+        import timm
+        # 계열 최강 (Swin-L, 384). 가중치 CC-BY-NC-4.0. zeroshot 전용(파인튜닝 ckpt 없음)
+        model = timm.create_model("hf-hub:BVRA/MegaDescriptor-L-384", num_classes=0,
+                                  pretrained=True)
     elif model_name == "petface":
         from torchvision.models import resnet50
         import torch.nn as nn
@@ -111,7 +118,7 @@ def embed(model, paths, tf, device, batch=64):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True,
-                    choices=["megadescriptor", "petface", "arbase", "petreco"])
+                    choices=["megadescriptor", "megadescriptor_l", "petface", "arbase", "petreco"])
     ap.add_argument("--root", required=True, help="예: ML/dataset/derived/MPDD_hard_corrupt/MPDD/pytorch")
     ap.add_argument("--weight", default=None,
                     help="체크포인트 경로. petreco 는 생략하면 HF 에서 자동 다운로드")
@@ -120,7 +127,7 @@ def main():
     ap.add_argument("--zeroshot", action="store_true",
                     help="파인튜닝 없이 사전학습 가중치 그대로 (megadescriptor/arbase). 파인튜닝 이득 대조용")
     args = ap.parse_args()
-    if args.model not in ("petreco",) and not args.weight and not args.zeroshot:
+    if args.model not in ("petreco", "megadescriptor_l") and not args.weight and not args.zeroshot:
         ap.error("--weight 필요 (petreco 또는 --zeroshot 이면 생략 가능)")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
