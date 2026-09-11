@@ -13,9 +13,10 @@
 // 서로 다르고, 피그마에서도 C-03/C-04가 별개 화면으로 정의돼 있어서 각자 독립된 페이지로 두는 게
 // 나중에 한쪽만 수정할 때(예: 개인정보처리방침만 조항 추가) 더 다루기 쉽다.
 
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { useFetch } from "../../hooks/useFetch.js"
 import * as pagesApi from "../../api/pages.api.js"
+import Breadcrumb from "../../components/common/Breadcrumb.jsx"
 
 // 개인정보처리방침 본문. 피그마 디자인의 실제 문구를 그대로 옮겨왔고,
 // 백엔드 응답이 오기 전까지 화면에 보여줄 기본값으로 쓰인다.
@@ -52,6 +53,9 @@ const AGREE_SIGNAL_KEY = "formate:agree-privacy"
 
 export default function PrivacyPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  const isSignupFlow = searchParams.get("from") === "signup"
 
   // 백엔드 연동 방식은 TermsPage.jsx와 동일하다: 실제로 GET /pages/privacy를 호출해보고,
   // 아직 구현되지 않아 실패하는 동안에는 FALLBACK_PRIVACY(피그마 원문)를 대신 보여준다.
@@ -66,32 +70,85 @@ export default function PrivacyPage() {
     navigate("/signup")
   }
 
-  return (
-    <div className="container auth-page">
-      <div className="card card-padded auth-card">
-        <div className="auth-card-header">
-          <p className="auth-card-title">{privacy.title}</p>
-        </div>
+  const legalContent = (
+    <>
+      <div className="auth-card-header">
+        <p className="auth-card-title">
+          {privacy.title}
+        </p>
+      </div>
 
-        <div className="legal-sections">
-          {privacy.sections.map((section) => (
-            <div className="legal-section" key={section.heading}>
-              <h2>{section.heading}</h2>
-              {/* 여러 줄짜리 본문(예: "2. 수집 및 이용 목적"의 - 항목 3개)을 별도 래퍼로 감싸는 이유는
-                  TermsPage.jsx의 같은 부분 주석 참고. 요약하면: .legal-section의 flex gap이 본문 줄
-                  사이사이에도 끼어들지 않도록, 여러 줄을 하나의 블록(.legal-section-body)으로 묶는다. */}
-              <div className="legal-section-body">
-                {section.body.map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))}
-              </div>
+      <div className="legal-sections">
+        {privacy.sections.map((section) => (
+          <div
+            className="legal-section"
+            key={section.heading}
+          >
+            <h2>
+              {section.heading}
+            </h2>
+
+            <div className="legal-section-body">
+              {section.body.map(
+                (paragraph, index) => (
+                  <p key={index}>
+                    {paragraph}
+                  </p>
+                )
+              )}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+      </div>
+    </>
+  )
 
-        <button type="button" className="btn btn-primary btn-block" onClick={handleConfirm}>
-          내용을 모두 확인했습니다
-        </button>
+  if (isSignupFlow) {
+    return (
+      <div className="container auth-page">
+        <div className="card card-padded auth-card">
+          {legalContent}
+
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={handleConfirm}
+          >
+            내용을 모두 확인했습니다
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container">
+      <Breadcrumb
+        items={[
+          {
+            label: "홈",
+            to: "/"
+          },
+          {
+            label: "개인정보처리방침"
+          }
+        ]}
+      />
+
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">
+            개인정보처리방침
+          </h1>
+
+          <p className="page-desc">
+            For Mate의 개인정보 수집 및 처리 방침을 확인할 수 있습니다.
+          </p>
+        </div>
+      </div>
+
+      <div className="card card-padded">
+        {legalContent}
       </div>
     </div>
   )

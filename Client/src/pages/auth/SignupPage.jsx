@@ -295,14 +295,14 @@ export default function SignupPage() {
                   주소를 /pages/terms가 아니라 /terms로 쓰는 이유: vite.config.js의 proxy가
                   "/pages"로 시작하는 요청을 전부 백엔드(4000)로 넘겨버려서, /pages/terms로 새 탭을
                   열면 화면 대신 백엔드가 주는 raw JSON이 보여버린다. (App.jsx 주석 참고) */}
-              <Link to="/terms" target="_blank" rel="noreferrer">약관보기</Link>
+              <Link to="/terms?from=signup" target="_blank" rel="noreferrer">약관보기</Link>
             </div>
             <div className="auth-consent-item">
               <label>
                 <input type="checkbox" checked={agreePrivacy} onChange={togglePrivacy} />
                 [필수] 개인정보 수집 및 이용 동의
               </label>
-              <Link to="/privacy" target="_blank" rel="noreferrer">약관보기</Link>
+              <Link to="/privacy?from=signup" target="_blank" rel="noreferrer">약관보기</Link>
             </div>
           </div>
           {fieldErrors.consent && <p className="form-error">{fieldErrors.consent}</p>}
