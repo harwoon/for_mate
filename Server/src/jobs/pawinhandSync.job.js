@@ -1,8 +1,9 @@
 import "dotenv/config"
+import { setGlobalDispatcher, Agent } from "undici"
 import { pool } from "../db/pool.js"
 import { parseRegion } from "./regionParser.js"
 import { notifyNewMatches } from "./notifyNewMatches.js"
-import { setGlobalDispatcher, Agent } from "undici"
+import { markDuplicatePawinhandAnimals } from "./markDuplicateAnimals.js"
 
 setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }))
 
@@ -458,6 +459,7 @@ async function extractEmbeddings() {
 
   const animalIds = [...new Set(pending.map((row) => Number(row.pawinhand_animal_id)))]
   await notifyNewMatches("pawinhand", animalIds)
+  await markDuplicatePawinhandAnimals()
   console.log("[pawinhand] 임베딩 추출 전체 완료")
 }
 

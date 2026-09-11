@@ -142,7 +142,10 @@ CREATE TABLE pawinhand_animals (
   notice_edt     DATE,
   last_seen_at   TIMESTAMP    NOT NULL DEFAULT NOW(),
   created_at     TIMESTAMP    NOT NULL DEFAULT NOW(),
-  updated_at     TIMESTAMP    NOT NULL DEFAULT NOW()
+  updated_at     TIMESTAMP    NOT NULL DEFAULT NOW(),
+  duplicate_of_desertion_no BIGINT REFERENCES rescue_animals(desertion_no)
+    -- 공공데이터(rescue_animals)와 사진 임베딩이 극단적으로 유사해 같은 개체로 판단된 경우,
+    -- 그 desertion_no를 가리킨다. NULL이면 중복 아님(또는 아직 검사 전).
 );
 
 CREATE INDEX idx_pawinhand_filter ON pawinhand_animals (up_kind_nm, kind_nm, happen_place, happen_dt);
