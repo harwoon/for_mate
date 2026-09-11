@@ -62,7 +62,15 @@ def preprocess():
     df=df[~df.processState.isin(['종료(안락사)', '종료(자연사)','종료(방사)']) & (df.upKindNm != '기타')][['desertionNo', 'happenDt','happenPlace','upKindNm','kindNm','colorCd','age','weight','processState','sexCd','neuterYn','specialMark','careNm','careTel','careAddr','rfidCd','noticeSdt','noticeEdt','popfile1','popfile2']]
     
     df['desertionNo']= df.desertionNo.astype(int)
-    df.loc[df['kindNm'] == '한국 고양이', 'kindNm'] = '코리안 숏헤어'
+
+    BREED_NAME_MAP = {
+        '한국 고양이': '코리안 숏헤어',
+        '한국고양이': '코리안 숏헤어',
+        '저먼 셰퍼드 독': '셰퍼드',
+        '잉글리쉬 포인터': '포인터',
+    }
+
+    df['kindNm'] = df['kindNm'].replace(BREED_NAME_MAP)
     
     colors = df.colorCd.tolist()
     
