@@ -18,8 +18,8 @@ import Loading from "../../components/common/Loading.jsx"
 import PostGrid from "../../components/post/PostGrid.jsx"
 import { formatDate } from "../../utils/date.js"
 
-const INITIAL_LIMIT = 10
-const LOAD_MORE_SIZE = 10
+const INITIAL_LIMIT = 8
+const LOAD_MORE_SIZE = 8
 const DEFAULT_MAX_LIMIT = 50
 
 const SOURCE_LABELS = {

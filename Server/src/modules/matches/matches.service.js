@@ -7,7 +7,7 @@ import { findById as findLostPostById } from "../lost-posts/lost-posts.repositor
 const CANDIDATE_LIMIT_PER_VECTOR = 100
 
 // 최초 매칭 결과는 10위까지 보여줌
-const DEFAULT_RESULT_LIMIT = 10
+const DEFAULT_RESULT_LIMIT = 8
 
 // 사용자가 추가로 확인할 수 있는 최대 순위
 const MAX_RESULT_LIMIT = 50

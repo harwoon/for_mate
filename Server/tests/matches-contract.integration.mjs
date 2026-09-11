@@ -307,7 +307,7 @@ try {
                 ),
                 {
                     items: [],
-                    limit: 10,
+                    limit: 8,
                     max_limit: 50,
                     has_more: false
                 }
@@ -481,7 +481,7 @@ try {
     let first
 
     await check(
-        "controller returns top 10 and load-more metadata",
+        "controller returns top 8 and load-more metadata",
         async () => {
             let response
 
@@ -510,7 +510,7 @@ try {
 
             assert.equal(
                 response.data.limit,
-                10
+                8
             )
 
             assert.equal(
@@ -528,7 +528,7 @@ try {
 
             assert.equal(
                 first.length,
-                10
+                8
             )
 
             for (
@@ -649,13 +649,13 @@ try {
                             `${item.source_type}:${item.animal_id}`
                     )
                 ).size,
-                10
+                8
             )
         }
     )
 
     await check(
-        "same-day default request retains top 10 IDs",
+        "same-day default request retains top 8 IDs",
         async () => {
             const second =
                 await matches.getMatches(
@@ -674,7 +674,7 @@ try {
                         "SELECT COUNT(*)::int AS n FROM matches"
                     )
                 ).rows[0].n,
-                10
+                8
             )
 
             for (
@@ -734,23 +734,23 @@ try {
     )
 
     await check(
-        "load more expands stored candidates to 20",
+        "load more expands stored candidates to 16",
         async () => {
             const result =
                 await matches.getMatches(
                     101,
                     101,
-                    20
+                    16
                 )
 
             assert.equal(
                 result.items.length,
-                20
+                16
             )
 
             assert.equal(
                 result.limit,
-                20
+                16
             )
 
             assert.equal(
@@ -770,7 +770,7 @@ try {
                 ),
                 Array.from(
                     {
-                        length: 20
+                        length: 16
                     },
                     (
                         _,
@@ -786,7 +786,7 @@ try {
                         "SELECT COUNT(*)::int AS n FROM matches"
                     )
                 ).rows[0].n,
-                20
+                16
             )
         }
     )
