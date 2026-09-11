@@ -1,3 +1,17 @@
+import * as repository from "./matches.repository.js"
+import { findById as findLostPostById } from "../lost-posts/lost-posts.repository.js"
+
+// 실종동물 사진 1장마다 조회할 후보 이미지 수
+// 최종 결과는 최대 50마리지만 같은 동물의 이미지가 여러 장 존재함
+// 최종 개체 수보다 넓은 후보 풀을 확보
+const CANDIDATE_LIMIT_PER_VECTOR = 100
+
+// 최초 매칭 결과는 10위까지 보여줌
+const DEFAULT_RESULT_LIMIT = 10
+
+// 사용자가 추가로 확인할 수 있는 최대 순위
+const MAX_RESULT_LIMIT = 50
+
 function parseResultLimit(value) {
     if (
         value === undefined ||
@@ -27,7 +41,7 @@ function parseResultLimit(value) {
     return limit
 }
 
-// 캐시 조회가 아니라 요청마다 실시간으로 계산한다.
+// 캐시 조회가 아니라 요청마다 실시간으로 계산
 export async function getMatches(lostPostId, userId, rawLimit) {
     if (!Number.isInteger(lostPostId) || lostPostId <= 0) {
         throw Object.assign(
@@ -85,6 +99,8 @@ export async function getMatches(lostPostId, userId, rawLimit) {
         lostPostId
     )
 
+    // 같은 동물이 여러 사진에서 후보로 잡힐 수 있으므로
+    // source_type + 동물 ID 기준으로 하나만 유지
     const bestByAnimal = new Map()
 
     for (const vector of vectors) {
@@ -102,6 +118,7 @@ export async function getMatches(lostPostId, userId, rawLimit) {
             const key = `${source_type}:${ref_id}`
             const current = bestByAnimal.get(key)
 
+            // 동일 개체의 여러 이미지 중 가장 가까운 거리 사용
             if (
                 current === undefined ||
                 distance < current.distance
@@ -134,7 +151,7 @@ export async function getMatches(lostPostId, userId, rawLimit) {
                 b.similarity - a.similarity
         )
 
-    // 요청한 순위까지만 사용
+    // 최초 10개, 더 보기 시 20 / 30 / 40 / 50개까지 사용
     const ranked = rankedAll.slice(
         0,
         limit
@@ -149,6 +166,7 @@ export async function getMatches(lostPostId, userId, rawLimit) {
         }
     }
 
+    // 실제 사용자에게 노출되는 후보까지만 matches 테이블에 저장
     const savedMatches = await repository.upsertMatches(
         lostPostId,
         ranked.map((result) => ({
@@ -186,5 +204,253 @@ export async function getMatches(lostPostId, userId, rawLimit) {
         has_more:
             limit < MAX_RESULT_LIMIT &&
             rankedAll.length > limit
+    }
+}
+
+// 매칭 상세 조회
+
+const SEX_LABEL = {
+    M: "수컷",
+    F: "암컷",
+    Q: "미상",
+    U: "미상"
+}
+
+const DATE_PLAUSIBLE_DAYS = 60
+
+function compareBreed(lostBreed, rescueKindNm) {
+    if (!lostBreed || !rescueKindNm) {
+        return {
+            label: "품종",
+            lost: lostBreed,
+            rescue: rescueKindNm,
+            status: "unknown"
+        }
+    }
+
+    const isMatch =
+        lostBreed
+            .replace(/\s/g, "")
+            .includes(
+                rescueKindNm.replace(/\s/g, "")
+            ) ||
+        rescueKindNm
+            .replace(/\s/g, "")
+            .includes(
+                lostBreed.replace(/\s/g, "")
+            )
+
+    return {
+        label: "품종",
+        lost: lostBreed,
+        rescue: rescueKindNm,
+        status: isMatch ? "match" : "mismatch"
+    }
+}
+
+function compareSex(lostSex, rescueSexCd) {
+    if (
+        !lostSex ||
+        lostSex === "Q" ||
+        !rescueSexCd ||
+        rescueSexCd === "Q"
+    ) {
+        return {
+            label: "성별",
+            lost: SEX_LABEL[lostSex] ?? "미상",
+            rescue: SEX_LABEL[rescueSexCd] ?? "미상",
+            status: "unknown"
+        }
+    }
+
+    return {
+        label: "성별",
+        lost: SEX_LABEL[lostSex],
+        rescue: SEX_LABEL[rescueSexCd],
+        status:
+            lostSex === rescueSexCd
+                ? "match"
+                : "mismatch"
+    }
+}
+
+function compareColor(lostColor, rescueColorTags) {
+    if (
+        !lostColor ||
+        !rescueColorTags ||
+        rescueColorTags.length === 0
+    ) {
+        return {
+            label: "색상",
+            lost: lostColor,
+            rescue: rescueColorTags?.join(", "),
+            status: "unknown"
+        }
+    }
+
+    const isMatch = rescueColorTags.some(
+        (tag) =>
+            tag.includes(lostColor) ||
+            lostColor.includes(tag)
+    )
+
+    return {
+        label: "색상",
+        lost: lostColor,
+        rescue: rescueColorTags.join(", "),
+        status:
+            isMatch
+                ? "match"
+                : "mismatch"
+    }
+}
+
+function compareRegion(
+    lostRegion,
+    regionSido,
+    regionSigungu,
+    happenPlace
+) {
+    const rescueRegion =
+        [regionSido, regionSigungu]
+            .filter(Boolean)
+            .join(" ") ||
+        happenPlace
+
+    if (!lostRegion || !rescueRegion) {
+        return {
+            label: "지역",
+            lost: lostRegion,
+            rescue: rescueRegion,
+            status: "unknown"
+        }
+    }
+
+    const isMatch =
+        (
+            regionSido &&
+            lostRegion.includes(regionSido)
+        ) ||
+        (
+            regionSigungu &&
+            lostRegion.includes(regionSigungu)
+        )
+
+    return {
+        label: "지역",
+        lost: lostRegion,
+        rescue: rescueRegion,
+        status:
+            isMatch
+                ? "match"
+                : "mismatch"
+    }
+}
+
+function compareDate(eventDate, happenDt) {
+    if (!eventDate || !happenDt) {
+        return {
+            label: "날짜",
+            lost: eventDate,
+            rescue: happenDt,
+            status: "unknown"
+        }
+    }
+
+    const diffDays = Math.round(
+        (
+            new Date(happenDt) -
+            new Date(eventDate)
+        ) /
+        (
+            1000 *
+            60 *
+            60 *
+            24
+        )
+    )
+
+    const isPlausible =
+        diffDays >= 0 &&
+        diffDays <= DATE_PLAUSIBLE_DAYS
+
+    return {
+        label: "날짜",
+        lost: eventDate,
+        rescue: happenDt,
+        diffDays,
+        status:
+            isPlausible
+                ? "match"
+                : "mismatch"
+    }
+}
+
+export async function getMatchDetail(matchId, userId) {
+    const row = await repository.findMatchById(
+        matchId
+    )
+
+    if (!row) {
+        const error = new Error(
+            "매칭 결과를 찾을 수 없습니다."
+        )
+
+        error.status = 404
+        error.code = "MATCH_NOT_FOUND"
+
+        throw error
+    }
+
+    if (
+        String(row.lost_post_owner_id) !==
+        String(userId)
+    ) {
+        const error = new Error(
+            "접근 권한이 없습니다."
+        )
+
+        error.status = 403
+        error.code = "FORBIDDEN"
+
+        throw error
+    }
+
+    return {
+        similarity_score: row.similarity_score,
+        lost_post: {
+            id: row.lost_post_id,
+            pet_name: row.pet_name,
+            species: row.species
+        },
+        animal: {
+            source_type: row.source_type,
+            id: Number(row.animal_ref_id),
+            up_kind_nm: row.up_kind_nm
+        },
+        comparison: [
+            compareBreed(
+                row.breed,
+                row.kind_nm
+            ),
+            compareSex(
+                row.sex,
+                row.sex_cd
+            ),
+            compareColor(
+                row.color,
+                row.color_tags
+            ),
+            compareRegion(
+                row.region,
+                row.region_sido,
+                row.region_sigungu,
+                row.happen_place
+            ),
+            compareDate(
+                row.event_date,
+                row.happen_dt
+            )
+        ]
     }
 }
