@@ -191,6 +191,18 @@ export default function NotificationPage() {
                     : item
             )
         )
+
+        window.dispatchEvent(
+            new CustomEvent(
+                "notifications:read",
+                {
+                    detail: {
+                        notificationId:
+                            notification.notification_id
+                    }
+                }
+            )
+        )
     }
 
     async function handleNotification(

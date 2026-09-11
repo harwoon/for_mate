@@ -247,6 +247,34 @@
     font-size: var(--font-xs);
 }
 
+.notification-dropdown-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.notification-read-all-button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-primary);
+    font-size: var(--font-xs);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+    transition: color var(--transition-fast);
+}
+
+.notification-read-all-button:hover {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+}
+
+.notification-read-all-button:disabled {
+    color: var(--color-text-light);
+    cursor: default;
+    text-decoration: none;
+}
+
 .notification-dropdown-list {
     max-height: 420px;
     overflow-y: auto;
@@ -563,5 +591,13 @@
     .footer-inner {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .notification-dropdown {
+        position: fixed;
+        top: calc(var(--header-height) + 8px);
+        left: var(--space-md);
+        right: var(--space-md);
+        width: auto;
     }
 }
