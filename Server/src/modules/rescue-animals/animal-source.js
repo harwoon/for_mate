@@ -30,6 +30,7 @@ export const animalsSql = `
     SELECT 'pawinhand'::text, id, NULL::bigint, id,
         source_id, notice_no, detail_url, ${columns}
     FROM pawinhand_animals
+    WHERE duplicate_of_desertion_no IS NULL
 `
 
 export const animalImageCondition = `i.post_type = r.source_type AND (

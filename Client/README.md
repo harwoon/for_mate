@@ -112,6 +112,15 @@ padding: 16px;
 | 고객센터 | `pages/support/SupportPage.jsx` |
 | 관리자 | `pages/admin/AdminPage.jsx` |
 | S-00 공통 상태 | `components/common/Loading, Empty, ErrorState` |
+| 마이페이지 - 실종/발견/북마크 | `pages/mypage/MyLostPostsPage.jsx`, `MyFoundPostsPage.jsx`, `MyBookmarksPage.jsx` |
+| 마이페이지 - 매칭 기록 | `pages/mypage/MyMatchesPage.jsx` |
+| 마이페이지 - 문의 내역 | `pages/mypage/MyInquiriesPage.jsx`, `MyInquiryDetailPage.jsx` |
+| 알림 | `pages/mypage/NotificationPage.jsx` |
+| 관리자 - 실종/발견 관리 | `pages/admin/AdminLostPostsPage.jsx`, `AdminFoundPostsPage.jsx` |
+| 관리자 - 신고/문의 관리 | `pages/admin/AdminReportsPage.jsx`, `AdminInquiriesPage.jsx`, `AdminInquiryDetailPage.jsx` |
+| 관리자 - 매칭 기록 | `pages/admin/AdminMatchesPage.jsx` |
+| 관리자 - FAQ 관리 | `pages/admin/AdminFaqsPage.jsx` |
+| 관리자 로그인 | `pages/admin/AdminLoginPage.jsx` |
 
 ## API 사용법
 
@@ -140,6 +149,7 @@ const { user, login, logout } = useAuth()
 - 로그인은 쿠키 방식입니다. `api/client.js`에서 `credentials: "include"`를 항상 붙이므로 따로 신경 쓸 필요가 없습니다.
 - 소셜 로그인(구글/카카오)은 백엔드가 리다이렉트로 처리합니다. `goGoogleLogin()`만 호출하면 됩니다.
 - 백엔드 API 주소에는 `/api/v1` 같은 접두어가 없습니다. (`/auth/login`, `/lost-posts` 형태)
+- 이미지 URL은 서버가 Cloudflare R2의 절대 URL을 그대로 내려줍니다. 서버 주소를 앞에 붙이거나 가공할 필요 없이 `<img src>`에 바로 사용하면 됩니다.
 
 ## 작업 분담
 

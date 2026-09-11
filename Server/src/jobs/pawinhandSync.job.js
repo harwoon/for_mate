@@ -1,8 +1,9 @@
 import "dotenv/config"
+import { setGlobalDispatcher, Agent } from "undici"
 import { pool } from "../db/pool.js"
 import { parseRegion } from "./regionParser.js"
 import { notifyNewMatches } from "./notifyNewMatches.js"
-import { setGlobalDispatcher, Agent } from "undici"
+import { markDuplicatePawinhandAnimals } from "./markDuplicateAnimals.js"
 
 setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }))
 
@@ -178,6 +179,29 @@ function normalizeColorTags(value) {
   return tags.length > 0 ? tags : ["기타"]
 }
 
+// 포인핸드 품종 표기를 공공데이터 표기 규칙에 맞게 정규화한다.
+// 포인핸드는 복합 품종명을 붙여쓰는 경향이 있어, 알려진 것들을 매핑해서 통일한다.
+const BREED_NAME_MAP = {
+  "한국고양이": "코리안 숏헤어",
+  "한국 고양이": "코리안 숏헤어",
+  "터키시앙고라": "터키시 앙고라",
+  "브리티시쇼트헤어": "브리티시 쇼트헤어",
+  "라브라도리트리버": "라브라도 리트리버",
+  "코카스파니엘": "코카 스파니엘",
+  "비숑프리제": "비숑 프리제",
+  "웰시코기펨브로크": "웰시 코기 펨브로크",
+  "미니어쳐핀셔": "미니어쳐 핀셔",
+  "시바믹스견": "시바 믹스견",
+  '저먼 셰퍼드 독': '셰퍼드',
+  '잉글리쉬 포인터': '포인터',
+}
+
+function normalizeBreedName(kindNm) {
+  if (!kindNm) return kindNm
+  const trimmed = kindNm.trim()
+  return BREED_NAME_MAP[trimmed] ?? trimmed
+}
+
 function toImageUrl(value) {
   const text = optionalText(value)
   if (!text) return null
@@ -230,7 +254,7 @@ function normalizeAnimal(raw, requestedSourceId) {
     happenDate: normalizeDate(raw.registration_date),
     happenPlace: optionalText(raw.find_location, 200),
     species,
-    breed: optionalText(raw.s_breeds, 50),
+    breed: normalizeBreedName(optionalText(raw.s_breeds, 50)),
     color: optionalText(raw.color, 100),
     colorTags: normalizeColorTags(raw.color),
     age: optionalText(raw.age, 30),
@@ -458,6 +482,7 @@ async function extractEmbeddings() {
 
   const animalIds = [...new Set(pending.map((row) => Number(row.pawinhand_animal_id)))]
   await notifyNewMatches("pawinhand", animalIds)
+  await markDuplicatePawinhandAnimals()
   console.log("[pawinhand] 임베딩 추출 전체 완료")
 }
 

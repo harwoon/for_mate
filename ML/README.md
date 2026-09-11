@@ -1,3 +1,13 @@
+## ai_server/ (운영용 — 이 폴더만 실제 서비스에서 사용됨)
+
+`main.py` — FastAPI 서버. Node 백엔드가 실종 공고 등록/새벽 배치 시점에 이 서버를 호출한다.
+
+- 크롭: `torchvision`의 Faster R-CNN v2 (`scripts/collect_dataset.py`와 동일 설정)
+- 임베딩: MegaDescriptor-B-224를 MPDD로 파인튜닝한 `checkpoints/megadescriptor_mpdd_best.pth` (1024차원, L2 정규화)
+- 엔드포인트: `POST /embeddings/images`(실종공고/포인핸드용, 이미지 이미 존재), `POST /embeddings/rescue-animals`(공공데이터용, 이미지+임베딩 동시 생성)
+
+아래 `notebooks/`, `scripts/`는 이 운영 파이프라인을 만들기 위한 실험 코드이자, 향후 모델 교체(CLIP-ReID, ARBase 등) 실험용이다.
+
 # ML/ 디렉토리 안내
 
 개(dog) re-ID 실험 코드 + 데이터. 폴더별 역할은 아래 표 참고.
