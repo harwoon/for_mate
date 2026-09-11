@@ -204,6 +204,14 @@
     pointer-events: none;
 }
 
+.header-icon-button.has-notification i {
+    color: var(--color-primary);
+}
+
+.header-icon-button.has-notification {
+    border-color: var(--color-primary-light);
+    background: var(--color-primary-soft);
+}
 
 /* ============================= 알림 드롭다운 ============================= */
 
@@ -247,15 +255,13 @@
 .notification-dropdown-item {
     width: 100%;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: space-between;
     gap: var(--space-md);
     padding: var(--space-md) var(--space-20);
-    border: 0;
     border-bottom: 1px solid var(--color-border-light);
     background: var(--color-surface);
     text-align: left;
-    cursor: pointer;
     transition: background var(--transition-fast);
 }
 
@@ -278,6 +284,7 @@
 .notification-dropdown-info {
     min-width: 0;
     display: flex;
+    flex: 1;
     flex-direction: column;
     gap: 5px;
 }
@@ -285,6 +292,7 @@
 .notification-dropdown-title {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: var(--space-sm);
     font-size: var(--font-sm);
 }
@@ -313,14 +321,83 @@
     background: var(--color-primary);
 }
 
+.notification-dropdown-actions {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-sm);
+}
+
+.notification-dropdown-icon-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.notification-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-text-light);
+    cursor: pointer;
+    transition:
+        color var(--transition-fast),
+        background var(--transition-fast);
+}
+
+.notification-action-icon i {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.notification-action-icon:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-primary);
+}
+
+.notification-action-icon.is-bookmarked {
+    color: var(--color-primary);
+}
+
+.notification-action-icon.is-delete:hover {
+    color: var(--color-danger);
+}
+
+.notification-action-icon:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
 .notification-check-button {
     flex: 0 0 auto;
     padding: 6px 9px;
+    border: 0;
     border-radius: var(--radius-sm);
     background: var(--color-primary-light);
     color: var(--color-primary-dark);
     font-size: 11px;
     font-weight: var(--weight-semibold);
+    cursor: pointer;
+    transition:
+        background var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.notification-check-button:hover {
+    background: var(--color-primary-soft);
+}
+
+.notification-check-button:disabled {
+    opacity: 0.5;
+    cursor: default;
 }
 
 .notification-dropdown-state {

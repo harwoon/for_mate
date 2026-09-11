@@ -1,5 +1,5 @@
 import { query } from "../../db/pool.js"
-import { animalsSql } from "../rescue-animals/animal-source.js"
+import { animalsSql, animalImageCondition } from "../rescue-animals/animal-source.js"
 
 // 사용 테이블: notifications
 
@@ -10,18 +10,36 @@ export async function findMany(userId) {
             SELECT
                 n.id AS notification_id,
                 n.lost_post_id,
+                lp.pet_name,
                 n.source_type,
                 n.desertion_no,
                 n.pawinhand_animal_id,
+                COALESCE(
+                    n.desertion_no,
+                    n.pawinhand_animal_id
+                )::text AS animal_id,
                 r.kind_nm AS breed,
                 r.happen_place AS region,
+                first_image.image_url AS thumbnail_url,
                 n.similarity_score,
                 n.is_read,
                 n.created_at
             FROM notifications n
+            JOIN lost_posts lp
+                ON lp.id = n.lost_post_id
             JOIN (${animalsSql}) r
                 ON r.source_type = n.source_type
-                AND r.animal_id = COALESCE(n.desertion_no, n.pawinhand_animal_id)
+                AND r.animal_id = COALESCE(
+                    n.desertion_no,
+                    n.pawinhand_animal_id
+                )
+            LEFT JOIN LATERAL (
+                SELECT i.image_url
+                FROM images i
+                WHERE ${animalImageCondition}
+                ORDER BY i.created_at ASC, i.id ASC
+                LIMIT 1
+            ) first_image ON TRUE
             WHERE n.user_id = $1
             ORDER BY n.created_at DESC, n.id DESC
         `,
@@ -58,4 +76,22 @@ export async function markAsRead(notificationId) {
     )
 
     return result.rows[0]
+}
+
+// 9.3 모든 알림 읽음 처리
+export async function markAllAsRead(userId) {
+    const result = await query(
+        `
+            UPDATE notifications
+            SET is_read = true
+            WHERE user_id = $1
+                AND is_read = false
+            RETURNING id
+        `,
+        [userId]
+    )
+
+    return {
+        updated_count: result.rows.length
+    }
 }

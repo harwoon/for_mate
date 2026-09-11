@@ -41,6 +41,7 @@ import MyBookmarksPage from "./pages/mypage/MyBookmarksPage.jsx"
 import NotificationPage from "./pages/mypage/NotificationPage.jsx"
 import MyInquiriesPage from "./pages/mypage/MyInquiriesPage.jsx"
 import MyInquiryDetailPage from "./pages/mypage/MyInquiryDetailPage.jsx"
+import MyMatchesPage from "./pages/mypage/MyMatchesPage.jsx"
 
 // 고객지원
 import SupportPage from "./pages/support/SupportPage.jsx"
@@ -147,6 +148,10 @@ export default function App() {
                     <Route
                         path="/mypage/inquiries/:inquiryId"
                         element={<MyInquiryDetailPage />}
+                    />
+                    <Route
+                        path="/mypage/matches"
+                        element={<MyMatchesPage />}
                     />
                     <Route path="/notifications" element={<NotificationPage />} />
 

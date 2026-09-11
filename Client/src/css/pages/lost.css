@@ -1,0 +1,406 @@
+/* ============================= 찾고있어요 목록 ============================= */
+
+.lost-list-page {
+    min-height: 100%;
+    background: var(--color-bg);
+}
+
+.lost-list-content {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding-top: 80px;
+    padding-bottom: 88px;
+}
+
+
+/* ============================= 등록 버튼 ============================= */
+
+.lost-list-action-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 44px;
+}
+
+.lost-list-register-button {
+    min-height: 44px;
+    padding: 0 20px;
+    border-radius: 8px;
+    font-size: var(--font-sm);
+    font-weight: var(--weight-bold);
+}
+
+
+/* ============================= 필터 툴바 ============================= */
+
+.lost-list-page .filter-bar {
+    gap: 12px;
+    margin-bottom: 28px;
+}
+
+.lost-list-page .filter-toolbar {
+    min-height: 44px;
+    padding: 4px 0;
+}
+
+.lost-list-page .filter-trigger-button {
+    min-height: 44px;
+    gap: 8px;
+    padding: 0 20px;
+    border-color: var(--color-border-strong);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 15px;
+    font-weight: var(--weight-bold);
+}
+
+.lost-list-page .filter-trigger-button:hover {
+    border-color: var(--color-primary);
+    background: var(--color-surface);
+    color: var(--color-primary-dark);
+}
+
+.lost-list-page .filter-trigger-button i {
+    font-size: 18px;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.lost-list-page .filter-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.lost-list-page .filter-result-count {
+    color: var(--color-text-sub);
+    font-size: 15px;
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+}
+
+.lost-list-page .filter-sort-select {
+    width: auto;
+    min-width: 136px;
+    height: 44px;
+    padding: 0 36px 0 16px;
+    border-color: var(--color-border-strong);
+    border-radius: 8px;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+}
+
+.lost-list-page .filter-sort-select:hover {
+    border-color: var(--color-border-strong);
+}
+
+.lost-list-page .filter-sort-select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(71, 120, 79, 0.1);
+}
+
+/* ============================= 페이지네이션 ============================= */
+
+.lost-list-page .pagination {
+    margin: 36px 0 64px;
+}
+
+/* ============================= 찾고있어요 상세 ============================= */
+
+.lost-detail-page {
+    padding-bottom: var(--space-2xl);
+}
+
+.lost-detail-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-lg);
+}
+
+.lost-detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(380px, 0.95fr);
+    align-items: start;
+    gap: var(--space-xl);
+    margin-bottom: var(--space-xl);
+}
+
+.lost-detail-gallery {
+    min-width: 0;
+}
+
+.lost-detail-main-image {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-soft);
+}
+
+.lost-detail-main-image > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lost-detail-image-empty {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    color: var(--color-text-light);
+}
+
+.lost-detail-image-empty i {
+    font-size: var(--font-32);
+}
+
+.lost-detail-image-arrow {
+    position: absolute;
+    top: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--color-text);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-50%);
+}
+
+.lost-detail-image-arrow:hover {
+    color: var(--color-primary);
+}
+
+.lost-detail-image-arrow i {
+    font-size: var(--font-24);
+}
+
+.lost-detail-image-arrow.is-prev {
+    left: var(--space-md);
+}
+
+.lost-detail-image-arrow.is-next {
+    right: var(--space-md);
+}
+
+.lost-detail-image-count {
+    position: absolute;
+    right: var(--space-md);
+    bottom: var(--space-md);
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    background: rgba(37, 40, 36, 0.72);
+    color: #fff;
+    font-size: var(--font-xs);
+    font-weight: var(--weight-semibold);
+}
+
+.lost-detail-thumbnails {
+    display: flex;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+    overflow-x: auto;
+    padding-bottom: var(--space-xs);
+}
+
+.lost-detail-thumbnail {
+    width: 72px;
+    height: 72px;
+    flex: 0 0 72px;
+    overflow: hidden;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-soft);
+}
+
+.lost-detail-thumbnail.is-active {
+    border-color: var(--color-primary);
+}
+
+.lost-detail-thumbnail img,
+.lost-detail-thumbnail span {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    object-fit: cover;
+    color: var(--color-text-light);
+}
+
+.lost-detail-info {
+    min-width: 0;
+}
+
+.lost-detail-info-top {
+    padding-bottom: var(--space-lg);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.lost-detail-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+}
+
+.lost-detail-info-top h2 {
+    margin-bottom: var(--space-xs);
+    font-size: var(--font-xl);
+    font-weight: var(--weight-bold);
+}
+
+.lost-detail-subtitle {
+    color: var(--color-text-sub);
+    font-size: var(--font-sm);
+}
+
+.lost-detail-meta {
+    margin: var(--space-md) 0 0;
+}
+
+.lost-detail-meta > div {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: var(--space-md);
+    padding: var(--space-12) 0;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.lost-detail-meta dt {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    color: var(--color-text-sub);
+    font-size: var(--font-sm);
+}
+
+.lost-detail-meta dt i {
+    color: var(--color-text-light);
+    font-size: var(--font-md);
+}
+
+.lost-detail-meta dd {
+    min-width: 0;
+    margin: 0;
+    color: var(--color-text);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    overflow-wrap: anywhere;
+}
+
+.lost-detail-description {
+    margin-top: var(--space-lg);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-soft);
+}
+
+.lost-detail-description h3 {
+    margin-bottom: var(--space-sm);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-bold);
+}
+
+.lost-detail-description p {
+    margin: 0;
+    color: var(--color-text-sub);
+    font-size: var(--font-sm);
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+.lost-detail-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-top: var(--space-lg);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--color-border);
+}
+
+.lost-detail-owner-actions {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+.lost-detail-ai-button {
+    min-width: 170px;
+}
+
+@media (max-width: 900px) {
+    .lost-detail-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .lost-detail-header {
+        flex-direction: column;
+    }
+
+    .lost-detail-header .btn {
+        width: 100%;
+    }
+
+    .lost-detail-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .lost-detail-owner-actions {
+        width: 100%;
+    }
+
+    .lost-detail-owner-actions .btn {
+        flex: 1;
+    }
+
+    .lost-detail-ai-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .lost-detail-main-image {
+        aspect-ratio: 1;
+    }
+
+    .lost-detail-thumbnail {
+        width: 60px;
+        height: 60px;
+        flex-basis: 60px;
+    }
+
+    .lost-detail-status {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .lost-detail-meta > div {
+        grid-template-columns: 100px minmax(0, 1fr);
+    }
+
+    .lost-detail-owner-actions {
+        flex-direction: column;
+    }
+}

@@ -16,17 +16,24 @@ import Empty from "../../components/common/Empty.jsx"
 import ErrorState from "../../components/common/ErrorState.jsx"
 import Loading from "../../components/common/Loading.jsx"
 import PostNavigation from "../../components/common/PostNavigation.jsx"
+import { formatDate } from "../../utils/date.js"
 
 const SEX_LABELS = {
     M: "수컷",
     F: "암컷",
-    Q: "미상"
+    Q: "미상",
+    U: "미상"
 }
 
 const NEUTER_LABELS = {
     Y: "중성화 완료",
     N: "중성화 안 됨",
     U: "미상"
+}
+
+const SOURCE_LABELS = {
+    rescue: "공공데이터",
+    pawinhand: "포인핸드"
 }
 
 function displayValue(value) {
@@ -37,7 +44,7 @@ function displayColors(value) {
     if (!value) return "정보 없음"
 
     if (Array.isArray(value)) {
-        return value.join(", ")
+        return value.filter(Boolean).join(", ") || "정보 없음"
     }
 
     return String(value)
@@ -57,6 +64,20 @@ function isEndingSoon(daysUntilEnd) {
     )
 }
 
+function getRemainingLabel(daysUntilEnd) {
+    const days = Number(daysUntilEnd)
+
+    if (!Number.isFinite(days)) {
+        return "남은 기간 정보 없음"
+    }
+
+    if (days === 0) {
+        return "오늘 보호 종료 예정"
+    }
+
+    return `보호 종료까지 D-${days}`
+}
+
 export default function RescueDetailPage() {
     const {
         sourceType,
@@ -68,6 +89,7 @@ export default function RescueDetailPage() {
 
     const [animal, setAnimal] = useState(null)
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
+    const [failedImages, setFailedImages] = useState({})
 
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
@@ -110,14 +132,14 @@ export default function RescueDetailPage() {
 
                 setAnimal(result)
                 setCurrentImageIndex(0)
+                setFailedImages({})
                 setBookmarkId(null)
             } catch (error) {
                 if (!cancelled) {
                     setAnimal(null)
-
                     setError(
                         error.message ||
-                        "구조동물 정보를 불러오지 못했습니다."
+                        "보호동물 정보를 불러오지 못했습니다."
                     )
                 }
             } finally {
@@ -140,13 +162,21 @@ export default function RescueDetailPage() {
     ])
 
     const images = animal?.images ?? []
-    const currentImage =
-        images[currentImageIndex]
+    const currentImage = images[currentImageIndex]
 
-    const endingSoon =
-        isEndingSoon(
-            animal?.days_until_end
-        )
+    const endingSoon = isEndingSoon(
+        animal?.days_until_end
+    )
+
+    const currentSource =
+        animal?.source_type ||
+        sourceType ||
+        "rescue"
+
+    const currentAnimalId =
+        animal?.animal_id ||
+        animalId ||
+        desertionNo
 
     function handlePreviousImage() {
         if (images.length < 2) return
@@ -175,22 +205,11 @@ export default function RescueDetailPage() {
 
         const result = await getBookmarks()
 
-        const source =
-            animal.source_type ||
-            sourceType ||
-            "rescue"
-
-        const id =
-            String(
-                animal.animal_id ||
-                animalId ||
-                desertionNo
-            )
-
         const bookmark = result?.items?.find(
             (item) => (
-                item.source_type === source &&
-                String(item.animal_id) === id
+                item.source_type === currentSource &&
+                String(item.animal_id) ===
+                    String(currentAnimalId)
             )
         )
 
@@ -204,20 +223,10 @@ export default function RescueDetailPage() {
         setActionError("")
 
         try {
-            const source =
-                animal.source_type ||
-                sourceType ||
-                "rescue"
-
-            const id =
-                animal.animal_id ||
-                animalId ||
-                desertionNo
-
             if (!animal.is_bookmarked) {
                 const result = await addBookmark({
-                    source_type: source,
-                    animal_id: id
+                    source_type: currentSource,
+                    animal_id: currentAnimalId
                 })
 
                 setBookmarkId(
@@ -261,108 +270,211 @@ export default function RescueDetailPage() {
         }
     }
 
+    if (loading) {
+        return (
+            <Loading message="보호동물 정보를 불러오는 중입니다." />
+        )
+    }
+
     if (error) {
         return (
             <ErrorState
                 message={error}
-                onRetry={() => (
+                onRetry={() =>
                     setRetryCount(
                         (count) => count + 1
                     )
-                )}
+                }
                 onHome={() => navigate("/")}
             />
         )
     }
 
-    if (!loading && !animal) {
+    if (!animal) {
         return (
-            <Empty message="구조동물 정보를 찾을 수 없습니다." />
+            <Empty message="보호동물 정보를 찾을 수 없습니다." />
         )
     }
 
+    const currentImageFailed =
+        currentImage &&
+        failedImages[currentImageIndex]
+
     return (
-        <>
-            <Loading
-                loading={loading}
-                message="구조동물 정보를 불러오는 중입니다."
+        <div className="container rescue-detail-page">
+            <Breadcrumb
+                items={[
+                    {
+                        label: "홈",
+                        to: "/"
+                    },
+                    {
+                        label: "보호중이에요",
+                        to: "/rescue-animals"
+                    },
+                    {
+                        label: "상세"
+                    }
+                ]}
             />
 
-            {animal && (
-                <div className="container">
-                    <Breadcrumb
-                        items={[
-                            {
-                                label: "홈",
-                                to: "/"
-                            },
-                            {
-                                label: "보호중이에요",
-                                to: "/rescue-animals"
-                            },
-                            {
-                                label: "상세"
-                            }
-                        ]}
+            <div className="page-header rescue-detail-header">
+                <div>
+                    <h1 className="page-title">
+                        보호동물 상세
+                    </h1>
+
+                    <p className="page-desc">
+                        보호 중인 동물의 정보와 보호소 정보를 확인해주세요.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() =>
+                        navigate("/rescue-animals")
+                    }
+                >
+                    <i
+                        className="ri-arrow-left-line"
+                        aria-hidden="true"
+                    />
+                    목록으로
+                </button>
+            </div>
+
+            {endingSoon && (
+                <div className="rescue-ending-alert">
+                    <i
+                        className="ri-alarm-warning-line"
+                        aria-hidden="true"
                     />
 
-                    <div className="page-header">
-                        <h1 className="page-title">
-                            구조동물 상세
-                        </h1>
+                    <div>
+                        <strong>
+                            {getRemainingLabel(
+                                animal.days_until_end
+                            )}
+                        </strong>
+
+                        <p>
+                            관심 있는 동물이라면 보호소에
+                            공고 상태를 확인해주세요.
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            <section className="rescue-detail-layout">
+                <div className="rescue-detail-gallery">
+                    <div className="rescue-detail-main-image">
+                        {currentImage && !currentImageFailed ? (
+                            <img
+                                src={imageUrl(currentImage)}
+                                alt={`${animal.breed || animal.species || "보호동물"} 사진 ${currentImageIndex + 1}`}
+                                onError={() =>
+                                    setFailedImages(
+                                        (current) => ({
+                                            ...current,
+                                            [currentImageIndex]: true
+                                        })
+                                    )
+                                }
+                            />
+                        ) : (
+                            <div className="rescue-detail-image-empty">
+                                <i
+                                    className="ri-image-line"
+                                    aria-hidden="true"
+                                />
+
+                                <span>
+                                    등록된 사진이 없습니다.
+                                </span>
+                            </div>
+                        )}
+
+                        {images.length > 1 && (
+                            <>
+                                <button
+                                    type="button"
+                                    className="rescue-detail-image-arrow is-prev"
+                                    onClick={handlePreviousImage}
+                                    aria-label="이전 사진"
+                                >
+                                    <i
+                                        className="ri-arrow-left-s-line"
+                                        aria-hidden="true"
+                                    />
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="rescue-detail-image-arrow is-next"
+                                    onClick={handleNextImage}
+                                    aria-label="다음 사진"
+                                >
+                                    <i
+                                        className="ri-arrow-right-s-line"
+                                        aria-hidden="true"
+                                    />
+                                </button>
+
+                                <span className="rescue-detail-image-count">
+                                    {currentImageIndex + 1} / {images.length}
+                                </span>
+                            </>
+                        )}
                     </div>
 
-                    {endingSoon && (
-                        <div className="alert alert-warning">
-                            보호 종료까지{" "}
-                            {animal.days_until_end}일 남았습니다.
+                    {images.length > 1 && (
+                        <div className="rescue-detail-thumbnails">
+                            {images.map((image, index) => (
+                                <button
+                                    key={`${image}-${index}`}
+                                    type="button"
+                                    className={
+                                        index === currentImageIndex
+                                            ? "rescue-detail-thumbnail is-active"
+                                            : "rescue-detail-thumbnail"
+                                    }
+                                    onClick={() =>
+                                        setCurrentImageIndex(index)
+                                    }
+                                    aria-label={`${index + 1}번째 사진 보기`}
+                                >
+                                    {!failedImages[index] ? (
+                                        <img
+                                            src={imageUrl(image)}
+                                            alt=""
+                                            onError={() =>
+                                                setFailedImages(
+                                                    (current) => ({
+                                                        ...current,
+                                                        [index]: true
+                                                    })
+                                                )
+                                            }
+                                        />
+                                    ) : (
+                                        <span>
+                                            <i
+                                                className="ri-image-line"
+                                                aria-hidden="true"
+                                            />
+                                        </span>
+                                    )}
+                                </button>
+                            ))}
                         </div>
                     )}
+                </div>
 
-                    <section className="stack">
-                        <div className="card card-padded stack">
-                            {currentImage ? (
-                                <img
-                                    src={imageUrl(
-                                        currentImage
-                                    )}
-                                    alt={`${animal.breed || animal.species || "구조동물"} 사진 ${currentImageIndex + 1}`}
-                                />
-                            ) : (
-                                <Empty message="등록된 이미지가 없습니다." />
-                            )}
-
-                            {images.length > 0 && (
-                                <div className="row-between">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline"
-                                        onClick={handlePreviousImage}
-                                        disabled={images.length < 2}
-                                    >
-                                        이전
-                                    </button>
-
-                                    <span className="text-sub">
-                                        {currentImageIndex + 1}
-                                        {" / "}
-                                        {images.length}
-                                    </span>
-
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline"
-                                        onClick={handleNextImage}
-                                        disabled={images.length < 2}
-                                    >
-                                        다음
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="card card-padded stack">
-                            <div className="row-between">
+                <article className="card card-padded rescue-detail-info">
+                    <div className="rescue-detail-info-top">
+                        <div className="rescue-detail-status-row">
+                            <div className="rescue-detail-badges">
                                 <Badge
                                     type={
                                         endingSoon
@@ -375,211 +487,394 @@ export default function RescueDetailPage() {
                                         : "보호중"}
                                 </Badge>
 
-                                <button
-                                    type="button"
-                                    className={
-                                        animal.is_bookmarked
-                                            ? "btn btn-primary"
-                                            : "btn btn-outline"
-                                    }
-                                    onClick={handleBookmark}
-                                    disabled={bookmarking}
-                                >
-                                    {bookmarking
-                                        ? "처리 중..."
-                                        : animal.is_bookmarked
-                                            ? "★ 북마크됨"
-                                            : "☆ 북마크"}
-                                </button>
+                                <span className="rescue-source-badge">
+                                    {SOURCE_LABELS[
+                                        currentSource
+                                    ] || "보호동물 데이터"}
+                                </span>
                             </div>
 
-                            <h2>
+                            <button
+                                type="button"
+                                className={
+                                    animal.is_bookmarked
+                                        ? "btn btn-primary"
+                                        : "btn btn-outline"
+                                }
+                                onClick={handleBookmark}
+                                disabled={bookmarking}
+                            >
+                                <i
+                                    className={
+                                        animal.is_bookmarked
+                                            ? "ri-bookmark-fill"
+                                            : "ri-bookmark-line"
+                                    }
+                                    aria-hidden="true"
+                                />
+
+                                {bookmarking
+                                    ? "처리 중..."
+                                    : animal.is_bookmarked
+                                        ? "북마크됨"
+                                        : "북마크"}
+                            </button>
+                        </div>
+
+                        <h2>
+                            {displayValue(
+                                animal.breed
+                            )}
+                        </h2>
+
+                        <p className="rescue-detail-subtitle">
+                            {displayValue(
+                                animal.species
+                            )}
+                            {animal.color_tags ||
+                            animal.color
+                                ? ` · ${displayColors(
+                                    animal.color_tags ||
+                                    animal.color
+                                )}`
+                                : ""}
+                        </p>
+                    </div>
+
+                    <dl className="rescue-detail-meta">
+                        <div>
+                            <dt>
+                                <i
+                                    className="ri-shapes-line"
+                                    aria-hidden="true"
+                                />
+                                종류
+                            </dt>
+
+                            <dd>
+                                {displayValue(
+                                    animal.species
+                                )}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>
+                                <i
+                                    className="ri-information-line"
+                                    aria-hidden="true"
+                                />
+                                품종
+                            </dt>
+
+                            <dd>
                                 {displayValue(
                                     animal.breed
                                 )}
-                            </h2>
-
-                            <dl className="stack">
-                                <div>
-                                    <dt>동물 종류</dt>
-                                    <dd>
-                                        {displayValue(
-                                            animal.species
-                                        )}
-                                    </dd>
-                                </div>
-
-                                <div>
-                                    <dt>품종</dt>
-                                    <dd>
-                                        {displayValue(
-                                            animal.breed
-                                        )}
-                                    </dd>
-                                </div>
-
-                                <div>
-                                    <dt>색상</dt>
-                                    <dd>
-                                        {displayColors(
-                                            animal.color_tags ||
-                                            animal.color
-                                        )}
-                                    </dd>
-                                </div>
-
-                                <div>
-                                    <dt>성별</dt>
-                                    <dd>
-                                        {SEX_LABELS[
-                                            animal.sex
-                                        ] || "정보 없음"}
-                                    </dd>
-                                </div>
-
-                                <div>
-                                    <dt>중성화 여부</dt>
-                                    <dd>
-                                        {NEUTER_LABELS[
-                                            animal.neuter_yn
-                                        ] || "정보 없음"}
-                                    </dd>
-                                </div>
-
-                                <div>
-                                    <dt>나이</dt>
-                                    <dd>
-                                        {displayValue(
-                                            animal.age
-                                        )}
-                                    </dd>
-                                </div>
-
-                                <div>
-                                    <dt>체중</dt>
-                                    <dd>
-                                        {displayValue(
-                                            animal.weight
-                                        )}
-                                    </dd>
-                                </div>
-
-                                <div>
-                                    <dt>구조 장소</dt>
-                                    <dd>
-                                        {displayValue(
-                                            animal.happen_place
-                                        )}
-                                    </dd>
-                                </div>
-
-                                <div>
-                                    <dt>구조 날짜</dt>
-                                    <dd>
-                                        {displayValue(
-                                            animal.happen_dt
-                                        )}
-                                    </dd>
-                                </div>
-
-                                <div>
-                                    <dt>특이사항</dt>
-                                    <dd>
-                                        {displayValue(
-                                            animal.special_mark
-                                        )}
-                                    </dd>
-                                </div>
-                            </dl>
+                            </dd>
                         </div>
 
-                        <div className="card card-padded stack">
+                        <div>
+                            <dt>
+                                <i
+                                    className="ri-palette-line"
+                                    aria-hidden="true"
+                                />
+                                색상
+                            </dt>
+
+                            <dd>
+                                {displayColors(
+                                    animal.color_tags ||
+                                    animal.color
+                                )}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>
+                                <i
+                                    className="ri-user-line"
+                                    aria-hidden="true"
+                                />
+                                성별
+                            </dt>
+
+                            <dd>
+                                {SEX_LABELS[
+                                    animal.sex
+                                ] || "정보 없음"}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>
+                                <i
+                                    className="ri-heart-pulse-line"
+                                    aria-hidden="true"
+                                />
+                                중성화
+                            </dt>
+
+                            <dd>
+                                {NEUTER_LABELS[
+                                    animal.neuter_yn
+                                ] || "정보 없음"}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>
+                                <i
+                                    className="ri-time-line"
+                                    aria-hidden="true"
+                                />
+                                나이
+                            </dt>
+
+                            <dd>
+                                {displayValue(
+                                    animal.age
+                                )}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>
+                                <i
+                                    className="ri-scales-3-line"
+                                    aria-hidden="true"
+                                />
+                                체중
+                            </dt>
+
+                            <dd>
+                                {displayValue(
+                                    animal.weight
+                                )}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>
+                                <i
+                                    className="ri-map-pin-line"
+                                    aria-hidden="true"
+                                />
+                                발견 장소
+                            </dt>
+
+                            <dd>
+                                {displayValue(
+                                    animal.happen_place
+                                )}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>
+                                <i
+                                    className="ri-calendar-line"
+                                    aria-hidden="true"
+                                />
+                                발견 날짜
+                            </dt>
+
+                            <dd>
+                                {formatDate(
+                                    animal.happen_dt,
+                                    "정보 없음"
+                                )}
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <div className="rescue-detail-special">
+                        <h3>
+                            특이사항
+                        </h3>
+
+                        <p>
+                            {displayValue(
+                                animal.special_mark
+                            )}
+                        </p>
+                    </div>
+
+                    {actionError && (
+                        <p
+                            className="form-error"
+                            role="alert"
+                        >
+                            {actionError}
+                        </p>
+                    )}
+                </article>
+            </section>
+
+            <section className="rescue-detail-bottom-grid">
+                <article className="card card-padded rescue-notice-card">
+                    <div className="rescue-section-heading">
+                        <div>
+                            <h2>
+                                보호 공고
+                            </h2>
+
+                            <p className="text-sub">
+                                현재 공고 기간을 확인해주세요.
+                            </p>
+                        </div>
+
+                        {endingSoon && (
+                            <span className="rescue-days-badge">
+                                {getRemainingLabel(
+                                    animal.days_until_end
+                                )}
+                            </span>
+                        )}
+                    </div>
+
+                    <dl className="rescue-info-list">
+                        <div>
+                            <dt>공고 시작일</dt>
+                            <dd>
+                                {formatDate(
+                                    animal.notice_start_date,
+                                    "정보 없음"
+                                )}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>공고 종료일</dt>
+                            <dd>
+                                {formatDate(
+                                    animal.notice_end_date,
+                                    "정보 없음"
+                                )}
+                            </dd>
+                        </div>
+
+                        {animal.notice_no && (
+                            <div>
+                                <dt>공고번호</dt>
+                                <dd>
+                                    {animal.notice_no}
+                                </dd>
+                            </div>
+                        )}
+
+                        {animal.process_state && (
+                            <div>
+                                <dt>상태</dt>
+                                <dd>
+                                    {animal.process_state}
+                                </dd>
+                            </div>
+                        )}
+                    </dl>
+                </article>
+
+                <article className="card card-padded rescue-shelter-card">
+                    <div className="rescue-section-heading">
+                        <div>
                             <h2>
                                 보호소 정보
                             </h2>
 
-                            <dl className="stack">
-                                <div>
-                                    <dt>보호소명</dt>
-                                    <dd>
-                                        {displayValue(
-                                            animal.care_name
-                                        )}
-                                    </dd>
-                                </div>
+                            <p className="text-sub">
+                                보호 상태와 문의 사항은 보호소에서 확인할 수 있습니다.
+                            </p>
+                        </div>
+                    </div>
 
-                                <div>
-                                    <dt>연락처</dt>
-                                    <dd>
-                                        {displayValue(
-                                            animal.care_tel
-                                        )}
-                                    </dd>
-                                </div>
+                    <dl className="rescue-info-list">
+                        <div>
+                            <dt>
+                                <i
+                                    className="ri-home-heart-line"
+                                    aria-hidden="true"
+                                />
+                                보호소명
+                            </dt>
 
-                                <div>
-                                    <dt>주소</dt>
-                                    <dd>
-                                        {displayValue(
-                                            animal.care_addr
-                                        )}
-                                    </dd>
-                                </div>
-
-                                <div>
-                                    <dt>공고 시작일</dt>
-                                    <dd>
-                                        {displayValue(
-                                            animal.notice_start_date
-                                        )}
-                                    </dd>
-                                </div>
-
-                                <div>
-                                    <dt>공고 종료일</dt>
-                                    <dd>
-                                        {displayValue(
-                                            animal.notice_end_date
-                                        )}
-                                    </dd>
-                                </div>
-                            </dl>
-
-                            {animal.detail_url && (
-                                <a
-                                    className="btn btn-outline"
-                                    href={animal.detail_url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    원문 공고 보기
-                                </a>
-                            )}
+                            <dd>
+                                {displayValue(
+                                    animal.care_name
+                                )}
+                            </dd>
                         </div>
 
-                        {actionError && (
-                            <p
-                                className="form-error"
-                                role="alert"
-                            >
-                                {actionError}
-                            </p>
-                        )}
-                    </section>
+                        <div>
+                            <dt>
+                                <i
+                                    className="ri-phone-line"
+                                    aria-hidden="true"
+                                />
+                                연락처
+                            </dt>
 
-                    <PostNavigation
-                        previousPost={animal.previous_post}
-                        nextPost={animal.next_post}
-                        getPath={(post) => (
-                            `/rescue-animals/${post.source_type}/${post.animal_id}`
-                        )}
-                        getTitle={(post) => (
-                            `${post.breed || post.species || "구조동물"} · ${post.happen_place || "지역 정보 없음"}`
-                        )}
-                        getDate={(post) => post.happen_dt}
-                    />
-                </div>
-            )}
-        </>
+                            <dd>
+                                {animal.care_tel ? (
+                                    <a
+                                        href={`tel:${animal.care_tel}`}
+                                        className="rescue-contact-link"
+                                    >
+                                        {animal.care_tel}
+                                    </a>
+                                ) : (
+                                    "정보 없음"
+                                )}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>
+                                <i
+                                    className="ri-map-pin-2-line"
+                                    aria-hidden="true"
+                                />
+                                주소
+                            </dt>
+
+                            <dd>
+                                {displayValue(
+                                    animal.care_addr
+                                )}
+                            </dd>
+                        </div>
+                    </dl>
+
+                    {animal.detail_url && (
+                        <a
+                            className="btn btn-outline rescue-original-link"
+                            href={animal.detail_url}
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            원문 공고 보기
+                            <i
+                                className="ri-external-link-line"
+                                aria-hidden="true"
+                            />
+                        </a>
+                    )}
+                </article>
+            </section>
+
+            <PostNavigation
+                previousPost={animal.previous_post}
+                nextPost={animal.next_post}
+                getPath={(post) => (
+                    `/rescue-animals/${post.source_type}/${post.animal_id}`
+                )}
+                getTitle={(post) => (
+                    `${post.breed || post.species || "보호동물"} · ${post.happen_place || "지역 정보 없음"}`
+                )}
+                getDate={(post) =>
+                    post.happen_dt
+                }
+            />
+        </div>
     )
 }

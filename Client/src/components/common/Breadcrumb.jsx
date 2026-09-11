@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom"
-import "../../css/components.css"
 
 export default function Breadcrumb({ items = [] }) {
     if (items.length === 0) return null

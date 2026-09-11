@@ -3,27 +3,47 @@ import { ok } from "../../utils/response.js"
 
 // 9.1 알림 목록 조회
 export async function getNotifications(req, res, next) {
-	try {
-        const result = await service.getNotifications(req.userId)
+    try {
+        const result =
+            await service.getNotifications(
+                req.userId
+            )
 
         ok(res, result)
-
-	} catch (err) {
-		next(err)
-	}
+    } catch (err) {
+        next(err)
+    }
 }
 
 // 9.2 알림 읽음 처리
 export async function readNotification(req, res, next) {
-	try {
-		const result = await service.readNotification({
-			userId: req.userId,
-			notificationId: req.params.id
-		})
+    try {
+        const result =
+            await service.readNotification({
+                userId: req.userId,
+                notificationId: req.params.id
+            })
 
-		ok(res, result)
-		
-	} catch (err) {
-		next(err)
-	}
+        ok(res, result)
+    } catch (err) {
+        next(err)
+    }
+}
+
+// 9.3 모든 알림 읽음 처리
+export async function readAllNotifications(
+    req,
+    res,
+    next
+) {
+    try {
+        const result =
+            await service.readAllNotifications(
+                req.userId
+            )
+
+        ok(res, result)
+    } catch (err) {
+        next(err)
+    }
 }

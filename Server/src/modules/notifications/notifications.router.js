@@ -10,4 +10,7 @@ router.get("/", requireAuth, controller.getNotifications)
 // 9.2 알림 읽음 처리
 router.put("/:id/read", requireAuth, controller.readNotification)  
 
+// 9.3 모든 알림 읽음 처리
+router.put("/read-all", requireAuth, controller.readAllNotifications)
+
 export default router

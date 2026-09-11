@@ -1,4 +1,5 @@
 import { query } from "../../db/pool.js"
+import { animalsSql, animalImageCondition } from "../rescue-animals/animal-source.js"
 
 // 실종 공고 종 조회
 export async function findLostPostSpecies(lostPostId) {
@@ -56,30 +57,62 @@ export async function findNearestCandidates(embeddingLiteral, species, limit = 2
 
 // 계산 결과를 이력으로 저장한다. 같은 날 같은 쌍이면 최신 값으로 덮어쓴다(캐시 아님, append 성격의 upsert).
 export async function upsertMatches(sourcePostId, ranked) {
-  const today = new Date().toISOString().slice(0, 10)
-  for (const { source_type, ref_id, similarity } of ranked) {
-    if (source_type === "rescue") {
-      await query(
-        `
-        INSERT INTO matches (source_post_id, source_type, desertion_no, similarity_score, matched_date)
-        VALUES ($1, 'rescue', $2, $3, $4)
-        ON CONFLICT (source_post_id, desertion_no, matched_date) WHERE source_type = 'rescue'
-        DO UPDATE SET similarity_score = EXCLUDED.similarity_score, created_at = NOW()
-        `,
-        [sourcePostId, ref_id, similarity, today],
-      )
-    } else {
-      await query(
-        `
-        INSERT INTO matches (source_post_id, source_type, pawinhand_animal_id, similarity_score, matched_date)
-        VALUES ($1, 'pawinhand', $2, $3, $4)
-        ON CONFLICT (source_post_id, pawinhand_animal_id, matched_date) WHERE source_type = 'pawinhand'
-        DO UPDATE SET similarity_score = EXCLUDED.similarity_score, created_at = NOW()
-        `,
-        [sourcePostId, ref_id, similarity, today],
-      )
+    const savedMatches = []
+    const today = new Date().toISOString().slice(0, 10)
+    for (const { source_type, ref_id, similarity } of ranked) {
+        if (source_type === "rescue") {
+            const { rows } = await query(
+                `
+                INSERT INTO matches (source_post_id, source_type, desertion_no, similarity_score, matched_date)
+                VALUES ($1, 'rescue', $2, $3, $4)
+                ON CONFLICT (source_post_id, desertion_no, matched_date) WHERE source_type = 'rescue'
+                DO UPDATE SET similarity_score = EXCLUDED.similarity_score, created_at = NOW()
+                RETURNING id
+                `,
+                [sourcePostId, ref_id, similarity, today]
+            )
+            savedMatches.push(rows[0])
+        } else {
+            const { rows } = await query(
+                `
+                INSERT INTO matches (source_post_id, source_type, pawinhand_animal_id, similarity_score, matched_date)
+                VALUES ($1, 'pawinhand', $2, $3, $4)
+                ON CONFLICT (source_post_id, pawinhand_animal_id, matched_date) WHERE source_type = 'pawinhand'
+                DO UPDATE SET similarity_score = EXCLUDED.similarity_score, created_at = NOW()
+                RETURNING id
+                `,
+                [sourcePostId, ref_id, similarity, today]
+            )
+            savedMatches.push(rows[0])
+        }
     }
-  }
+    return savedMatches
+}
+
+// 이번 요청에서 저장한 후보만 조회한다. 과거 매칭 이력은 목록에 섞지 않는다.
+export async function findMatchCandidates(matchIds) {
+    const { rows } = await query(
+        `SELECT
+            m.id AS match_id,
+            r.animal_id::text AS animal_id,
+            (
+                SELECT i.image_url
+                FROM images i
+                WHERE ${animalImageCondition}
+                ORDER BY i.id ASC
+                LIMIT 1
+            ) AS image_url,
+            r.up_kind_nm AS species, r.kind_nm AS breed,
+            r.color_cd AS color, r.color_tags, r.sex_cd AS sex,
+            r.happen_place, r.region_sido, r.region_sigungu,
+            TO_CHAR(r.happen_dt, 'YYYY-MM-DD') AS happen_dt
+        FROM matches m
+        LEFT JOIN (${animalsSql}) r ON r.source_type = m.source_type
+            AND r.animal_id = COALESCE(m.desertion_no, m.pawinhand_animal_id)
+        WHERE m.id = ANY($1::bigint[])`,
+        [matchIds]
+    )
+    return rows
 }
 
 // 매칭 상세 비교용 — 실종 공고 + 구조동물 정보를 한 번에 조회한다.
