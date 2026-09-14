@@ -136,7 +136,7 @@ async function extractEmbeddings(processed) {
       const key = Object.keys(animal).find((k) => k.includes("desertionNo"))
       const desertionNo = Number(animal[key])
       const imageUrls = [animal.popfile1, animal.popfile2].filter(Boolean)
-      return { desertion_no: desertionNo, image_urls: imageUrls }
+      return { desertion_no: desertionNo, image_urls: imageUrls, species: animal.upKindNm }
     })
     .filter((animal) => !alreadyProcessed.has(animal.desertion_no) && animal.image_urls.length > 0)
 

@@ -135,6 +135,7 @@ export async function createPost({ userId, body, imageUrls }) {
       images: createdPost.images.map((img) => ({
         id: img.id,
         image_url: img.image_url,   // 절대 URL로 변환
+        species
       })),
     }),
   }).catch((error) => {
