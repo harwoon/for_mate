@@ -1,5 +1,5 @@
 """
-crop -> MegaDescriptor 임베딩 추출 -> DB(images/embeddings) 저장.
+crop -> DINOv2 임베딩 추출 -> DB(images/embeddings) 저장.
 
 탐지기는 collect_dataset.py 와 동일 (torchvision Faster R-CNN v2, BSD-3).
 """
@@ -12,11 +12,11 @@ import cv2
 import numpy as np
 import psycopg2
 import requests
-import timm
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
+from transformers import AutoImageProcessor, AutoModel
 from dotenv import load_dotenv
-from torchvision import transforms as T
 from torchvision.models.detection import (
     FasterRCNN_ResNet50_FPN_V2_Weights,
     fasterrcnn_resnet50_fpn_v2,
@@ -30,8 +30,20 @@ ANIMAL_CLASSES = {"bird", "cat", "dog", "horse", "sheep",
                   "cow", "elephant", "bear", "zebra", "giraffe"}
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-MEGADESCRIPTOR_CKPT = ML_DIR / "checkpoints" / "megadescriptor_mpdd_best.pth"
-MODEL_VERSION = "megadescriptor-b224-mpdd-v1"   # embeddings.model_version 에 그대로 저장
+# MEGADESCRIPTOR_CKPT = ML_DIR / "checkpoints" / "megadescriptor_mpdd_best.pth"
+DOG_CKPT = (
+    ML_DIR
+    / "checkpoints"
+    / "dinov2_proj_dog_small_full_baseline.pth"
+)
+
+CAT_CKPT = (
+    ML_DIR
+    / "checkpoints"
+    / "dinov2_proj_cat_small_full_baseline.pth"
+)
+
+MODEL_VERSION = "dinov2-small-proj512-dogcat-v1"  # embeddings.model_version 에 그대로 저장
 
 # ── 1. 탐지기 (collect_dataset.py 와 동일 설정) ──────────────
 _DET_WEIGHTS = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
@@ -89,26 +101,85 @@ def download(url):
         return None
 
 
-# ── 2. MegaDescriptor (finetune_megadescriptor_official.ipynb 추론 셀과 동일) ──
-_backbone = timm.create_model("hf-hub:BVRA/MegaDescriptor-B-224", num_classes=0, pretrained=False)
-_ck = torch.load(MEGADESCRIPTOR_CKPT, map_location=DEVICE, weights_only=False)
-_backbone.load_state_dict(_ck["model"])
-_backbone.eval().to(DEVICE)
+# ── 2. DINOv2 + species별 projection ──────────────────────
+DINO_BACKBONE_ID = "facebook/dinov2-small"
 
-_embed_tf = T.Compose([
-    T.ToPILImage(),
-    T.Resize((224, 224)),
-    T.ToTensor(),
-    T.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-])
+_dino_processor = AutoImageProcessor.from_pretrained(
+    DINO_BACKBONE_ID
+)
+
+_dino_backbone = AutoModel.from_pretrained(
+    DINO_BACKBONE_ID
+)
+_dino_backbone.eval().to(DEVICE)
+
+
+def _load_projection(checkpoint_path):
+    ckpt = torch.load(
+        checkpoint_path,
+        map_location=DEVICE,
+        weights_only=True
+    )
+
+    if ckpt["backbone"] != DINO_BACKBONE_ID:
+        raise ValueError(
+            f"백본 불일치: {ckpt['backbone']}"
+        )
+
+    weight = ckpt["proj"]["weight"]
+    out_dim, in_dim = weight.shape
+
+    projection = nn.Linear(
+        in_dim,
+        out_dim,
+        bias=False
+    )
+
+    projection.load_state_dict(
+        ckpt["proj"]
+    )
+
+    projection.eval().to(DEVICE)
+
+    return projection
+
+
+_dog_projection = _load_projection(DOG_CKPT)
+_cat_projection = _load_projection(CAT_CKPT)
 
 
 @torch.no_grad()
-def extract_embedding(cropped_bgr):
-    """crop() 결과(224x224 BGR) -> 1024-d L2-normalize 벡터."""
+def extract_embedding(cropped_bgr, species):
+    """
+    crop() 결과 이미지에서 DINOv2 임베딩을 추출한다.
+
+    개     -> dog projection
+    고양이 -> cat projection
+
+    반환값: 512차원 L2-normalized vector
+    """
+    if species == "개":
+        projection = _dog_projection
+    elif species == "고양이":
+        projection = _cat_projection
+    else:
+        raise ValueError(f"지원하지 않는 species입니다: {species}")
+
     rgb = cv2.cvtColor(cropped_bgr, cv2.COLOR_BGR2RGB)
-    x = _embed_tf(rgb).unsqueeze(0).to(DEVICE)
-    return F.normalize(_backbone(x)).cpu().numpy()[0]  # shape (1024,)
+
+    inputs = _dino_processor(images=rgb, return_tensors="pt")
+
+    pixel_values = inputs["pixel_values"].to(DEVICE)
+
+    outputs = _dino_backbone(pixel_values=pixel_values)
+
+    feature = outputs.pooler_output
+
+    embedding = projection(feature)
+
+    embedding = F.normalize(embedding, dim=1)
+
+    return embedding.cpu().numpy()[0]
 
 
 # ── 3. DB 저장 ───────────────────────────────────────────
@@ -138,20 +209,45 @@ def save_to_db(desertion_no, image_url, embedding):
         conn.close()
 
 
-# ── 4. 테스트 ────────────────────────────────────────────
+# ── 4. DINOv2 임베딩 테스트 ───────────────────────────────
 if __name__ == "__main__":
     test_cases = [
-        ("447515202600193", "http://openapi.animal.go.kr/openapi/service/rest/fileDownloadSrvc/files/shelter/2026/07/202608271408798.png"),
-        ("447515202600193","http://openapi.animal.go.kr/openapi/service/rest/fileDownloadSrvc/files/shelter/2026/07/202608271408821.png")
+        (
+            "개",
+            "447515202600193",
+            "http://openapi.animal.go.kr/openapi/service/rest/fileDownloadSrvc/files/shelter/2026/07/202608271408798.png"
+        ),
+        (
+            "고양이",
+            "447515202600193",
+            "http://openapi.animal.go.kr/openapi/service/rest/fileDownloadSrvc/files/shelter/2026/07/202608271408821.png"
+        ),
     ]
-    for desertion_no, url in test_cases:
+
+    for species, desertion_no, url in test_cases:
+        print(f"\n[{species}] {desertion_no}")
+
         img = download(url)
+
         if img is None:
+            print("이미지 다운로드 실패")
             continue
+
         cropped = crop(img)
+
         if cropped is None:
-            print(f"{desertion_no}: 탐지 실패")
+            print("동물 탐지 실패")
             continue
-        emb = extract_embedding(cropped)
-        print(f"{desertion_no}: shape={emb.shape}, norm={np.linalg.norm(emb):.3f}")
-        save_to_db(desertion_no, url, emb)  # 임베딩 저장
+
+        emb = extract_embedding(
+            cropped,
+            species
+        )
+
+        print(
+            f"shape={emb.shape}, "
+            f"norm={np.linalg.norm(emb):.6f}"
+        )
+
+        # 아직 DB는 VECTOR(1024)이므로 저장하지 않는다.
+        # save_to_db(desertion_no, url, emb)
