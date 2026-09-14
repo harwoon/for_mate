@@ -446,10 +446,18 @@ async function saveAnimal(animal) {
 async function extractEmbeddings() {
   // 아직 임베딩이 없는 pawinhand 사진들만 골라낸다 (syncImages가 이미 images는 다 만들어둔 상태).
   const { rows: pending } = await pool.query(
-    `SELECT i.id, i.image_url, i.pawinhand_animal_id
-     FROM images i
-     LEFT JOIN embeddings e ON e.image_id = i.id
-     WHERE i.post_type = 'pawinhand' AND e.id IS NULL`,
+    `SELECT
+      i.id,
+      i.image_url,
+      i.pawinhand_animal_id,
+      pa.up_kind_nm AS species
+    FROM images i
+    JOIN pawinhand_animals pa
+      ON pa.id = i.pawinhand_animal_id
+    LEFT JOIN embeddings e
+      ON e.image_id = i.id
+    WHERE i.post_type = 'pawinhand'
+      AND e.id IS NULL`,
   )
 
   if (pending.length === 0) {
@@ -469,7 +477,9 @@ async function extractEmbeddings() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          images: chunk.map((row) => ({ id: row.id, image_url: row.image_url })),
+          images: chunk.map((row) => ({ 
+            id: row.id, image_url: row.image_url, species: row.species
+          })),
         }),
       })
       const data = await response.json()
