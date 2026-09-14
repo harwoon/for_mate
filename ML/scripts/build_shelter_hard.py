@@ -51,7 +51,9 @@ def sharpness(path):
     return float((gx ** 2 + gy ** 2).mean())
 
 
-def make_cropper(mode):
+def make_cropper(mode, pad_ratio=0.0):
+    """pad_ratio: RT-DETR 박스를 각 변마다 (박스 크기 * pad_ratio)만큼 여유분 두고 자름.
+    0.0=타이트 크롭(기존), 커질수록 무크롭에 가까워짐 — 타이트 크롭과 무크롭 사이 스펙트럼의 중간 지점."""
     if mode == "none":
         return lambda im: im
     from compare_detectors import RtDetrDet
@@ -62,8 +64,12 @@ def make_cropper(mode):
         if box is None:
             return im
         h, w = im.shape[:2]
-        x1, y1 = max(0, int(box[0])), max(0, int(box[1]))
-        x2, y2 = min(w, int(box[2])), min(h, int(box[3]))
+        x1, y1, x2, y2 = box
+        bw, bh = x2 - x1, y2 - y1
+        x1, y1 = x1 - bw * pad_ratio, y1 - bh * pad_ratio
+        x2, y2 = x2 + bw * pad_ratio, y2 + bh * pad_ratio
+        x1, y1 = max(0, int(x1)), max(0, int(y1))
+        x2, y2 = min(w, int(x2)), min(h, int(y2))
         c = im[y1:y2, x1:x2]
         return c if c.size else im
     return crop
@@ -96,6 +102,8 @@ def main():
     ap.add_argument("--species", nargs="+", default=["dog"])
     ap.add_argument("--out_name", default="shelter_hard")
     ap.add_argument("--crop", choices=["rtdetr", "none"], default="rtdetr")
+    ap.add_argument("--pad", type=float, default=0.0,
+                    help="rtdetr 크롭 박스 각 변에 (박스크기*pad) 만큼 여유. 0=타이트, 커질수록 무크롭에 가까워짐")
     ap.add_argument("--min_photos", type=int, default=2)
     ap.add_argument("--n_real", type=int, default=None,
                     help="정답 개체 수 상한. 넘는 만큼은 방해꾼으로 강등(사진 1장). 미지정=사진 조건 만족 전부")
@@ -107,8 +115,9 @@ def main():
     args = ap.parse_args()
 
     src = Path(args.src)
-    cropper = make_cropper(args.crop)
-    print(f"[크롭 = {args.crop}]  전처리 통일: 모든 저장 이미지가 이 파이프라인을 통과")
+    cropper = make_cropper(args.crop, pad_ratio=args.pad)
+    pad_note = f" pad={args.pad}" if args.crop == "rtdetr" and args.pad else ""
+    print(f"[크롭 = {args.crop}{pad_note}]  전처리 통일: 모든 저장 이미지가 이 파이프라인을 통과")
 
     for sp in args.species:
         sp_dir = src / sp

@@ -33,7 +33,14 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 
 ML_DIR = Path(__file__).resolve().parent.parent
-DEV = "cuda" if torch.cuda.is_available() else "cpu"
+if torch.cuda.is_available():
+    DEV = "cuda"
+elif torch.backends.mps.is_available():
+    DEV = "mps"
+elif torch.xpu.is_available():
+    DEV = "xpu"
+else:
+    DEV = "cpu"
 FN = re.compile(r"([-\d]+)_c(\d+)")
 FN_EVAL = re.compile(r"(\d+)_c(\d+)s(\d+)_(\d+)\.jpg$", re.I)
 MEAN, STD = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
@@ -41,11 +48,22 @@ MEAN, STD = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
 
 # ---------------- 백본 ----------------
 
-def load_backbone():
+def load_backbone(backbone_id="facebook/dinov2-large", unfreeze_blocks=0):
+    """unfreeze_blocks>0 이면 encoder.layer 마지막 N개 + 최종 layernorm 만 풀어서
+    같이 파인튜닝 (나머지는 그대로 프리즈). 0이면 기존처럼 완전 프리즈."""
     from transformers import AutoModel
-    m = AutoModel.from_pretrained("facebook/dinov2-large").eval().to(DEV)
+    m = AutoModel.from_pretrained(backbone_id).to(DEV)
     for p in m.parameters():
         p.requires_grad_(False)
+    if unfreeze_blocks > 0:
+        for layer in m.encoder.layer[-unfreeze_blocks:]:
+            for p in layer.parameters():
+                p.requires_grad_(True)
+        for p in m.layernorm.parameters():
+            p.requires_grad_(True)
+        m.train()
+    else:
+        m.eval()
     return m
 
 
@@ -53,8 +71,8 @@ class _DS(Dataset):
     """스크랩 데이터셋(LCW 등)엔 깨진 파일이 섞여있음 -> 회색 이미지로 대체하고 계속."""
     n_bad = 0
 
-    def __init__(self, paths, tf):
-        self.paths, self.tf = paths, tf
+    def __init__(self, paths, tf, labels=None):
+        self.paths, self.tf, self.labels = paths, tf, labels
 
     def __len__(self):
         return len(self.paths)
@@ -66,7 +84,8 @@ class _DS(Dataset):
             _DS.n_bad += 1
             print(f"[손상 이미지 #{_DS.n_bad}, 회색으로 대체] {self.paths[i]}  ({e})")
             img = Image.new("RGB", (224, 224), (114, 114, 114))
-        return self.tf(img)
+        img = self.tf(img)
+        return img if self.labels is None else (img, int(self.labels[i]))
 
 
 @torch.no_grad()
@@ -253,6 +272,44 @@ def build_train_from_id2p(id2p, min_photos, max_identities, n_eval, seed):
             len(train_ids), eval_q, eval_g)
 
 
+def train_one_epoch(proj, arc, feats, labs, opt, batch_size, device):
+    """캐시된 백본 특징 위에서 한 에폭 학습 -> 평균 loss.
+    이 파이프라인의 '평가'는 loss/accuracy가 아니라 case_recall(open-set 검색)이라
+    수업 run_epoch()처럼 train/eval을 한 함수로 합치지는 않음 (합칠 공통 루프가 없음)."""
+    proj.train()
+    n = feats.size(0)
+    perm = torch.randperm(n, device=device)
+    total_loss = 0.0
+    for i in range(0, n, batch_size):
+        idx = perm[i:i + batch_size]
+        z = F.normalize(proj(feats[idx]), dim=1)
+        loss = arc(z, labs[idx])
+        opt.zero_grad(set_to_none=True)
+        loss.backward()
+        opt.step()
+        total_loss += loss.item() * len(idx)
+    return total_loss / n
+
+
+def train_one_epoch_finetune(backbone, proj, arc, paths, labels, tf, opt, batch_size, device, num_workers=4):
+    """언프리즈 모드 -- 캐시 없이 매 배치 백본을 통과시켜 gradient 를 흘림 (훨씬 느림)."""
+    backbone.train(); proj.train()
+    dl = DataLoader(_DS(paths, tf, labels), batch_size=batch_size, shuffle=True,
+                     num_workers=num_workers, persistent_workers=num_workers > 0)
+    total_loss, n = 0.0, 0
+    for imgs, labs in dl:
+        imgs, labs = imgs.to(device), labs.to(device)
+        feat = backbone(pixel_values=imgs).pooler_output
+        z = F.normalize(proj(feat), dim=1)
+        loss = arc(z, labs)
+        opt.zero_grad(set_to_none=True)
+        loss.backward()
+        opt.step()
+        total_loss += loss.item() * len(labs)
+        n += len(labs)
+    return total_loss / n
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default=str(ML_DIR / "dataset/raw/mpdd_release/MPDD/pytorch/train"))
@@ -265,6 +322,9 @@ def main():
                     help="mpdd: 평가 폴더. archive/lcw 에선 held-out 개체로 평가하고 이건 무시")
     ap.add_argument("--also_eval_root", default=None,
                     help="archive/lcw: held-out 외에 이 shelter 폴더로도 추가 평가 (교차 도메인 확인)")
+    ap.add_argument("--backbone_id", default="facebook/dinov2-large",
+                    help="frozen 백본. 예: facebook/dinov2-small(21M/384d), facebook/dinov2-base(86M/768d), "
+                         "facebook/dinov3-vits16-pretrain-lvd1689m(21M/384d). proj Linear 입력 차원은 자동으로 맞춰짐")
     ap.add_argument("--out", default=str(ML_DIR / "checkpoints/dinov2_proj_dog.pth"))
     ap.add_argument("--feat_cache", default=str(ML_DIR / "embeddings"), help="특징 .pt 캐시 폴더")
     ap.add_argument("--proj_dim", type=int, default=512)
@@ -275,8 +335,24 @@ def main():
     ap.add_argument("--batch", type=int, default=256)
     ap.add_argument("--arcface_margin", type=float, default=0.3)
     ap.add_argument("--arcface_scale", type=float, default=32.0)
+    ap.add_argument("--optimizer", choices=["adamw", "sgd"], default="adamw",
+                    help="MegaDescriptor 공식 노트북은 SGD를 씀 — 우리 DINOv2 학습만 여태 AdamW였음")
+    ap.add_argument("--momentum", type=float, default=0.9, help="--optimizer sgd 일 때만 사용")
+    ap.add_argument("--weight_decay", type=float, default=1e-4)
+    ap.add_argument("--sched", choices=["cosine", "plateau", "none"], default="cosine",
+                    help="plateau = ReduceLROnPlateau, eval_period마다의 R@1 기준")
     ap.add_argument("--eval_period", type=int, default=5)
+    ap.add_argument("--early_stop_patience", type=int, default=0,
+                    help="이 횟수(eval_period 단위)만큼 R@1 개선이 없으면 조기 종료. 0=비활성(기존 동작)")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--unfreeze_blocks", type=int, default=0,
+                    help="백본 마지막 N개 encoder.layer(+최종 layernorm)를 풀어서 같이 파인튜닝. "
+                         "0=기존처럼 완전 프리즈(특징 캐시 사용, 빠름). >0이면 캐시를 안 쓰고 매 에폭 백본을 다시 통과시킴(훨씬 느림) -- --epochs 를 작게(예: 10) 주는 걸 권장")
+    ap.add_argument("--backbone_lr", type=float, default=None,
+                    help="언프리즈된 백본 파라미터용 LR. 기본값: --lr 의 1/100 (사전학습 특징 붕괴 방지, 작게)")
+    ap.add_argument("--finetune_batch", type=int, default=64,
+                    help="--unfreeze_blocks>0 일 때 배치 크기 (캐시 학습용 --batch 와 별개 -- 백본까지 GPU에 올라가서 VRAM 더 씀)")
+    ap.add_argument("--num_workers", type=int, default=4, help="--unfreeze_blocks>0 일 때 DataLoader 워커 수")
     ap.add_argument("--zeroshot", action="store_true",
                     help="projection 학습 없이 raw DINOv2-large(1024d, L2정규화)로 held-out/also_eval_root 평가만 하고 종료. "
                          "projection이 실제로 뭘 더하는지 보려면 이 값과 학습 후 R@1을 같은 held-out에서 비교")
@@ -287,12 +363,19 @@ def main():
         T.RandomResizedCrop(224, scale=(0.7, 1.0)),
         T.RandomHorizontalFlip(),
         T.ColorJitter(0.2, 0.2, 0.2),
+        T.RandomApply([T.GaussianBlur(5, sigma=(0.1, 2.0))], p=0.3),  # 실전 폰사진 저화질/흔들림 대응
         T.ToTensor(), T.Normalize(MEAN, STD),
+        T.RandomErasing(p=0.5, scale=(0.02, 0.2), ratio=(0.3, 3.3)),  # 목줄/손/창살 등 부분 가림 대응
     ])
     eval_tf = T.Compose([T.Resize((224, 224)), T.ToTensor(), T.Normalize(MEAN, STD)])
     view_tf = eval_tf if args.aug_views == 1 else aug_tf
 
-    backbone = load_backbone()
+    backbone = load_backbone(args.backbone_id, unfreeze_blocks=args.unfreeze_blocks)
+    if args.backbone_lr is None:
+        args.backbone_lr = args.lr * 0.01
+    if args.unfreeze_blocks > 0:
+        print(f"[언프리즈] 백본 마지막 {args.unfreeze_blocks}개 블록 + layernorm 같이 학습 "
+              f"(backbone_lr={args.backbone_lr:.2e}, finetune_batch={args.finetune_batch})")
     if args.data_format in ("archive", "lcw"):
         id2p = read_archive(args.data) if args.data_format == "archive" else read_lcw(args.data)
         paths, labels, n_cls, eval_q, eval_g = build_train_from_id2p(
@@ -306,7 +389,7 @@ def main():
     ev_name = "held-out" if is_id2p else "shelter_hard_dogs"
 
     if args.zeroshot:
-        print("[zeroshot] projection 학습 없이 raw DINOv2-large(1024d, L2정규화)로 평가만 수행")
+        print(f"[zeroshot] projection 학습 없이 raw {args.backbone_id}(L2정규화)로 평가만 수행")
         identity = lambda x: x  # noqa: E731 — case_recall*은 proj(f)를 그냥 함수로 호출
         if is_id2p:
             r = case_recall_lists(backbone, identity, eval_q, eval_g, eval_tf)
@@ -319,74 +402,117 @@ def main():
             print(f"[zeroshot] {ev_name}  R@1 {r[1]:.1%}  R@5 {r[5]:.1%}  R@10 {r[10]:.1%}")
         return
 
-    # 백본 특징: 디스크 캐시 (재실행 시 스킵). aug_views 번 뽑아 쌓음
-    cache_dir = Path(args.feat_cache); cache_dir.mkdir(parents=True, exist_ok=True)
-    tag = f"{args.data_format}_{n_cls}id_{len(paths)}img_{args.aug_views}v_s{args.seed}"
-    fpath = cache_dir / f"dinov2_trainfeat_{tag}.pt"
-    if fpath.exists():
-        blob = torch.load(fpath)
-        feats, labs = blob["feat"].to(DEV), blob["label"].to(DEV)
-        print(f"특징 캐시 로드 {tuple(feats.shape)}  {fpath.name}")
+    if args.unfreeze_blocks > 0:
+        # 캐시 못 씀 (백본이 매 에폭 바뀌니까) -- proj 입력 차원은 백본 config 에서 바로 읽음
+        feats = labs = None
+        proj_in_dim = backbone.config.hidden_size
     else:
-        feat_bank, lab_bank = [], []
-        for v in range(args.aug_views):
-            feat_bank.append(backbone_feats(backbone, paths, view_tf))
-            lab_bank.append(torch.from_numpy(labels))
-            print(f"  특징 추출 {v + 1}/{args.aug_views}")
-        feats_cpu = torch.cat(feat_bank); labs_cpu = torch.cat(lab_bank)
-        torch.save({"feat": feats_cpu.half(), "label": labs_cpu}, fpath)
-        feats, labs = feats_cpu.to(DEV), labs_cpu.to(DEV)
-        print(f"특징 저장 {tuple(feats.shape)}  {fpath}")
-    feats = feats.float()
+        # 백본 특징: 디스크 캐시 (재실행 시 스킵). aug_views 번 뽑아 쌓음
+        cache_dir = Path(args.feat_cache); cache_dir.mkdir(parents=True, exist_ok=True)
+        backbone_tag = args.backbone_id.rsplit("/", 1)[-1]  # 백본마다 차원이 달라서 캐시 파일명에 꼭 넣어야 함
+        tag = f"{backbone_tag}_{args.data_format}_{n_cls}id_{len(paths)}img_{args.aug_views}v_s{args.seed}"
+        fpath = cache_dir / f"trainfeat_{tag}.pt"
+        if fpath.exists():
+            blob = torch.load(fpath)
+            feats, labs = blob["feat"].to(DEV), blob["label"].to(DEV)
+            print(f"특징 캐시 로드 {tuple(feats.shape)}  {fpath.name}")
+        else:
+            feat_bank, lab_bank = [], []
+            for v in range(args.aug_views):
+                feat_bank.append(backbone_feats(backbone, paths, view_tf))
+                lab_bank.append(torch.from_numpy(labels))
+                print(f"  특징 추출 {v + 1}/{args.aug_views}")
+            feats_cpu = torch.cat(feat_bank); labs_cpu = torch.cat(lab_bank)
+            torch.save({"feat": feats_cpu.half(), "label": labs_cpu}, fpath)
+            feats, labs = feats_cpu.to(DEV), labs_cpu.to(DEV)
+            print(f"특징 저장 {tuple(feats.shape)}  {fpath}")
+        feats = feats.float()
+        proj_in_dim = feats.size(1)
 
-    proj = nn.Linear(feats.size(1), args.proj_dim, bias=False).to(DEV)
+    proj = nn.Linear(proj_in_dim, args.proj_dim, bias=False).to(DEV)
     arc = ArcFace(args.proj_dim, n_cls, s=args.arcface_scale, m=args.arcface_margin).to(DEV)
-    opt = torch.optim.AdamW([*proj.parameters(), *arc.parameters()], lr=args.lr, weight_decay=1e-4)
-    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
+    head_params = [*proj.parameters(), *arc.parameters()]
+    backbone_trainable = [p for p in backbone.parameters() if p.requires_grad]
+    if backbone_trainable:
+        param_groups = [{"params": head_params, "lr": args.lr},
+                         {"params": backbone_trainable, "lr": args.backbone_lr}]
+    else:
+        param_groups = head_params
+    if args.optimizer == "sgd":
+        opt = torch.optim.SGD(param_groups, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    else:
+        opt = torch.optim.AdamW(param_groups, lr=args.lr, weight_decay=args.weight_decay)
+    if args.sched == "cosine":
+        sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
+    elif args.sched == "plateau":
+        sched = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, mode="max", factor=0.5, patience=3)
+    else:
+        sched = torch.optim.lr_scheduler.ConstantLR(opt, factor=1.0)
 
     def run_eval(proj):
-        if is_id2p:
-            r = case_recall_lists(backbone, proj, eval_q, eval_g, eval_tf)
-            if args.also_eval_root:
-                r2 = case_recall(backbone, proj, args.also_eval_root, eval_tf)
-                return r, r2
-            return r, None
-        return case_recall(backbone, proj, args.eval_root, eval_tf), None
+        backbone.eval()
+        try:
+            if is_id2p:
+                r = case_recall_lists(backbone, proj, eval_q, eval_g, eval_tf)
+                if args.also_eval_root:
+                    r2 = case_recall(backbone, proj, args.also_eval_root, eval_tf)
+                    return r, r2
+                return r, None
+            return case_recall(backbone, proj, args.eval_root, eval_tf), None
+        finally:
+            if args.unfreeze_blocks > 0:
+                backbone.train()
 
     print("참고: raw DINOv2-large zero-shot(projection 없이) 대비 이 수치가 높아야 projection 이 의미"
           " — 개 기준 shelter_hard_dogs raw ~93.6%. 고양이는 also_eval_root 첫 평가에서 raw 대비 직접 비교 필요")
 
     best = {"r1": -1.0, "epoch": -1}
-    n = feats.size(0)
+    history = []  # epoch별 {epoch, loss, lr, r1, r5, r10} 기록 -> 학습 후 JSON으로 저장
+    no_improve = 0
     for ep in range(1, args.epochs + 1):
-        proj.train()
-        perm = torch.randperm(n, device=DEV)
-        tot = 0.0
-        for i in range(0, n, args.batch):
-            idx = perm[i:i + args.batch]
-            z = F.normalize(proj(feats[idx]), dim=1)
-            loss = arc(z, labs[idx])
-            opt.zero_grad()
-            loss.backward()
-            opt.step()
-            tot += loss.item() * len(idx)
-        sched.step()
+        if args.unfreeze_blocks > 0:
+            avg_loss = train_one_epoch_finetune(backbone, proj, arc, paths, labels, view_tf,
+                                                 opt, args.finetune_batch, DEV, args.num_workers)
+        else:
+            avg_loss = train_one_epoch(proj, arc, feats, labs, opt, args.batch, DEV)
+        if args.sched != "plateau":  # plateau는 아래 R@1이 나온 시점에 step
+            sched.step()
         if ep % args.eval_period == 0 or ep == args.epochs:
             proj.eval()
             r, r2 = run_eval(proj)
-            line = (f"[epoch {ep:3d}] loss {tot / n:.3f}  lr {opt.param_groups[0]['lr']:.2e}  "
+            if args.sched == "plateau":
+                sched.step(r[1])
+            history.append({"epoch": ep, "loss": avg_loss, "lr": opt.param_groups[0]["lr"],
+                             "r1": r[1], "r5": r[5], "r10": r[10]})
+            line = (f"[epoch {ep:3d}] loss {avg_loss:.3f}  lr {opt.param_groups[0]['lr']:.2e}  "
                     f"| {ev_name}  R@1 {r[1]:.1%}  R@5 {r[5]:.1%}  R@10 {r[10]:.1%}")
             if r2:
                 line += f"  || shelter  R@1 {r2[1]:.1%}  R@5 {r2[5]:.1%}"
             print(line)
             if r[1] > best["r1"]:
                 best.update(r1=r[1], epoch=ep)
-                torch.save({"proj": proj.state_dict(), "backbone": "facebook/dinov2-large",
+                no_improve = 0
+                backbone_finetune = None
+                if args.unfreeze_blocks > 0:
+                    backbone_finetune = {
+                        "unfreeze_blocks": args.unfreeze_blocks,
+                        "layer_state": [l.state_dict() for l in backbone.encoder.layer[-args.unfreeze_blocks:]],
+                        "layernorm_state": backbone.layernorm.state_dict(),
+                    }
+                torch.save({"proj": proj.state_dict(), "backbone": args.backbone_id,
                             "proj_dim": args.proj_dim, "r1": r[1], "epoch": ep,
+                            "backbone_finetune": backbone_finetune,
                             "args": vars(args)}, args.out)
                 print(f"      -> best 저장 (R@1 {r[1]:.1%})  {args.out}")
+            else:
+                no_improve += 1
+                if args.early_stop_patience and no_improve >= args.early_stop_patience:
+                    print(f"[early stopping] {args.early_stop_patience}회 연속 개선 없음 (epoch {ep}) -> 조기 종료")
+                    break
 
-    print(f"\n최고 {ev_name} R@1 {best['r1']:.1%} @ epoch {best['epoch']}")
+    hist_path = Path(str(args.out) + ".history.json")
+    json.dump(history, open(hist_path, "w"), indent=2)
+    print(f"\n최고 {ev_name} R@1 {best['r1']:.1%} @ epoch {best['epoch']}  (history: {hist_path})")
     print("참고(개 기준, shelter_hard_dogs 3000방해꾼): raw DINOv2-large ~93.6% / "
           "pet-recognition-large 61.9% / 자체 projection ~60~62%")
 
