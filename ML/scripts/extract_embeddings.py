@@ -43,7 +43,7 @@ CAT_CKPT = (
     / "dinov2_proj_cat_small_full_baseline.pth"
 )
 
-MODEL_VERSION = "dinov2-small-proj512-dogcat-v1"  # embeddings.model_version 에 그대로 저장
+MODEL_VERSION = "dinov2-small-proj512-dogcat-v2"  # embeddings.model_version 에 그대로 저장
 
 # ── 1. 탐지기 (collect_dataset.py 와 동일 설정) ──────────────
 _DET_WEIGHTS = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
@@ -104,8 +104,13 @@ def download(url):
 # ── 2. DINOv2 + species별 projection ──────────────────────
 DINO_BACKBONE_ID = "facebook/dinov2-small"
 
+# crop()이 이미 224x224로 letterbox해두므로 프로세서의 기본 리사이즈/센터크롭
+# (shortest_edge=256 -> 224 크롭)을 끈다. 켜두면 학습 때 쓴 train_dinov2_projection.py의
+# 전처리(Resize((224,224)) 후 크롭 없음)와 어긋나 이미지 가장자리가 잘려나간다.
 _dino_processor = AutoImageProcessor.from_pretrained(
-    DINO_BACKBONE_ID
+    DINO_BACKBONE_ID,
+    do_resize=False,
+    do_center_crop=False
 )
 
 _dino_backbone = AutoModel.from_pretrained(
