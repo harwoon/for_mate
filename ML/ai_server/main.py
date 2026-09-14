@@ -20,6 +20,7 @@ app = FastAPI()
 class ImageIn(BaseModel):
     id: int
     image_url: str
+    species: str
 
 
 class EmbedRequest(BaseModel):
@@ -29,6 +30,7 @@ class EmbedRequest(BaseModel):
 class RescueAnimalIn(BaseModel):
     desertion_no: int
     image_urls: list[str]
+    species: str
 
 
 class RescueEmbedRequest(BaseModel):
@@ -63,7 +65,7 @@ def embed_images(req: EmbedRequest):
             if cropped is None:
                 results.append({"image_id": image.id, "status": "detect_failed"})
                 continue
-            embedding = extract_embedding(cropped)
+            embedding = extract_embedding(cropped, image.species)
             save_embedding(image.id, embedding)
             results.append({"image_id": image.id, "status": "ok"})
         except Exception as e:
@@ -83,7 +85,7 @@ def embed_rescue_animals(req: RescueEmbedRequest):
                 if cropped is None:
                     results.append({"desertion_no": animal.desertion_no, "status": "detect_failed"})
                     continue
-                embedding = extract_embedding(cropped)
+                embedding = extract_embedding(cropped, animal.species)
                 save_to_db(animal.desertion_no, url, embedding)
                 results.append({"desertion_no": animal.desertion_no, "status": "ok"})
             except Exception as e:
