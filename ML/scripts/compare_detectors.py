@@ -34,10 +34,17 @@ except ImportError:
 ML_DIR = Path(__file__).resolve().parent.parent  # ML/  (이 파일은 ML/scripts/ 안)
 ANIMAL_CLASSES = {"bird", "cat", "dog", "horse", "sheep",
                   "cow", "elephant", "bear", "zebra", "giraffe"}
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+if torch.cuda.is_available():
+    DEVICE = "cuda"
+elif torch.backends.mps.is_available():
+    DEVICE = "mps"
+elif torch.xpu.is_available():
+    DEVICE = "xpu"
+else:
+    DEVICE = "cpu"
 
 GT_DEFAULT = ML_DIR / "dataset" / "derived" / "detector_gt" / "detector_gt_shelter_dog.json"
-IMG_DEFAULT = ML_DIR / "dataset" / "derived" / "detector_gt" / "dog"
+IMG_DEFAULT = ML_DIR / "dataset" / "derived" / "detector_gt" / "dog_annotations"
 
 
 def iou(a, b):

@@ -16,6 +16,7 @@
   python scripts/compare_backbones.py --sets cats --models ours petreco dinov2 --ours_ckpt ML/checkpoints/dinov2_proj_cat.pth
 """
 import argparse
+import json
 import re
 from collections import defaultdict
 from pathlib import Path
@@ -26,7 +27,14 @@ import torch.nn.functional as F
 from PIL import Image
 
 ML_DIR = Path(__file__).resolve().parent.parent
-DEV = "cuda" if torch.cuda.is_available() else "cpu"
+if torch.cuda.is_available():
+    DEV = "cuda"
+elif torch.backends.mps.is_available():
+    DEV = "mps"
+elif torch.xpu.is_available():
+    DEV = "xpu"
+else:
+    DEV = "cpu"
 FN = re.compile(r"(\d+)_c(\d+)s(\d+)_(\d+)\.jpg$", re.I)
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], np.float32)
 IMAGENET_STD = np.array([0.229, 0.224, 0.225], np.float32)
@@ -34,6 +42,12 @@ IMAGENET_STD = np.array([0.229, 0.224, 0.225], np.float32)
 SETS = {
     "dogs":    ML_DIR / "dataset/derived/shelter_hard_dogs",
     "cats":    ML_DIR / "dataset/derived/shelter_hard_cats",
+    "dogs_nocrop": ML_DIR / "dataset/derived/shelter_hard_nocrop_dogs",
+    "cats_nocrop": ML_DIR / "dataset/derived/shelter_hard_nocrop_cats",
+    "dogs_pad30": ML_DIR / "dataset/derived/shelter_hard_pad30_dogs",
+    "cats_pad30": ML_DIR / "dataset/derived/shelter_hard_pad30_cats",
+    "dogs_pad60": ML_DIR / "dataset/derived/shelter_hard_pad60_dogs",
+    "cats_pad60": ML_DIR / "dataset/derived/shelter_hard_pad60_cats",
     "corrupt": ML_DIR / "dataset/derived/MPDD_hard_corrupt/MPDD/pytorch",
 }
 
@@ -78,7 +92,15 @@ def make_ours(ckpt_path):
     backbone = AutoModel.from_pretrained(ck.get("backbone", "facebook/dinov2-large")).eval().to(DEV)
     for p in backbone.parameters():
         p.requires_grad_(False)
-    proj = nn.Linear(1024, ck["proj_dim"], bias=False).to(DEV)
+    bf = ck.get("backbone_finetune")  # unfreeze_blocks>0 로 학습된 체크포인트면 마지막 N개 블록 가중치가 따로 저장돼있음
+    if bf:
+        n = bf["unfreeze_blocks"]
+        for layer, state in zip(backbone.encoder.layer[-n:], bf["layer_state"]):
+            layer.load_state_dict(state)
+        backbone.layernorm.load_state_dict(bf["layernorm_state"])
+        print(f"  [ours] 파인튜닝된 백본 마지막 {n}개 블록 가중치 적용됨")
+    in_dim = ck["proj"]["weight"].shape[1]  # 백본마다 차원 다름(small 384/base 768/large 1024) -> 체크포인트에서 직접 읽음
+    proj = nn.Linear(in_dim, ck["proj_dim"], bias=False).to(DEV)
     proj.load_state_dict(ck["proj"])
     proj.eval()
     print(f"  [ours] {ckpt_path}  (best epoch {ck.get('epoch')}, 학습 당시 R@1 {ck.get('r1', 0):.1%})")
@@ -164,12 +186,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sets", nargs="+", default=["dogs", "cats"], choices=list(SETS))
     ap.add_argument("--models", nargs="+", default=["petreco", "dinov2", "siglip2"],
-                    choices=["petreco", "dinov2", "siglip2", "ours"])
+                    choices=["petreco", "dinov2", "siglip2", "clip", "ours"])
     ap.add_argument("--siglip_id", default="google/siglip2-giant-opt-patch16-384")
     ap.add_argument("--dinov2_id", default="facebook/dinov2-large")
+    ap.add_argument("--clip_id", default="openai/clip-vit-base-patch32",
+                    help="OpenAI CLIP(MIT) 크기 스윕: openai/clip-vit-base-patch32(88M) / "
+                         "-base-patch16(88M, 해상도만 다름) / -large-patch14(304M)")
     ap.add_argument("--ours_ckpt", default=None,
                     help="ours 모델용 train_dinov2_projection.py 체크포인트. "
                          "예: ML/checkpoints/dinov2_proj_cat.pth (--sets cats), dinov2_proj_dog.pth (--sets dogs)")
+    ap.add_argument("--out_json", default=None,
+                    help="세트x모델별 R@1/5/10 결과를 이 경로에 json으로 저장 (스윕 결과 기록용)")
     args = ap.parse_args()
     if "ours" in args.models and not args.ours_ckpt:
         ap.error("--models ours 는 --ours_ckpt 필요 (예: ML/checkpoints/dinov2_proj_cat.pth)")
@@ -179,6 +206,7 @@ def main():
         "petreco": make_petreco,
         "dinov2": lambda: _hf_image_embed(args.dinov2_id, "dinov2"),
         "siglip2": lambda: _hf_image_embed(args.siglip_id, "siglip2"),
+        "clip": lambda: _hf_image_embed(args.clip_id, "clip"),
         "ours": lambda: make_ours(args.ours_ckpt),
     }
     embedders = {}
@@ -186,12 +214,20 @@ def main():
         print(f"[load] {m} ...", flush=True)
         embedders[m] = builders[m]()
 
+    results = []  # 세트x모델별 결과 기록 -> --out_json 지정 시 저장 (수업 history 패턴)
     for s in args.sets:
         print(f"\n=== {s}  ({SETS[s]}) ===")
         for m in args.models:
             r, ncase, nid = evaluate(SETS[s], embedders[m])
             print(f"  {m:9s}  n={ncase} / gallery id {nid}   "
                   f"R@1 {r[1]:.1%}  R@5 {r[5]:.1%}  R@10 {r[10]:.1%}")
+            results.append({"set": s, "model": m, "n_case": ncase, "n_gallery_id": nid,
+                             "r1": r[1], "r5": r[5], "r10": r[10]})
+
+    if args.out_json:
+        Path(args.out_json).parent.mkdir(parents=True, exist_ok=True)
+        json.dump(results, open(args.out_json, "w"), indent=2, ensure_ascii=False)
+        print(f"\n결과 -> {args.out_json}")
 
 
 if __name__ == "__main__":
