@@ -816,12 +816,6 @@
         color var(--transition-fast);
 }
 
-.pagination button:hover:not(:disabled):not(.is-active) {
-    border-color: var(--color-primary);
-    background: var(--color-primary-soft);
-    color: var(--color-primary);
-}
-
 .pagination button.is-active {
     border-color: var(--color-primary);
     background: var(--color-primary);
@@ -829,14 +823,19 @@
     font-weight: var(--weight-bold);
 }
 
-.pagination button:disabled {
-    border-color: var(--color-border-light);
+.pagination button.pagination-nav {
+    border-color: var(--color-border);
     background: var(--color-surface);
-    color: var(--color-text-disabled);
+    color: var(--color-text-sub);
     cursor: default;
-    opacity: 0.55;
+    opacity: 1;
 }
 
+.pagination button:hover:not(.is-active) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+}
 .pagination-nav i {
     font-size: 17px;
     line-height: 1;
