@@ -36,6 +36,22 @@ const MAX_IMAGES = 8
 const MIN_IMAGES = 3
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"]
+const PHOTO_GUIDE_EXAMPLES = [
+    { key: "good", label: "좋은 예시", src: "/images/lost/good-photo-example.webp", good: true },
+    { key: "dark", label: "어두운 사진", src: "/images/lost/bad-photo-dark.webp" },
+    { key: "side", label: "측면 사진", src: "/images/lost/bad-photo-side.webp" },
+    { key: "blur", label: "흔들린 사진", src: "/images/lost/bad-photo-blur.webp" },
+    { key: "person", label: "사람과 함께", src: "/images/lost/bad-photo-person.webp" }
+]
+const COLOR_PREVIEW_CLASSES = {
+    흰색: "is-white",
+    검은색: "is-black",
+    갈색: "is-brown",
+    황색: "is-yellow",
+    회색: "is-gray",
+    크림색: "is-cream",
+    기타: "is-other"
+}
 
 function getToday() {
     const today = new Date()
@@ -53,12 +69,14 @@ export default function LostCreatePage() {
     const [fieldErrors, setFieldErrors] = useState(EMPTY_ERRORS)
 
     const [images, setImages] = useState([])
+    const [imageDragging, setImageDragging] = useState(false)
     const [breeds, setBreeds] = useState([])
     const [colorTags, setColorTags] = useState([])
     const [sidoList, setSidoList] = useState([])
     const [sigunguList, setSigunguList] = useState([])
 
     const [breedLoading, setBreedLoading] = useState(false)
+    const [breedOptionsOpen, setBreedOptionsOpen] = useState(false)
     const [optionError, setOptionError] = useState("")
     const [submitError, setSubmitError] = useState("")
     const [submitting, setSubmitting] = useState(false)
@@ -228,6 +246,7 @@ export default function LostCreatePage() {
         }))
 
         setBreeds([])
+        setBreedOptionsOpen(false)
 
         setFieldErrors((current) => ({
             ...current,
@@ -272,10 +291,7 @@ export default function LostCreatePage() {
         }))
     }
 
-    function handleImageChange(event) {
-        const selectedFiles = Array.from(event.target.files || [])
-        event.target.value = ""
-
+    function addImages(selectedFiles) {
         if (selectedFiles.length === 0) return
 
         if (images.length + selectedFiles.length > MAX_IMAGES) {
@@ -321,6 +337,26 @@ export default function LostCreatePage() {
             ...current,
             images: ""
         }))
+    }
+
+    function handleBreedSelect(breed) {
+        handleChange("breed", breed)
+        setBreedOptionsOpen(false)
+    }
+
+    function handleImageChange(event) {
+        const selectedFiles = Array.from(event.target.files || [])
+        event.target.value = ""
+        addImages(selectedFiles)
+    }
+
+    function handleImageDrop(event) {
+        event.preventDefault()
+        setImageDragging(false)
+
+        if (images.length >= MAX_IMAGES) return
+
+        addImages(Array.from(event.dataTransfer.files || []))
     }
 
     function handleRemoveImage(index) {
@@ -535,40 +571,16 @@ export default function LostCreatePage() {
 
             <form className="stack" onSubmit={handleSubmit} noValidate>
                 <div className="card card-padded stack lost-photo-upload-card">
-                    <div>
-                        <h2>사진 등록</h2>
-
-                        <p className="text-sub">
-                            최소 3장 · 권장 5장 · 최대 8장 (JPG, PNG, WEBP / 장당 10MB 이하)
-                        </p>
+                    <div className="lost-photo-upload-heading">
+                        <h2>사진 추가 <span aria-hidden="true">*</span></h2>
+                        <p>최소 3장, 권장 5장, 최대 8장 (JPG, PNG, WEBP)</p>
                     </div>
 
-                    <div className="lost-photo-guide" aria-label="반려동물 사진 촬영 안내">
-                        <section className="lost-photo-guide-item is-good">
-                            <i className="ri-checkbox-circle-line" aria-hidden="true" />
-                            <div>
-                                <h3>좋은 사진</h3>
-                                <p>얼굴과 전신이 선명하고, 정면·좌우 모습이 잘 보이는 밝은 사진</p>
-                            </div>
-                        </section>
-
-                        <section className="lost-photo-guide-item is-bad">
-                            <i className="ri-close-circle-line" aria-hidden="true" />
-                            <div>
-                                <h3>피해야 할 사진</h3>
-                                <p>흔들리거나 너무 어둡고, 얼굴이 가려졌거나 멀리 찍힌 사진</p>
-                            </div>
-                        </section>
-                    </div>
-
-                    <div className="form-field">
-                        <label className="form-label" htmlFor="lost-images">
-                            사진 *
-                        </label>
-
+                    <div className="form-field lost-photo-input-field">
                         <input
                             ref={(element) => setFieldRef("images", element)}
                             id="lost-images"
+                            className="lost-photo-file-input"
                             type="file"
                             accept="image/jpeg,image/png,image/webp"
                             multiple
@@ -576,9 +588,68 @@ export default function LostCreatePage() {
                             disabled={images.length >= MAX_IMAGES}
                         />
 
-                        <p className="text-sub lost-photo-count" aria-live="polite">
-                            현재 {images.length}장 / 최소 {MIN_IMAGES}장 / 최대 {MAX_IMAGES}장
-                        </p>
+                        <div
+                            className={`lost-photo-dropzone${images.length > 0 ? " has-images" : ""}${imageDragging ? " is-dragging" : ""}${images.length >= MAX_IMAGES ? " is-disabled" : ""}`}
+                            onDragEnter={(event) => {
+                                event.preventDefault()
+                                if (images.length < MAX_IMAGES) setImageDragging(true)
+                            }}
+                            onDragOver={(event) => event.preventDefault()}
+                            onDragLeave={(event) => {
+                                if (!event.currentTarget.contains(event.relatedTarget)) {
+                                    setImageDragging(false)
+                                }
+                            }}
+                            onDrop={handleImageDrop}
+                        >
+                            {images.length === 0 ? (
+                                <label className="lost-photo-empty-trigger" htmlFor="lost-images">
+                                    <span className="lost-photo-dropzone-icon">
+                                        <i className="ri-image-add-line" aria-hidden="true" />
+                                    </span>
+                                    <strong>사진을 드래그하거나 클릭하여 추가하세요</strong>
+                                    <span>여러 장을 한 번에 선택할 수 있습니다.</span>
+                                </label>
+                            ) : (
+                                <div className="lost-photo-preview-grid">
+                                    {images.length < MAX_IMAGES && (
+                                        <label className="lost-photo-add-tile" htmlFor="lost-images">
+                                            <i className="ri-add-line" aria-hidden="true" />
+                                            <span>사진 추가</span>
+                                        </label>
+                                    )}
+
+                                    {images.map((image, index) => (
+                                        <article
+                                            className="lost-photo-preview-item"
+                                            key={`${image.file.name}-${image.file.lastModified}-${index}`}
+                                        >
+                                            <div className="lost-photo-preview-frame">
+                                                <img
+                                                    src={image.preview}
+                                                    alt={`등록 이미지 ${index + 1}`}
+                                                />
+
+                                                {index === 0 && (
+                                                    <span className="badge lost-photo-primary-badge">
+                                                        대표
+                                                    </span>
+                                                )}
+
+                                                <button
+                                                    type="button"
+                                                    className="lost-photo-remove-button"
+                                                    onClick={() => handleRemoveImage(index)}
+                                                    aria-label={`${index + 1}번째 사진 삭제`}
+                                                >
+                                                    <i className="ri-close-line" aria-hidden="true" />
+                                                </button>
+                                            </div>
+                                        </article>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
 
                         {fieldErrors.images && (
                             <p className="form-error">
@@ -587,45 +658,52 @@ export default function LostCreatePage() {
                         )}
                     </div>
 
-                    {images.length > 0 && (
-                        <div className="lost-photo-preview-grid">
-                            {images.map((image, index) => (
-                                <article
-                                    className="lost-photo-preview-item"
-                                    key={`${image.file.name}-${image.file.lastModified}-${index}`}
+                    <aside className="lost-photo-guide" aria-label="반려동물 사진 촬영 안내">
+                        <div className="lost-photo-guide-copy">
+                            <i className="ri-lightbulb-flash-line" aria-hidden="true" />
+                            <div>
+                                <h3>이런 사진이 좋아요!</h3>
+                                <p>정면에 몸 전체가 보이는<br />선명한 사진을 올려주세요.</p>
+                            </div>
+                        </div>
+
+                        <div className="lost-photo-guide-examples">
+                            {PHOTO_GUIDE_EXAMPLES.map((example) => (
+                                <figure
+                                    key={example.key}
+                                    className={`lost-photo-guide-example${example.good ? " is-good" : " is-bad"}`}
                                 >
-                                    <div className="lost-photo-preview-frame">
+                                    <div className="lost-photo-guide-image-wrap">
+                                        <i className="ri-image-line" aria-hidden="true" />
                                         <img
-                                            src={image.preview}
-                                            alt={`등록 이미지 ${index + 1}`}
+                                            className="lost-photo-guide-image"
+                                            src={example.src}
+                                            alt={`${example.label} 안내 이미지`}
+                                            onError={(event) => {
+                                                event.currentTarget.hidden = true
+                                            }}
                                         />
-
-                                        {index === 0 && (
-                                            <span
-                                                className="badge lost-photo-primary-badge"
-                                            >
-                                                대표
-                                            </span>
-                                        )}
+                                        <span className="lost-photo-guide-mark" aria-hidden="true">
+                                            <i className={example.good ? "ri-check-line" : "ri-close-line"} />
+                                        </span>
                                     </div>
-
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline lost-photo-remove-button"
-                                        onClick={() => handleRemoveImage(index)}
-                                        aria-label={`${index + 1}번째 사진 삭제`}
-                                    >
-                                        <i className="ri-delete-bin-line" aria-hidden="true" />
-                                        사진 삭제
-                                    </button>
-                                </article>
+                                    <figcaption>{example.label}</figcaption>
+                                </figure>
                             ))}
                         </div>
-                    )}
+                    </aside>
+
+                    <p className="text-sub lost-photo-count" aria-live="polite">
+                        현재 {images.length}장 / 최소 {MIN_IMAGES}장 / 최대 {MAX_IMAGES}장
+                    </p>
+
                 </div>
 
-                <div className="card card-padded stack">
-                    <h2>동물 정보</h2>
+                <div className="card card-padded stack lost-animal-info-card">
+                    <div className="lost-form-section-heading">
+                        <h2>동물 정보</h2>
+                        <p>반려동물의 특징을 정확하게 선택해 주세요.</p>
+                    </div>
 
                     <div className="form-field">
                         <label className="form-label" htmlFor="pet-name">
@@ -651,11 +729,12 @@ export default function LostCreatePage() {
                     </div>
 
                     <fieldset
+                        className="lost-choice-field"
                         ref={(element) => setFieldRef("species", element)}
                     >
                         <legend>종류 *</legend>
 
-                        <label>
+                        <label className={form.species === "개" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="species"
@@ -666,7 +745,7 @@ export default function LostCreatePage() {
                             개
                         </label>
 
-                        <label>
+                        <label className={form.species === "고양이" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="species"
@@ -684,44 +763,88 @@ export default function LostCreatePage() {
                         )}
                     </fieldset>
 
-                    <div className="form-field">
+                    <div
+                        className="form-field lost-breed-field"
+                        onBlur={(event) => {
+                            if (!event.currentTarget.contains(event.relatedTarget)) {
+                                setBreedOptionsOpen(false)
+                            }
+                        }}
+                    >
                         <label className="form-label" htmlFor="breed">
                             품종 *
                         </label>
 
-                        <input
-                            ref={(element) => setFieldRef("breed", element)}
-                            id="breed"
-                            type="text"
-                            className={`form-input${fieldErrors.breed ? " is-error" : ""}`}
-                            list="lost-breed-options"
-                            value={form.breed}
-                            disabled={!form.species}
-                            placeholder={
-                                form.species
-                                    ? "품종을 입력하거나 선택해 주세요"
-                                    : "동물 종류를 먼저 선택해 주세요"
-                            }
-                            onChange={(event) => handleChange("breed", event.target.value)}
-                        />
+                        <div className="lost-breed-combobox">
+                            <input
+                                ref={(element) => setFieldRef("breed", element)}
+                                id="breed"
+                                type="text"
+                                role="combobox"
+                                aria-autocomplete="list"
+                                aria-expanded={breedOptionsOpen}
+                                aria-controls="lost-breed-options"
+                                autoComplete="off"
+                                className={`form-input${fieldErrors.breed ? " is-error" : ""}`}
+                                value={form.breed}
+                                disabled={!form.species}
+                                placeholder={
+                                    form.species
+                                        ? "품종을 입력하거나 선택해 주세요"
+                                        : "동물 종류를 먼저 선택해 주세요"
+                                }
+                                onFocus={() => setBreedOptionsOpen(true)}
+                                onChange={(event) => {
+                                    handleChange("breed", event.target.value)
+                                    setBreedOptionsOpen(true)
+                                }}
+                            />
 
-                        <datalist id="lost-breed-options">
-                            {breeds.map((breed) => (
-                                <option key={breed.id} value={breed.name} />
-                            ))}
-                        </datalist>
+                            <button
+                                type="button"
+                                className="lost-breed-toggle"
+                                disabled={!form.species}
+                                onClick={() => setBreedOptionsOpen((open) => !open)}
+                                aria-label="품종 목록 열기"
+                                tabIndex={-1}
+                            >
+                                <i
+                                    className={breedOptionsOpen ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"}
+                                    aria-hidden="true"
+                                />
+                            </button>
 
-                        {breedLoading && (
-                            <p className="text-sub">
-                                품종을 검색하는 중입니다.
-                            </p>
-                        )}
-
-                        {noBreedResult && (
-                            <p className="text-sub">
-                                없는 품종입니다.
-                            </p>
-                        )}
+                            {breedOptionsOpen && form.species && (
+                                <div
+                                    id="lost-breed-options"
+                                    className="lost-breed-options"
+                                    role="listbox"
+                                >
+                                    {breedLoading ? (
+                                        <p className="lost-breed-state">품종을 검색하는 중입니다.</p>
+                                    ) : noBreedResult ? (
+                                        <p className="lost-breed-state">검색 결과가 없습니다.</p>
+                                    ) : (
+                                        breeds.map((breed) => (
+                                            <button
+                                                key={breed.id ?? breed.name}
+                                                type="button"
+                                                role="option"
+                                                aria-selected={form.breed === breed.name}
+                                                className={form.breed === breed.name ? "is-selected" : ""}
+                                                onMouseDown={(event) => event.preventDefault()}
+                                                onClick={() => handleBreedSelect(breed.name)}
+                                            >
+                                                <span>{breed.name}</span>
+                                                {form.breed === breed.name && (
+                                                    <i className="ri-check-line" aria-hidden="true" />
+                                                )}
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         {fieldErrors.breed && (
                             <p className="form-error">
@@ -731,16 +854,24 @@ export default function LostCreatePage() {
                     </div>
 
                     <fieldset
+                        className="lost-choice-field lost-color-field"
                         ref={(element) => setFieldRef("colors", element)}
                     >
                         <legend>털 색상 *</legend>
 
                         {colorTags.map((color) => (
-                            <label key={color}>
+                            <label
+                                key={color}
+                                className={form.colors.includes(color) ? "is-selected" : ""}
+                            >
                                 <input
                                     type="checkbox"
                                     checked={form.colors.includes(color)}
                                     onChange={() => handleColorToggle(color)}
+                                />
+                                <span
+                                    className={`lost-color-preview ${COLOR_PREVIEW_CLASSES[color] || "is-other"}`}
+                                    aria-hidden="true"
                                 />
                                 {color}
                             </label>
@@ -754,11 +885,12 @@ export default function LostCreatePage() {
                     </fieldset>
 
                     <fieldset
+                        className="lost-choice-field"
                         ref={(element) => setFieldRef("sex", element)}
                     >
                         <legend>성별 *</legend>
 
-                        <label>
+                        <label className={form.sex === "M" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="sex"
@@ -768,7 +900,7 @@ export default function LostCreatePage() {
                             수컷
                         </label>
 
-                        <label>
+                        <label className={form.sex === "F" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="sex"
@@ -778,7 +910,7 @@ export default function LostCreatePage() {
                             암컷
                         </label>
 
-                        <label>
+                        <label className={form.sex === "Q" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="sex"
@@ -796,11 +928,12 @@ export default function LostCreatePage() {
                     </fieldset>
 
                     <fieldset
+                        className="lost-choice-field"
                         ref={(element) => setFieldRef("neuter_yn", element)}
                     >
                         <legend>중성화 여부 *</legend>
 
-                        <label>
+                        <label className={form.neuter_yn === "Y" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="neuter"
@@ -810,7 +943,7 @@ export default function LostCreatePage() {
                             중성화 완료
                         </label>
 
-                        <label>
+                        <label className={form.neuter_yn === "N" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="neuter"
@@ -820,7 +953,7 @@ export default function LostCreatePage() {
                             중성화 안 됨
                         </label>
 
-                        <label>
+                        <label className={form.neuter_yn === "U" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="neuter"
