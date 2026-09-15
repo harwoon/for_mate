@@ -198,7 +198,7 @@ export default function AdminMatchesPage() {
         <div className="admin-page admin-matches-page">
             <div className="admin-page-heading">
                 <h2>AI 매칭 관리</h2>
-                <p>AI가 생성한 실종동물과 보호동물의 매칭 후보를 확인합니다.</p>
+                <p>AI가 생성한 찾고있어요 동물과 보호중이에요 동물의 매칭 후보를 확인합니다.</p>
             </div>
 
             <div className="admin-summary-grid admin-match-summary" aria-label="현재 조회 결과 통계">
@@ -232,7 +232,7 @@ export default function AdminMatchesPage() {
                         <input type="date" value={matchedDate} onChange={(event) => setMatchedDate(event.target.value)} />
                     </label>
                     <label className="admin-match-field admin-match-search">
-                        <span>실종 공고 검색</span>
+                        <span>찾고있어요 검색</span>
                         <div className="admin-search-box">
                             <i className="ri-search-line" aria-hidden="true" />
                             <input
@@ -249,7 +249,7 @@ export default function AdminMatchesPage() {
                 </div>
 
                 <div className="admin-list-summary admin-match-list-summary">
-                    <span>실종 공고·매칭일별 <strong>{loading || error ? "-" : filteredGroups.length}</strong>개 그룹</span>
+                    <span>찾고있어요·매칭일별 <strong>{loading || error ? "-" : filteredGroups.length}</strong>개 그룹</span>
                     <span>조회된 후보 기준 · 유사도 높은 순으로 확인</span>
                 </div>
                 {!loading && !error && matches.length >= FETCH_LIMIT && (
@@ -286,7 +286,7 @@ export default function AdminMatchesPage() {
                                 <div className="admin-match-identity">
                                     <MatchImage value={group.lostPost.image_url} name={group.lostPost.pet_name} />
                                     <div>
-                                        <span className="admin-detail-id">실종 공고 #{group.lostPost.id}</span>
+                                        <span className="admin-detail-id">찾고있어요 #{group.lostPost.id}</span>
                                         <h3>{group.lostPost.pet_name || "이름 없음"}</h3>
                                         <span>{group.lostPost.species || "종류 정보 없음"}</span>
                                     </div>
@@ -312,7 +312,7 @@ export default function AdminMatchesPage() {
                                 <div className="admin-match-candidates" id={panelId}>
                                     <div className="admin-match-candidate-heading">
                                         <h4>AI 매칭 후보 <strong>{group.candidates.length}건</strong></h4>
-                                        <Link className="admin-table-link" to={`/lost-posts/${group.lostPost.id}`}>실종 공고 보기 <i className="ri-arrow-right-line" aria-hidden="true" /></Link>
+                                        <Link className="admin-table-link" to={`/lost-posts/${group.lostPost.id}`}>찾고있어요 글 보기 <i className="ri-arrow-right-line" aria-hidden="true" /></Link>
                                     </div>
                                     <ol className="admin-match-candidate-list">
                                         {group.candidates.map((match, index) => {

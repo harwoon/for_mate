@@ -12,6 +12,11 @@ import { formatDate } from "../../utils/date.js"
 const RETRY_INTERVAL = 2000
 const MAX_RETRIES = 15
 const INITIAL_MATCH_LIMIT = 8
+const MIN_MATCHING_DISPLAY_TIME = 1500
+
+function wait(milliseconds) {
+    return new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
 
 const MATCHING_MESSAGES = [
     "등록한 이미지의 특징을 분석하고 있습니다.",
@@ -38,6 +43,7 @@ export default function AiSearchPage() {
     const timerRef = useRef(null)
     const pendingRef = useRef(null)
     const matchingRef = useRef(false)
+    const matchingStartedAtRef = useRef(0)
 
     useEffect(() => {
         let cancelled = false
@@ -77,7 +83,7 @@ export default function AiSearchPage() {
                 if (!cancelled) {
                     setPostsError(
                         error.message ||
-                        "내 실종 공고를 불러오지 못했습니다."
+                        "내 찾고있어요 글을 불러오지 못했습니다."
                     )
                 }
             } finally {
@@ -127,6 +133,7 @@ export default function AiSearchPage() {
         setWaiting(false)
         setDelayed(false)
         setMatchError(null)
+        matchingStartedAtRef.current = Date.now()
     }
 
     async function startMatching() {
@@ -176,6 +183,18 @@ export default function AiSearchPage() {
                         "매칭 결과를 불러오지 못했습니다. 다시 시도해주세요."
                     )
                 }
+
+                const elapsed = Date.now() - matchingStartedAtRef.current
+                const remaining = Math.max(
+                    0,
+                    MIN_MATCHING_DISPLAY_TIME - elapsed
+                )
+
+                if (remaining > 0) {
+                    await wait(remaining)
+                }
+
+                if (run !== runRef.current) return
 
                 navigate(
                     `/lost-posts/${postId}/matches`,
@@ -261,7 +280,7 @@ export default function AiSearchPage() {
             </div>
 
             {postsLoading && (
-                <Loading message="내 실종 공고를 불러오는 중입니다." />
+                <Loading message="내 찾고있어요 글을 불러오는 중입니다." />
             )}
 
             {!postsLoading && postsError && (
@@ -279,7 +298,7 @@ export default function AiSearchPage() {
                 !postsError &&
                 posts.length === 0 && (
                     <Empty
-                        message="AI 매칭을 시작하려면 먼저 실종 공고를 등록해주세요."
+                        message="AI 매칭을 시작하려면 먼저 찾고있어요 글을 등록해주세요."
                         action={
                             <Link
                                 className="btn btn-primary"

@@ -47,7 +47,7 @@ const FALLBACK_ABOUT = {
   heroSubtitle:
     "For Mate는 인공지능 매칭 기술을 통해 실종된 동물과 제보 동물을 정교하게 교차 매칭해 주는 공익 플랫폼입니다.",
   heroActions: [
-    { label: "실종 공고 등록", to: "/lost-posts/new", variant: "primary" },
+    { label: "찾고있어요 글 작성", to: "/lost-posts/new", variant: "primary" },
     { label: "발견제보 작성", to: "/found-posts/new", variant: "outline" },
   ],
   stepsTitle: "서비스 흐름",

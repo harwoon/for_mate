@@ -489,11 +489,11 @@ export default function LostCreatePage() {
 
             setCreatedPostId(createdPost.id)
             setAlertTitle("등록 완료")
-            setAlertMessage("실종 공고가 등록되었습니다.")
+            setAlertMessage("찾고있어요 글이 등록되었습니다.")
             setAlertType("success")
             setAlertOpen(true)
         } catch (error) {
-            setSubmitError(error.message || "실종 공고 등록에 실패했습니다.")
+            setSubmitError(error.message || "찾고있어요 글 등록에 실패했습니다.")
         } finally {
             setSubmitting(false)
         }
@@ -526,7 +526,7 @@ export default function LostCreatePage() {
     return (
         <div className="container">
             <div className="page-header">
-                <h1 className="page-title">실종 공고 등록</h1>
+                <h1 className="page-title">찾고있어요 글 작성</h1>
 
                 <p className="page-desc">
                     잃어버린 반려동물의 정보를 최대한 자세히 입력해 주세요.
@@ -534,13 +534,31 @@ export default function LostCreatePage() {
             </div>
 
             <form className="stack" onSubmit={handleSubmit} noValidate>
-                <div className="card card-padded stack">
+                <div className="card card-padded stack lost-photo-upload-card">
                     <div>
                         <h2>사진 등록</h2>
 
                         <p className="text-sub">
-                            최소 3장, 최대 8장까지 등록할 수 있으며 첫 번째 사진이 대표 이미지로 사용됩니다.
+                            최소 3장 · 권장 5장 · 최대 8장 (JPG, PNG, WEBP / 장당 10MB 이하)
                         </p>
+                    </div>
+
+                    <div className="lost-photo-guide" aria-label="반려동물 사진 촬영 안내">
+                        <section className="lost-photo-guide-item is-good">
+                            <i className="ri-checkbox-circle-line" aria-hidden="true" />
+                            <div>
+                                <h3>좋은 사진</h3>
+                                <p>얼굴과 전신이 선명하고, 정면·좌우 모습이 잘 보이는 밝은 사진</p>
+                            </div>
+                        </section>
+
+                        <section className="lost-photo-guide-item is-bad">
+                            <i className="ri-close-circle-line" aria-hidden="true" />
+                            <div>
+                                <h3>피해야 할 사진</h3>
+                                <p>흔들리거나 너무 어둡고, 얼굴이 가려졌거나 멀리 찍힌 사진</p>
+                            </div>
+                        </section>
                     </div>
 
                     <div className="form-field">
@@ -558,8 +576,8 @@ export default function LostCreatePage() {
                             disabled={images.length >= MAX_IMAGES}
                         />
 
-                        <p className="text-sub">
-                            {images.length} / {MAX_IMAGES}장
+                        <p className="text-sub lost-photo-count" aria-live="polite">
+                            현재 {images.length}장 / 최소 {MIN_IMAGES}장 / 최대 {MAX_IMAGES}장
                         </p>
 
                         {fieldErrors.images && (
@@ -570,37 +588,21 @@ export default function LostCreatePage() {
                     </div>
 
                     {images.length > 0 && (
-                        <div
-                            style={{
-                                display: "grid",
-                                gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-                                gap: "12px"
-                            }}
-                        >
+                        <div className="lost-photo-preview-grid">
                             {images.map((image, index) => (
-                                <div
+                                <article
+                                    className="lost-photo-preview-item"
                                     key={`${image.file.name}-${image.file.lastModified}-${index}`}
                                 >
-                                    <div style={{ position: "relative" }}>
+                                    <div className="lost-photo-preview-frame">
                                         <img
                                             src={image.preview}
                                             alt={`등록 이미지 ${index + 1}`}
-                                            style={{
-                                                width: "100%",
-                                                aspectRatio: "1 / 1",
-                                                objectFit: "cover",
-                                                borderRadius: "8px"
-                                            }}
                                         />
 
                                         {index === 0 && (
                                             <span
-                                                className="badge"
-                                                style={{
-                                                    position: "absolute",
-                                                    top: "8px",
-                                                    left: "8px"
-                                                }}
+                                                className="badge lost-photo-primary-badge"
                                             >
                                                 대표
                                             </span>
@@ -609,16 +611,14 @@ export default function LostCreatePage() {
 
                                     <button
                                         type="button"
-                                        className="btn btn-outline"
-                                        style={{
-                                            width: "100%",
-                                            marginTop: "8px"
-                                        }}
+                                        className="btn btn-outline lost-photo-remove-button"
                                         onClick={() => handleRemoveImage(index)}
+                                        aria-label={`${index + 1}번째 사진 삭제`}
                                     >
-                                        삭제
+                                        <i className="ri-delete-bin-line" aria-hidden="true" />
+                                        사진 삭제
                                     </button>
-                                </div>
+                                </article>
                             ))}
                         </div>
                     )}
@@ -978,7 +978,7 @@ export default function LostCreatePage() {
                     className="btn btn-primary btn-block"
                     disabled={submitting}
                 >
-                    {submitting ? "등록 중..." : "실종 공고 등록"}
+                    {submitting ? "등록 중..." : "찾고있어요 글 등록"}
                 </button>
             </form>
 

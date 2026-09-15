@@ -3,7 +3,7 @@ import { useAuth } from "../../context/AuthContext.jsx"
 
 const MENU_ITEMS = [
     { to: "/admin", label: "대시보드", icon: "ri-dashboard-line", end: true },
-    { to: "/admin/lost-posts", label: "실종 공고", icon: "ri-search-eye-line" },
+    { to: "/admin/lost-posts", label: "찾고있어요", icon: "ri-search-eye-line" },
     { to: "/admin/found-posts", label: "발견제보", icon: "ri-file-list-3-line" },
     { to: "/admin/reports", label: "신고 관리", icon: "ri-alarm-warning-line" },
     { to: "/admin/inquiries", label: "문의 관리", icon: "ri-question-answer-line" },

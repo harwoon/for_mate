@@ -15,8 +15,8 @@ const PAGE_INFO = {
         description: "For Mate 서비스 운영 현황을 관리합니다."
     },
     "/admin/lost-posts": {
-        title: "실종 공고",
-        description: "등록된 실종 공고를 관리하는 화면입니다."
+        title: "찾고있어요",
+        description: "등록된 찾고있어요 글을 관리하는 화면입니다."
     },
     "/admin/found-posts": {
         title: "발견제보",
@@ -113,7 +113,7 @@ export default function AdminPage() {
 
     const summaryItems = [
         {
-            label: "실종 공고",
+            label: "찾고있어요",
             icon: "ri-search-eye-line",
             value: dashboard.lost_posts.total,
             detail:
@@ -337,7 +337,7 @@ export default function AdminPage() {
                                     <div className="admin-stat-list">
                                         <div>
                                             <span>
-                                                실종 공고
+                                                찾고있어요
                                             </span>
 
                                             <strong>

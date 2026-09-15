@@ -228,7 +228,7 @@ export default function RescueListPage() {
     ].filter(Boolean)
 
     return (
-        <div className="container">
+        <div className="container board-list-page">
             <Breadcrumb
                 items={[
                     {
@@ -248,7 +248,7 @@ export default function RescueListPage() {
                     </h1>
 
                     <p className="page-desc">
-                        현재 보호 중인 구조동물을 확인할 수 있습니다.
+                        현재 보호 중인 동물을 확인할 수 있습니다.
                     </p>
                 </div>
             </div>
@@ -297,7 +297,7 @@ export default function RescueListPage() {
             {!loading &&
                 !error &&
                 animals.length === 0 && (
-                    <Empty message="조건에 맞는 보호동물이 없습니다." />
+                    <Empty message="조건에 맞는 보호중이에요 동물이 없습니다." />
                 )}
 
             {!loading &&
@@ -340,6 +340,7 @@ export default function RescueListPage() {
                                             animal.happen_dt ||
                                             "-"
                                         }
+                                        imageFit="contain"
                                     />
                                 )
                             })}
