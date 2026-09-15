@@ -60,6 +60,7 @@ function uploadLostImagesLocally(req, res, next) {
       const uploaded = await Promise.all(
         (req.files || []).map(async (file) => {
           const compressed = await sharp(file.buffer)
+            .rotate()
             .resize(1600, 1600, { fit: "inside", withoutEnlargement: true })
             .jpeg({ quality: 80 })
             .toBuffer()
