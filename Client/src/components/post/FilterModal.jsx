@@ -95,6 +95,8 @@ export default function FilterModal({
     const [sidoList, setSidoList] = useState([])
     const [sigunguList, setSigunguList] = useState([])
     const [loading, setLoading] = useState(true)
+    const [breedLoading, setBreedLoading] = useState(false)
+    const [breedOptionsOpen, setBreedOptionsOpen] = useState(false)
     const [error, setError] = useState("")
 
     // 모달이 처음 나타날 때 서로 의존하지 않는 색상과 시/도 목록을 동시에 조회한다.
@@ -182,6 +184,8 @@ export default function FilterModal({
         let cancelled = false
 
         async function loadBreeds() {
+            setBreedLoading(true)
+
             try {
                 const result = await getBreeds({
                     species: draftFilters.species,
@@ -199,6 +203,10 @@ export default function FilterModal({
                         err.message ||
                         "품종 목록을 불러오지 못했습니다."
                     )
+                }
+            } finally {
+                if (!cancelled) {
+                    setBreedLoading(false)
                 }
             }
         }
@@ -226,6 +234,7 @@ export default function FilterModal({
         }))
 
         setBreedKeyword("")
+        setBreedOptionsOpen(false)
     }
 
     function handleBreedChange(value) {
@@ -235,6 +244,11 @@ export default function FilterModal({
             ...current,
             breed: value
         }))
+    }
+
+    function handleBreedSelect(breed) {
+        handleBreedChange(breed)
+        setBreedOptionsOpen(false)
     }
 
     function handleColorToggle(color) {
@@ -307,6 +321,7 @@ export default function FilterModal({
         setDraftFilters(emptyFilters)
         setBreedKeyword("")
         setBreeds([])
+        setBreedOptionsOpen(false)
         setSigunguList([])
         setError("")
 
@@ -405,34 +420,85 @@ export default function FilterModal({
                     </div>
                 </section>
 
-                <section className="filter-section">
+                <section
+                    className="filter-section filter-breed-section"
+                    onBlur={(event) => {
+                        if (!event.currentTarget.contains(event.relatedTarget)) {
+                            setBreedOptionsOpen(false)
+                        }
+                    }}
+                >
                     <h3 className="filter-section-title">
                         품종
                     </h3>
 
-                    <input
-                        className="filter-control"
-                        type="text"
-                        list="breed-options"
-                        value={breedKeyword}
-                        placeholder="품종을 입력하거나 선택하세요"
-                        onChange={(event) => (
-                            handleBreedChange(
-                                event.target.value
-                            )
-                        )}
-                    />
+                    <div className="filter-breed-combobox">
+                        <input
+                            className="filter-control"
+                            type="text"
+                            role="combobox"
+                            aria-autocomplete="list"
+                            aria-expanded={breedOptionsOpen}
+                            aria-controls="filter-breed-options"
+                            autoComplete="off"
+                            value={breedKeyword}
+                            placeholder="품종을 입력하거나 선택하세요"
+                            onFocus={() => setBreedOptionsOpen(true)}
+                            onChange={(event) => {
+                                handleBreedChange(event.target.value)
+                                setBreedOptionsOpen(true)
+                            }}
+                        />
 
-                    <datalist id="breed-options">
-                        {breeds.map((breed) => (
-                            <option
-                                key={breed.id}
-                                value={breed.name}
+                        <button
+                            type="button"
+                            className="filter-breed-toggle"
+                            onClick={() => setBreedOptionsOpen((open) => !open)}
+                            aria-label="품종 목록 열기"
+                            tabIndex={-1}
+                        >
+                            <i
+                                className={breedOptionsOpen ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"}
+                                aria-hidden="true"
+                            />
+                        </button>
+
+                        {breedOptionsOpen && (
+                            <div
+                                id="filter-breed-options"
+                                className="filter-breed-options"
+                                role="listbox"
                             >
-                                {breed.species}
-                            </option>
-                        ))}
-                    </datalist>
+                                {breedLoading ? (
+                                    <p className="filter-breed-option-state">
+                                        품종을 검색하는 중입니다.
+                                    </p>
+                                ) : breeds.length === 0 ? (
+                                    <p className="filter-breed-option-state">
+                                        검색 결과가 없습니다.
+                                    </p>
+                                ) : (
+                                    breeds.map((breed) => (
+                                        <button
+                                            key={breed.id ?? breed.name}
+                                            type="button"
+                                            role="option"
+                                            aria-selected={draftFilters.breed === breed.name}
+                                            className={draftFilters.breed === breed.name ? "is-selected" : ""}
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            onClick={() => handleBreedSelect(breed.name)}
+                                        >
+                                            <span>{breed.name}</span>
+                                            <small>{breed.species}</small>
+                                            {draftFilters.breed === breed.name && (
+                                                <i className="ri-check-line" aria-hidden="true" />
+                                            )}
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </section>
 
                 <section className="filter-section">
