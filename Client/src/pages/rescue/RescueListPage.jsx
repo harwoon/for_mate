@@ -13,6 +13,12 @@ import PostCard from "../../components/post/PostCard.jsx"
 import PostGrid from "../../components/post/PostGrid.jsx"
 
 const PAGE_SIZE = 12
+const SORT_OPTIONS = [
+    { value: "latest", label: "최신 공고순" },
+    { value: "oldest", label: "오래된 공고순" },
+    { value: "event_latest", label: "최근 발견일순" },
+    { value: "ending_soon", label: "보호 종료 임박순" }
+]
 
 const EMPTY_FILTERS = {
     species: "",
@@ -79,7 +85,8 @@ export default function RescueListPage() {
                     sido: filters.sido,
                     sigungu: filters.sigungu,
                     start_date: filters.start_date,
-                    end_date: filters.end_date
+                    end_date: filters.end_date,
+                    sort
                 })
 
                 if (cancelled) return
@@ -261,6 +268,7 @@ export default function RescueListPage() {
                 sort={sort}
                 onChangeSort={handleChangeSort}
                 chips={filterChips}
+                sortOptions={SORT_OPTIONS}
             />
 
             {isFilterOpen && (

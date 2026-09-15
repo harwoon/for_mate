@@ -4,7 +4,10 @@ export default function FilterBar({
     onOpenFilter,
     sort,
     onChangeSort,
-    chips
+    chips,
+    sortOptions = [
+        { value: "latest", label: "최신 등록순" }
+    ]
 }) {
     return (
         <div className="stack filter-bar">
@@ -35,9 +38,14 @@ export default function FilterBar({
                         )}
                         aria-label="목록 정렬"
                     >
-                        <option value="latest">
-                            최신 등록순
-                        </option>
+                        {sortOptions.map((option) => (
+                            <option
+                                key={option.value}
+                                value={option.value}
+                            >
+                                {option.label}
+                            </option>
+                        ))}
                     </select>
                 </div>
             </div>

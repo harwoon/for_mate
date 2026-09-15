@@ -11,6 +11,12 @@ import FilterBar from "../../components/post/FilterBar.jsx"
 import FilterModal from "../../components/post/FilterModal.jsx"
 
 const PAGE_SIZE = 20
+const SORT_OPTIONS = [
+    { value: "latest", label: "최신 등록순" },
+    { value: "oldest", label: "오래된 등록순" },
+    { value: "event_latest", label: "최근 발견일순" },
+    { value: "event_oldest", label: "오래된 발견일순" }
+]
 
 const EMPTY_FILTERS = {
     species: "",
@@ -227,6 +233,7 @@ export default function FoundListPage() {
                 sort={sort}
                 onChangeSort={handleChangeSort}
                 chips={filterChips}
+                sortOptions={SORT_OPTIONS}
             />
 
             {isFilterOpen && (

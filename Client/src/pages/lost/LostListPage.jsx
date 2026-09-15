@@ -12,6 +12,12 @@ import PostCard from "../../components/post/PostCard.jsx"
 import PostGrid from "../../components/post/PostGrid.jsx"
 
 const PAGE_SIZE = 12
+const SORT_OPTIONS = [
+    { value: "latest", label: "최신 등록순" },
+    { value: "oldest", label: "오래된 등록순" },
+    { value: "event_latest", label: "최근 실종일순" },
+    { value: "event_oldest", label: "오래된 실종일순" }
+]
 
 const EMPTY_FILTERS = {
     species: "",
@@ -256,6 +262,7 @@ export default function LostListPage() {
                     sort={sort}
                     onChangeSort={handleChangeSort}
                     chips={filterChips}
+                    sortOptions={SORT_OPTIONS}
                 />
 
                 {isFilterOpen && (
