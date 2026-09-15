@@ -185,8 +185,10 @@ export async function getPosts(query) {
   const region = optionalText(query.region)
   const startDate = optionalText(query.start_date)
   const endDate = optionalText(query.end_date)
+  const sort = optionalText(query.sort) ?? "latest"
 
   validateChoice(species, ["개", "고양이"], "species")
+  validateChoice(sort, ["latest", "oldest", "event_latest", "event_oldest"], "sort")
   validateFilterDate(startDate, "start_date")
   validateFilterDate(endDate, "end_date")
 
@@ -200,6 +202,7 @@ export async function getPosts(query) {
 
   const { items, total } = await repository.findMany({
     filters: { species, breed, colors, region, startDate, endDate },
+    sort,
     size,
     offset: (page - 1) * size,
   })

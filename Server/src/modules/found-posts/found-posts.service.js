@@ -303,7 +303,11 @@ export async function getPosts(query) {
     const sort = optionalText(query.sort) ?? "latest"
 
     validateChoice(species, ["개", "고양이"], "species")
-    validateChoice(sort, ["latest"], "sort")
+    validateChoice(
+        sort,
+        ["latest", "oldest", "event_latest", "event_oldest"],
+        "sort"
+    )
 
     if (startDate) {
         validateDate(startDate, "start_date")
@@ -336,6 +340,7 @@ export async function getPosts(query) {
             startDate,
             endDate
         },
+        sort,
         size,
         offset
     })

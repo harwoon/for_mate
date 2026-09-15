@@ -33,6 +33,7 @@ export async function findMany({
     sigungu,
     startDate,
     endDate,
+    sort,
     size,
     offset
 }) {
@@ -82,6 +83,12 @@ export async function findMany({
 
     
     const whereSql = conditions.join(" AND ")
+    const orderBy = {
+        latest: "r.notice_sdt DESC NULLS LAST, r.source_type ASC, r.animal_id DESC",
+        oldest: "r.notice_sdt ASC NULLS LAST, r.source_type ASC, r.animal_id ASC",
+        event_latest: "r.happen_dt DESC NULLS LAST, r.source_type ASC, r.animal_id DESC",
+        ending_soon: "r.notice_edt ASC NULLS LAST, r.source_type ASC, r.animal_id ASC"
+    }[sort] ?? "r.notice_sdt DESC NULLS LAST, r.source_type ASC, r.animal_id DESC"
 
     const countResult = await query(
         `
@@ -117,7 +124,7 @@ export async function findMany({
             r.notice_edt - CURRENT_DATE AS days_until_end
         FROM (${animalsSql}) r
         WHERE ${whereSql}
-        ORDER BY r.notice_sdt DESC NULLS LAST, r.source_type ASC, r.animal_id DESC
+        ORDER BY ${orderBy}
         LIMIT $${sizeIndex}
         OFFSET $${offsetIndex}
         `,

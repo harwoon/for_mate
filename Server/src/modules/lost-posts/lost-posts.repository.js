@@ -149,7 +149,7 @@ export async function findAdjacentPosts({ id, createdAt }) {
 }
 
 // 3.2 실종 공고 목록 조회
-export async function findMany({ filters, size, offset }) {
+export async function findMany({ filters, sort, size, offset }) {
   const conditions = []
   const params = []
 
@@ -174,6 +174,12 @@ export async function findMany({ filters, size, offset }) {
   if (filters.endDate) addCondition("lp.event_date <= ?", filters.endDate)
 
   const whereClause = `WHERE ${conditions.join(" AND ")}`
+  const orderBy = {
+    latest: "lp.created_at DESC, lp.id DESC",
+    oldest: "lp.created_at ASC, lp.id ASC",
+    event_latest: "lp.event_date DESC, lp.id DESC",
+    event_oldest: "lp.event_date ASC, lp.id ASC",
+  }[sort] ?? "lp.created_at DESC, lp.id DESC"
 
   // 필터 결과의 전체 개수를 별도로 조회해 전체 페이지 수를 계산할 수 있게 한다.
   const countResult = await pool.query(
@@ -202,7 +208,7 @@ export async function findMany({ filters, size, offset }) {
        LIMIT 1
      ) first_image ON TRUE
      ${whereClause}
-     ORDER BY lp.created_at DESC, lp.id DESC
+     ORDER BY ${orderBy}
      LIMIT ${sizeParam} OFFSET ${offsetParam}`,
     listParams,
   )

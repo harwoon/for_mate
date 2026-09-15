@@ -77,7 +77,7 @@ export async function createPostWithImages({ userId, post, imageUrls }) {
 
 
 // 발견제보 목록 조회
-export async function findMany({ filters, size, offset }) {
+export async function findMany({ filters, sort, size, offset }) {
     const conditions = []
     const params = []
 
@@ -117,6 +117,12 @@ export async function findMany({ filters, size, offset }) {
     const whereClause = conditions.length > 0
         ? `WHERE ${conditions.join(" AND ")}`
         : ""
+    const orderBy = {
+        latest: "fp.created_at DESC, fp.id DESC",
+        oldest: "fp.created_at ASC, fp.id ASC",
+        event_latest: "fp.find_date DESC, fp.id DESC",
+        event_oldest: "fp.find_date ASC, fp.id ASC"
+    }[sort] ?? "fp.created_at DESC, fp.id DESC"
 
     const countResult = await pool.query(
         `
@@ -152,7 +158,7 @@ export async function findMany({ filters, size, offset }) {
                 fp.created_at
             FROM found_posts fp
             ${whereClause}
-            ORDER BY fp.created_at DESC, fp.id DESC
+            ORDER BY ${orderBy}
             LIMIT ${sizeParam}
             OFFSET ${offsetParam}
         `,

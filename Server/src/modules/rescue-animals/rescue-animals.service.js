@@ -29,6 +29,16 @@ export async function getAnimals(query) {
     const page = Math.max(parseInt(query.page, 10) || 1, 1)
     const size = Math.min(Math.max(parseInt(query.size, 10) || 15, 1), 100)
     const offset = (page - 1) * size
+    const sort = typeof query.sort === "string" && query.sort.trim()
+        ? query.sort.trim()
+        : "latest"
+
+    if (!["latest", "oldest", "event_latest", "ending_soon"].includes(sort)) {
+        const error = new Error("sort 값이 올바르지 않습니다.")
+        error.status = 400
+        error.code = "INVALID_SORT"
+        throw error
+    }
 
     let colors = []
 
@@ -74,6 +84,7 @@ export async function getAnimals(query) {
         sigungu: sido ? sigungu : null,
         startDate,
         endDate,
+        sort,
         size,
         offset
     }
