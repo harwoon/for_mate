@@ -65,7 +65,7 @@
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
 }
 
 .rescue-detail-image-empty {
@@ -156,7 +156,7 @@
     height: 100%;
     align-items: center;
     justify-content: center;
-    object-fit: cover;
+    object-fit: contain;
     color: var(--color-text-light);
 }
 

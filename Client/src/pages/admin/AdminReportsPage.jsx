@@ -15,7 +15,7 @@ const STATUS_LABELS = {
 }
 
 const POST_TYPE_LABELS = {
-    lost: "실종 공고",
+    lost: "찾고있어요",
     found: "발견제보"
 }
 

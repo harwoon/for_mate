@@ -78,7 +78,7 @@ export default function MyLostPostsPage() {
 
                     setError(
                         error.message ||
-                        "내 실종 공고를 불러오지 못했습니다."
+                        "내 찾고있어요 글을 불러오지 못했습니다."
                     )
                 }
             } finally {
@@ -109,7 +109,7 @@ export default function MyLostPostsPage() {
             {!error && (
                 <Loading
                     loading={loading}
-                    message="내 실종 공고를 불러오는 중입니다."
+                    message="내 찾고있어요 글을 불러오는 중입니다."
                 />
             )}
 
@@ -186,7 +186,7 @@ export default function MyLostPostsPage() {
 
                     {!loading &&
                         posts.length === 0 && (
-                            <Empty message="등록한 실종 공고가 없습니다." />
+                            <Empty message="등록한 찾고있어요 글이 없습니다." />
                         )}
 
                     {!loading &&

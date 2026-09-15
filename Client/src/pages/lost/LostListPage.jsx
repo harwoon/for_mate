@@ -89,7 +89,7 @@ export default function LostListPage() {
 
                     setError(
                         error.message ||
-                        "실종 공고를 불러오지 못했습니다."
+                        "찾고있어요 글을 불러오지 못했습니다."
                     )
                 }
             } finally {
@@ -222,7 +222,7 @@ export default function LostListPage() {
 
     return (
         <div className="lost-list-page">
-            <div className="container">
+            <div className="container board-list-page">
                 <Breadcrumb
                     items={[
                         {
@@ -244,7 +244,7 @@ export default function LostListPage() {
                         to="/lost-posts/new"
                         className="btn btn-primary"
                     >
-                        실종 공고 등록
+                        찾고있어요 글 작성
                     </Link>
                 </div>
 
@@ -271,7 +271,7 @@ export default function LostListPage() {
                 )}
 
                 {loading && (
-                    <Loading message="실종 공고를 불러오는 중입니다." />
+                    <Loading message="찾고있어요 글을 불러오는 중입니다." />
                 )}
 
                 {!loading && error && (
@@ -288,7 +288,7 @@ export default function LostListPage() {
                 {!loading &&
                     !error &&
                     posts.length === 0 && (
-                        <Empty message="조건에 맞는 실종 공고가 없습니다." />
+                        <Empty message="조건에 맞는 찾고있어요 글이 없습니다." />
                     )}
 
                 {!loading &&

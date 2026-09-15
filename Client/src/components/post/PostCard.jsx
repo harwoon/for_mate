@@ -9,12 +9,13 @@ export default function PostCard({
     badgeText,
     breed,
     region,
-    date
+    date,
+    imageFit = "cover"
 }) {
     return (
         <Link
             to={to}
-            className="post-card"
+            className={`post-card post-card-image-${imageFit}`}
         >
             <div className="post-card-image-wrap">
                 {thumbnail ? (

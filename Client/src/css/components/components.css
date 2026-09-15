@@ -139,6 +139,17 @@
     transition: transform var(--transition-slow);
 }
 
+.post-card-image-contain .post-card-image-wrap {
+    aspect-ratio: 304 / 180;
+    background: var(--color-surface-soft);
+}
+
+.post-card-image-contain .post-card-thumb {
+    height: 100%;
+    aspect-ratio: auto;
+    object-fit: contain;
+}
+
 .post-card:hover .post-card-thumb {
     transform: scale(1.025);
 }
@@ -794,6 +805,80 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
+    margin-block: 40px 56px;
+}
+
+/* 찾고있어요 / 보호중이에요 / 발견제보 목록의 공통 리듬 */
+.board-list-page {
+    padding-bottom: 32px;
+}
+
+.board-list-page .page-header {
+    margin-bottom: 24px;
+}
+
+.board-list-page .filter-bar {
+    gap: 12px;
+    margin-bottom: 28px;
+}
+
+.board-list-page .filter-toolbar {
+    min-height: 44px;
+}
+
+.board-list-page .filter-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.board-list-page .board-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+@media (max-width: 768px) {
+    .board-list-page .page-header,
+    .board-list-page .filter-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .board-list-page .page-header .btn {
+        width: 100%;
+    }
+
+    .board-list-page .filter-toolbar-right {
+        justify-content: space-between;
+    }
+
+    .board-list-page .board-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 480px) {
+    .board-list-page .filter-toolbar-right {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .board-list-page .filter-sort-select {
+        width: 100% !important;
+    }
+
+    .pagination {
+        gap: 4px;
+        margin-block: 32px 40px;
+    }
+
+    .pagination button {
+        min-width: 34px;
+        height: 34px;
+        padding-inline: 7px;
+    }
 }
 
 .pagination button {

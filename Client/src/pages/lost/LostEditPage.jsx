@@ -117,7 +117,7 @@ export default function LostEditPage() {
                 if (cancelled) return
 
                 if (!postResult?.is_owner) {
-                    setError("실종 공고를 수정할 권한이 없습니다.")
+                    setError("찾고있어요 글을 수정할 권한이 없습니다.")
                     return
                 }
 
@@ -178,7 +178,7 @@ export default function LostEditPage() {
                 })
             } catch (error) {
                 if (!cancelled) {
-                    setError(error.message || "실종 공고 정보를 불러오지 못했습니다.")
+                    setError(error.message || "찾고있어요 글 정보를 불러오지 못했습니다.")
                 }
             } finally {
                 if (!cancelled) {
@@ -583,11 +583,11 @@ export default function LostEditPage() {
             await updateLostPost(id, formData)
 
             setAlertTitle("수정 완료")
-            setAlertMessage("실종 공고가 수정되었습니다.")
+            setAlertMessage("찾고있어요 글이 수정되었습니다.")
             setAlertType("success")
             setAlertOpen(true)
         } catch (error) {
-            setSubmitError(error.message || "실종 공고 수정에 실패했습니다.")
+            setSubmitError(error.message || "찾고있어요 글 수정에 실패했습니다.")
         } finally {
             setSubmitting(false)
         }
@@ -620,7 +620,7 @@ export default function LostEditPage() {
         breeds.length === 0
 
     if (loading) {
-        return <Loading message="실종 공고 정보를 불러오는 중입니다." />
+        return <Loading message="찾고있어요 글 정보를 불러오는 중입니다." />
     }
 
     if (error) {
@@ -644,7 +644,7 @@ export default function LostEditPage() {
             />
 
             <div className="page-header">
-                <h1 className="page-title">실종 공고 수정</h1>
+                <h1 className="page-title">찾고있어요 글 수정</h1>
 
                 <p className="page-desc">
                     등록한 실종동물 정보를 수정해 주세요.

@@ -83,7 +83,7 @@ export default function LostDetailPage() {
                     setPost(null)
                     setError(
                         error.message ||
-                        "실종 공고를 불러오지 못했습니다."
+                        "찾고있어요 글을 불러오지 못했습니다."
                     )
                 }
             } finally {
@@ -125,7 +125,7 @@ export default function LostDetailPage() {
 
     async function handleDelete() {
         const confirmed = window.confirm(
-            "이 실종 공고를 삭제하시겠습니까?"
+            "이 찾고있어요 글을 삭제하시겠습니까?"
         )
 
         if (!confirmed) return
@@ -139,7 +139,7 @@ export default function LostDetailPage() {
         } catch (error) {
             setActionError(
                 error.message ||
-                "실종 공고를 삭제하지 못했습니다."
+                "찾고있어요 글을 삭제하지 못했습니다."
             )
         } finally {
             setDeleting(false)
@@ -174,7 +174,7 @@ export default function LostDetailPage() {
 
     if (loading) {
         return (
-            <Loading message="실종 공고를 불러오는 중입니다." />
+            <Loading message="찾고있어요 글을 불러오는 중입니다." />
         )
     }
 
@@ -194,7 +194,7 @@ export default function LostDetailPage() {
 
     if (!post) {
         return (
-            <Empty message="실종 공고를 찾을 수 없습니다." />
+            <Empty message="찾고있어요 글을 찾을 수 없습니다." />
         )
     }
 
@@ -223,7 +223,7 @@ export default function LostDetailPage() {
             <div className="page-header lost-detail-header">
                 <div>
                     <h1 className="page-title">
-                        실종 공고 상세
+                        찾고있어요 상세
                     </h1>
 
                     <p className="page-desc">

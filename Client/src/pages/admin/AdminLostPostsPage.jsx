@@ -49,7 +49,7 @@ export default function AdminLostPostsPage() {
 
                     setError(
                         error.message ||
-                        "실종 공고 목록을 불러오지 못했습니다."
+                        "찾고있어요 목록을 불러오지 못했습니다."
                     )
                 }
             } finally {
@@ -129,11 +129,11 @@ export default function AdminLostPostsPage() {
         <div className="admin-page">
             <div className="admin-page-heading">
                 <h2>
-                    실종 공고
+                    찾고있어요
                 </h2>
 
                 <p>
-                    등록된 실종 공고의 상태와 기본 정보를 확인합니다.
+                    등록된 찾고있어요 글의 상태와 기본 정보를 확인합니다.
                 </p>
             </div>
 
@@ -216,7 +216,7 @@ export default function AdminLostPostsPage() {
                         />
 
                         <span>
-                            실종 공고를 불러오는 중입니다.
+                            찾고있어요 글을 불러오는 중입니다.
                         </span>
                     </div>
                 )}
@@ -256,7 +256,7 @@ export default function AdminLostPostsPage() {
                             />
 
                             <span>
-                                조건에 맞는 실종 공고가 없습니다.
+                                조건에 맞는 찾고있어요 글이 없습니다.
                             </span>
                         </div>
                     )}

@@ -194,7 +194,7 @@ export default function FoundListPage() {
     ].filter(Boolean)
 
     return (
-        <div className="container">
+        <div className="container board-list-page found-list-page">
             <Breadcrumb
                 items={[
                     { label: "홈", to: "/" },

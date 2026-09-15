@@ -139,7 +139,7 @@ export default function RescueDetailPage() {
                     setAnimal(null)
                     setError(
                         error.message ||
-                        "보호동물 정보를 불러오지 못했습니다."
+                        "보호중이에요 정보를 불러오지 못했습니다."
                     )
                 }
             } finally {
@@ -272,7 +272,7 @@ export default function RescueDetailPage() {
 
     if (loading) {
         return (
-            <Loading message="보호동물 정보를 불러오는 중입니다." />
+            <Loading message="보호중이에요 정보를 불러오는 중입니다." />
         )
     }
 
@@ -292,7 +292,7 @@ export default function RescueDetailPage() {
 
     if (!animal) {
         return (
-            <Empty message="보호동물 정보를 찾을 수 없습니다." />
+            <Empty message="보호중이에요 정보를 찾을 수 없습니다." />
         )
     }
 
