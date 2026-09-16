@@ -9,6 +9,7 @@ import { pool } from "../src/db/pool.js"
 const lostPostId = Number(process.argv[2])
 const targetAnimalId = Number(process.argv[3])
 const repeatBonus = Number(process.argv[4] ?? 0.05)
+const repeatTopN = Number(process.argv[5] ?? 10)
 
 const CANDIDATE_LIMIT_PER_VECTOR = 100
 const RANK_POINT_LIMIT = 10
@@ -103,11 +104,13 @@ function baselineRanking(perVectorCandidates) {
 
 function repeatBonusRanking(
     perVectorCandidates,
-    bonus
+    bonus,
+    topN
 ) {
     const aggregated = new Map()
 
     for (const candidates of perVectorCandidates) {
+        // 전체 후보에서는 최고 유사도만 저장
         for (const candidate of candidates) {
             const key = keyOf(candidate)
             const current = aggregated.get(key)
@@ -119,14 +122,12 @@ function repeatBonusRanking(
                         ...candidate,
                         max_similarity:
                             candidate.similarity,
-                        hit_count: 1
+                        hit_count: 0
                     }
                 )
 
                 continue
             }
-
-            current.hit_count += 1
 
             current.max_similarity =
                 Math.max(
@@ -134,6 +135,17 @@ function repeatBonusRanking(
                     candidate.similarity
                 )
         }
+
+        // 각 실종사진의 상위 N개 후보만
+        // 반복 등장으로 인정
+        candidates
+            .slice(0, topN)
+            .forEach((candidate) => {
+                const key = keyOf(candidate)
+                const current = aggregated.get(key)
+
+                current.hit_count += 1
+            })
     }
 
     return [...aggregated.values()]
@@ -144,9 +156,12 @@ function repeatBonusRanking(
                     0
                 )
 
+            const repeatBonus =
+                repeatCount * bonus
+
             const rankingScore =
                 candidate.max_similarity +
-                repeatCount * bonus
+                repeatBonus
 
             return {
                 source_type:
@@ -160,7 +175,7 @@ function repeatBonusRanking(
                 repeat_count:
                     repeatCount,
                 repeat_bonus:
-                    repeatCount * bonus,
+                    repeatBonus,
                 ranking_score:
                     rankingScore
             }
@@ -420,8 +435,11 @@ async function main() {
     const method1 =
         repeatBonusRanking(
             perVectorCandidates,
-            repeatBonus
+            repeatBonus,
+            repeatTopN
         )
+    
+    console.log(`방법1 반복 인정 범위: Top ${repeatTopN}\n`)
 
     const method3 =
         rankPointRanking(
