@@ -39,6 +39,22 @@ const MAX_IMAGES = 8
 const MIN_IMAGES = 3
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"]
+const PHOTO_GUIDE_EXAMPLES = [
+    { key: "good", label: "좋은 예시", src: "/images/lost/good-photo-example.webp", good: true },
+    { key: "dark", label: "어두운 사진", src: "/images/lost/bad-photo-dark.webp" },
+    { key: "side", label: "측면 사진", src: "/images/lost/bad-photo-side.webp" },
+    { key: "blur", label: "흔들린 사진", src: "/images/lost/bad-photo-blur.webp" },
+    { key: "person", label: "사람과 함께", src: "/images/lost/bad-photo-person.webp" }
+]
+const COLOR_PREVIEW_CLASSES = {
+    흰색: "is-white",
+    검은색: "is-black",
+    갈색: "is-brown",
+    황색: "is-yellow",
+    회색: "is-gray",
+    크림색: "is-cream",
+    기타: "is-other"
+}
 
 function getToday() {
     const today = new Date()
@@ -75,6 +91,7 @@ export default function LostEditPage() {
     const [existingImages, setExistingImages] = useState([])
     const [newImages, setNewImages] = useState([])
     const [deleteImageIds, setDeleteImageIds] = useState([])
+    const [imageDragging, setImageDragging] = useState(false)
 
     const [breeds, setBreeds] = useState([])
     const [colorTags, setColorTags] = useState([])
@@ -82,6 +99,7 @@ export default function LostEditPage() {
     const [sigunguList, setSigunguList] = useState([])
 
     const [breedLoading, setBreedLoading] = useState(false)
+    const [breedOptionsOpen, setBreedOptionsOpen] = useState(false)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
     const [optionError, setOptionError] = useState("")
@@ -295,6 +313,7 @@ export default function LostEditPage() {
         }))
 
         setBreeds([])
+        setBreedOptionsOpen(false)
 
         setFieldErrors((current) => ({
             ...current,
@@ -348,10 +367,7 @@ export default function LostEditPage() {
         }
     }
 
-    function handleNewImageChange(event) {
-        const selectedFiles = Array.from(event.target.files || [])
-        event.target.value = ""
-
+    function addNewImages(selectedFiles) {
         if (selectedFiles.length === 0) return
 
         const currentImageCount = existingImages.length + newImages.length
@@ -399,6 +415,26 @@ export default function LostEditPage() {
             ...current,
             images: ""
         }))
+    }
+
+    function handleBreedSelect(breed) {
+        handleChange("breed", breed)
+        setBreedOptionsOpen(false)
+    }
+
+    function handleNewImageChange(event) {
+        const selectedFiles = Array.from(event.target.files || [])
+        event.target.value = ""
+        addNewImages(selectedFiles)
+    }
+
+    function handleNewImageDrop(event) {
+        event.preventDefault()
+        setImageDragging(false)
+
+        if (existingImages.length + newImages.length >= MAX_IMAGES) return
+
+        addNewImages(Array.from(event.dataTransfer.files || []))
     }
 
     function handleRemoveExistingImage(imageId) {
@@ -652,25 +688,16 @@ export default function LostEditPage() {
             </div>
 
             <form className="stack" onSubmit={handleSubmit} noValidate>
-                <div className="card card-padded stack">
-                    <div>
-                        <h2>사진 수정</h2>
-
-                        <p className="text-sub">
-                            수정 후에도 최소 3장, 최대 8장의 사진이 있어야 합니다.
-                        </p>
+                <div className="card card-padded stack lost-photo-upload-card">
+                    <div className="lost-photo-upload-heading">
+                        <h2>사진 수정 <span aria-hidden="true">*</span></h2>
+                        <p>최소 3장, 권장 5장, 최대 8장 (JPG, PNG, WEBP)</p>
                     </div>
 
-                    <div
-                        className="form-field"
-                        ref={(element) => setFieldRef("images", element)}
-                    >
-                        <label className="form-label" htmlFor="lost-edit-images">
-                            사진 *
-                        </label>
-
+                    <div className="form-field lost-photo-input-field" ref={(element) => setFieldRef("images", element)}>
                         <input
                             id="lost-edit-images"
+                            className="lost-photo-file-input"
                             type="file"
                             accept="image/jpeg,image/png,image/webp"
                             multiple
@@ -678,119 +705,117 @@ export default function LostEditPage() {
                             disabled={imageCount >= MAX_IMAGES}
                         />
 
-                        <p className="text-sub">
-                            {imageCount} / {MAX_IMAGES}장
-                        </p>
+                        <div
+                            className={`lost-photo-dropzone${imageCount > 0 ? " has-images" : ""}${imageDragging ? " is-dragging" : ""}${imageCount >= MAX_IMAGES ? " is-disabled" : ""}`}
+                            onDragEnter={(event) => {
+                                event.preventDefault()
+                                if (imageCount < MAX_IMAGES) setImageDragging(true)
+                            }}
+                            onDragOver={(event) => event.preventDefault()}
+                            onDragLeave={(event) => {
+                                if (!event.currentTarget.contains(event.relatedTarget)) setImageDragging(false)
+                            }}
+                            onDrop={handleNewImageDrop}
+                        >
+                            {imageCount === 0 ? (
+                                <label className="lost-photo-empty-trigger" htmlFor="lost-edit-images">
+                                    <span className="lost-photo-dropzone-icon">
+                                        <i className="ri-image-add-line" aria-hidden="true" />
+                                    </span>
+                                    <strong>사진을 드래그하거나 클릭하여 추가하세요</strong>
+                                    <span>여러 장을 한 번에 선택할 수 있습니다.</span>
+                                </label>
+                            ) : (
+                                <div className="lost-photo-preview-grid">
+                                    {imageCount < MAX_IMAGES && (
+                                        <label className="lost-photo-add-tile" htmlFor="lost-edit-images">
+                                            <i className="ri-add-line" aria-hidden="true" />
+                                            <span>사진 추가</span>
+                                        </label>
+                                    )}
 
-                        {fieldErrors.images && (
-                            <p className="form-error">
-                                {fieldErrors.images}
-                            </p>
-                        )}
+                                    {existingImages.map((image, index) => (
+                                        <article className="lost-photo-preview-item" key={image.id}>
+                                            <div className="lost-photo-preview-frame">
+                                                <img src={image.image_url} alt={`기존 이미지 ${index + 1}`} />
+                                                {index === 0 && <span className="badge lost-photo-primary-badge">대표</span>}
+                                                <button
+                                                    type="button"
+                                                    className="lost-photo-remove-button"
+                                                    onClick={() => handleRemoveExistingImage(image.id)}
+                                                    aria-label={`${index + 1}번째 기존 사진 삭제`}
+                                                >
+                                                    <i className="ri-close-line" aria-hidden="true" />
+                                                </button>
+                                            </div>
+                                        </article>
+                                    ))}
+
+                                    {newImages.map((image, index) => (
+                                        <article className="lost-photo-preview-item" key={`${image.file.name}-${image.file.lastModified}-${index}`}>
+                                            <div className="lost-photo-preview-frame">
+                                                <img src={image.preview} alt={`새 이미지 ${index + 1}`} />
+                                                {existingImages.length === 0 && index === 0 && (
+                                                    <span className="badge lost-photo-primary-badge">대표</span>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    className="lost-photo-remove-button"
+                                                    onClick={() => handleRemoveNewImage(index)}
+                                                    aria-label={`${index + 1}번째 새 사진 삭제`}
+                                                >
+                                                    <i className="ri-close-line" aria-hidden="true" />
+                                                </button>
+                                            </div>
+                                        </article>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {fieldErrors.images && <p className="form-error">{fieldErrors.images}</p>}
                     </div>
 
-                    {existingImages.length > 0 && (
-                        <div>
-                            <p className="form-label">기존 사진</p>
-
-                            <div
-                                style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-                                    gap: "12px"
-                                }}
-                            >
-                                {existingImages.map((image, index) => (
-                                    <div key={image.id}>
-                                        <div style={{ position: "relative" }}>
-                                            <img
-                                                src={image.image_url}
-                                                alt={`기존 이미지 ${index + 1}`}
-                                                style={{
-                                                    width: "100%",
-                                                    aspectRatio: "1 / 1",
-                                                    objectFit: "cover",
-                                                    borderRadius: "8px"
-                                                }}
-                                            />
-
-                                            {index === 0 && (
-                                                <span
-                                                    className="badge"
-                                                    style={{
-                                                        position: "absolute",
-                                                        top: "8px",
-                                                        left: "8px"
-                                                    }}
-                                                >
-                                                    대표
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline"
-                                            style={{
-                                                width: "100%",
-                                                marginTop: "8px"
-                                            }}
-                                            onClick={() => handleRemoveExistingImage(image.id)}
-                                        >
-                                            삭제
-                                        </button>
-                                    </div>
-                                ))}
+                    <aside className="lost-photo-guide" aria-label="반려동물 사진 촬영 안내">
+                        <div className="lost-photo-guide-copy">
+                            <i className="ri-lightbulb-flash-line" aria-hidden="true" />
+                            <div>
+                                <h3>이런 사진이 좋아요!</h3>
+                                <p>정면에 몸 전체가 보이는<br />선명한 사진을 올려주세요.</p>
                             </div>
                         </div>
-                    )}
 
-                    {newImages.length > 0 && (
-                        <div>
-                            <p className="form-label">새로 추가한 사진</p>
-
-                            <div
-                                style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-                                    gap: "12px"
-                                }}
-                            >
-                                {newImages.map((image, index) => (
-                                    <div
-                                        key={`${image.file.name}-${image.file.lastModified}-${index}`}
-                                    >
+                        <div className="lost-photo-guide-examples">
+                            {PHOTO_GUIDE_EXAMPLES.map((example) => (
+                                <figure key={example.key} className={`lost-photo-guide-example${example.good ? " is-good" : " is-bad"}`}>
+                                    <div className="lost-photo-guide-image-wrap">
+                                        <i className="ri-image-line" aria-hidden="true" />
                                         <img
-                                            src={image.preview}
-                                            alt={`새 이미지 ${index + 1}`}
-                                            style={{
-                                                width: "100%",
-                                                aspectRatio: "1 / 1",
-                                                objectFit: "cover",
-                                                borderRadius: "8px"
-                                            }}
+                                            className="lost-photo-guide-image"
+                                            src={example.src}
+                                            alt={`${example.label} 안내 이미지`}
+                                            onError={(event) => { event.currentTarget.hidden = true }}
                                         />
-
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline"
-                                            style={{
-                                                width: "100%",
-                                                marginTop: "8px"
-                                            }}
-                                            onClick={() => handleRemoveNewImage(index)}
-                                        >
-                                            삭제
-                                        </button>
+                                        <span className="lost-photo-guide-mark" aria-hidden="true">
+                                            <i className={example.good ? "ri-check-line" : "ri-close-line"} />
+                                        </span>
                                     </div>
-                                ))}
-                            </div>
+                                    <figcaption>{example.label}</figcaption>
+                                </figure>
+                            ))}
                         </div>
-                    )}
+                    </aside>
+
+                    <p className="text-sub lost-photo-count" aria-live="polite">
+                        현재 {imageCount}장 / 최소 {MIN_IMAGES}장 / 최대 {MAX_IMAGES}장
+                    </p>
                 </div>
 
-                <div className="card card-padded stack">
-                    <h2>동물 정보</h2>
+                <div className="card card-padded stack lost-animal-info-card">
+                    <div className="lost-form-section-heading">
+                        <h2>동물 정보</h2>
+                        <p>반려동물의 특징을 정확하게 선택해 주세요.</p>
+                    </div>
 
                     <div className="form-field">
                         <label className="form-label" htmlFor="edit-pet-name">
@@ -814,10 +839,10 @@ export default function LostEditPage() {
                         )}
                     </div>
 
-                    <fieldset ref={(element) => setFieldRef("species", element)}>
+                    <fieldset className="lost-choice-field" ref={(element) => setFieldRef("species", element)}>
                         <legend>종류 *</legend>
 
-                        <label>
+                        <label className={form.species === "개" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="edit-species"
@@ -827,7 +852,7 @@ export default function LostEditPage() {
                             개
                         </label>
 
-                        <label>
+                        <label className={form.species === "고양이" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="edit-species"
@@ -844,39 +869,73 @@ export default function LostEditPage() {
                         )}
                     </fieldset>
 
-                    <div className="form-field">
+                    <div
+                        className="form-field lost-breed-field"
+                        onBlur={(event) => {
+                            if (!event.currentTarget.contains(event.relatedTarget)) setBreedOptionsOpen(false)
+                        }}
+                    >
                         <label className="form-label" htmlFor="edit-breed">
                             품종 *
                         </label>
 
-                        <input
-                            ref={(element) => setFieldRef("breed", element)}
-                            id="edit-breed"
-                            type="text"
-                            className={`form-input${fieldErrors.breed ? " is-error" : ""}`}
-                            list="lost-edit-breed-options"
-                            value={form.breed}
-                            disabled={!form.species}
-                            onChange={(event) => handleChange("breed", event.target.value)}
-                        />
+                        <div className="lost-breed-combobox">
+                            <input
+                                ref={(element) => setFieldRef("breed", element)}
+                                id="edit-breed"
+                                type="text"
+                                role="combobox"
+                                aria-autocomplete="list"
+                                aria-expanded={breedOptionsOpen}
+                                aria-controls="lost-edit-breed-options"
+                                autoComplete="off"
+                                className={`form-input${fieldErrors.breed ? " is-error" : ""}`}
+                                value={form.breed}
+                                disabled={!form.species}
+                                placeholder={form.species ? "품종을 입력하거나 선택해 주세요" : "동물 종류를 먼저 선택해 주세요"}
+                                onFocus={() => setBreedOptionsOpen(true)}
+                                onChange={(event) => {
+                                    handleChange("breed", event.target.value)
+                                    setBreedOptionsOpen(true)
+                                }}
+                            />
 
-                        <datalist id="lost-edit-breed-options">
-                            {breeds.map((breed) => (
-                                <option key={breed.id} value={breed.name} />
-                            ))}
-                        </datalist>
+                            <button
+                                type="button"
+                                className="lost-breed-toggle"
+                                disabled={!form.species}
+                                onClick={() => setBreedOptionsOpen((open) => !open)}
+                                aria-label="품종 목록 열기"
+                                tabIndex={-1}
+                            >
+                                <i className={breedOptionsOpen ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"} aria-hidden="true" />
+                            </button>
 
-                        {breedLoading && (
-                            <p className="text-sub">
-                                품종을 검색하는 중입니다.
-                            </p>
-                        )}
-
-                        {noBreedResult && (
-                            <p className="text-sub">
-                                없는 품종입니다.
-                            </p>
-                        )}
+                            {breedOptionsOpen && form.species && (
+                                <div id="lost-edit-breed-options" className="lost-breed-options" role="listbox">
+                                    {breedLoading ? (
+                                        <p className="lost-breed-state">품종을 검색하는 중입니다.</p>
+                                    ) : noBreedResult ? (
+                                        <p className="lost-breed-state">검색 결과가 없습니다.</p>
+                                    ) : (
+                                        breeds.map((breed) => (
+                                            <button
+                                                key={breed.id ?? breed.name}
+                                                type="button"
+                                                role="option"
+                                                aria-selected={form.breed === breed.name}
+                                                className={form.breed === breed.name ? "is-selected" : ""}
+                                                onMouseDown={(event) => event.preventDefault()}
+                                                onClick={() => handleBreedSelect(breed.name)}
+                                            >
+                                                <span>{breed.name}</span>
+                                                {form.breed === breed.name && <i className="ri-check-line" aria-hidden="true" />}
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         {fieldErrors.breed && (
                             <p className="form-error">
@@ -885,16 +944,17 @@ export default function LostEditPage() {
                         )}
                     </div>
 
-                    <fieldset ref={(element) => setFieldRef("colors", element)}>
+                    <fieldset className="lost-choice-field lost-color-field" ref={(element) => setFieldRef("colors", element)}>
                         <legend>털 색상 *</legend>
 
                         {colorTags.map((color) => (
-                            <label key={color}>
+                            <label key={color} className={form.colors.includes(color) ? "is-selected" : ""}>
                                 <input
                                     type="checkbox"
                                     checked={form.colors.includes(color)}
                                     onChange={() => handleColorToggle(color)}
                                 />
+                                <span className={`lost-color-preview ${COLOR_PREVIEW_CLASSES[color] || "is-other"}`} aria-hidden="true" />
                                 {color}
                             </label>
                         ))}
@@ -906,10 +966,10 @@ export default function LostEditPage() {
                         )}
                     </fieldset>
 
-                    <fieldset ref={(element) => setFieldRef("sex", element)}>
+                    <fieldset className="lost-choice-field" ref={(element) => setFieldRef("sex", element)}>
                         <legend>성별 *</legend>
 
-                        <label>
+                        <label className={form.sex === "M" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="edit-sex"
@@ -919,7 +979,7 @@ export default function LostEditPage() {
                             수컷
                         </label>
 
-                        <label>
+                        <label className={form.sex === "F" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="edit-sex"
@@ -929,7 +989,7 @@ export default function LostEditPage() {
                             암컷
                         </label>
 
-                        <label>
+                        <label className={form.sex === "Q" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="edit-sex"
@@ -946,10 +1006,10 @@ export default function LostEditPage() {
                         )}
                     </fieldset>
 
-                    <fieldset ref={(element) => setFieldRef("neuter_yn", element)}>
+                    <fieldset className="lost-choice-field" ref={(element) => setFieldRef("neuter_yn", element)}>
                         <legend>중성화 여부 *</legend>
 
-                        <label>
+                        <label className={form.neuter_yn === "Y" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="edit-neuter"
@@ -959,7 +1019,7 @@ export default function LostEditPage() {
                             중성화 완료
                         </label>
 
-                        <label>
+                        <label className={form.neuter_yn === "N" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="edit-neuter"
@@ -969,7 +1029,7 @@ export default function LostEditPage() {
                             중성화 안 됨
                         </label>
 
-                        <label>
+                        <label className={form.neuter_yn === "U" ? "is-selected" : ""}>
                             <input
                                 type="radio"
                                 name="edit-neuter"
