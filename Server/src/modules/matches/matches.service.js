@@ -107,7 +107,8 @@ export async function getMatches(lostPostId, userId, rawLimit) {
         const candidates = await repository.findNearestCandidates(
             vector,
             species,
-            CANDIDATE_LIMIT_PER_VECTOR
+            CANDIDATE_LIMIT_PER_VECTOR,
+            post.event_date
         )
 
         for (const {

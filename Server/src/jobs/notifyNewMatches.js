@@ -9,6 +9,8 @@ export async function notifyNewMatches(postType, animalRefs) {
   if (animalRefs.length === 0) return
 
   const refColumn = postType === "rescue" ? "desertion_no" : "pawinhand_animal_id"
+  const animalTable = postType === "rescue" ? "rescue_animals" : "pawinhand_animals"
+  const animalIdColumn = postType === "rescue" ? "desertion_no" : "id"
 
   for (const animalRef of animalRefs) {
     const { rows: vectors } = await pool.query(
@@ -22,6 +24,13 @@ export async function notifyNewMatches(postType, animalRefs) {
     )
     if (vectors.length === 0) continue // 임베딩 추출이 실패했던 동물은 자연스럽게 건너뜀
 
+    // 발견/구조일을 몰라서 걸러낼 수 없는 경우는 필터 없이(=모든 실종일) 그대로 둔다.
+    const { rows: animalRows } = await pool.query(
+      `SELECT happen_dt FROM ${animalTable} WHERE ${animalIdColumn} = $1`,
+      [animalRef],
+    )
+    const happenDate = animalRows[0]?.happen_dt ?? null
+
     const bestByLostPost = new Map()
 
     for (const { embedding } of vectors) {
@@ -32,10 +41,11 @@ export async function notifyNewMatches(postType, animalRefs) {
         JOIN images i ON i.id = e.image_id AND i.post_type = 'lost'
         JOIN lost_posts lp ON lp.id = i.lost_post_id
         WHERE lp.status = 'active'
+          AND ($3::date IS NULL OR lp.event_date <= $3::date)
         ORDER BY e.embedding <=> $1::vector
         LIMIT $2
         `,
-        [embedding, CANDIDATE_LIMIT_PER_VECTOR],
+        [embedding, CANDIDATE_LIMIT_PER_VECTOR, happenDate],
       )
       for (const { lost_post_id, user_id, distance } of candidates) {
         const key = Number(lost_post_id)

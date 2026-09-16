@@ -23,7 +23,9 @@ export async function findLostPostEmbeddings(lostPostId) {
 
 // 벡터 하나를 기준으로 가장 가까운 구조동물 후보 K개를 조회한다.
 // "ORDER BY 거리 LIMIT" 형태를 유지해야 pgvector HNSW 인덱스가 실제로 사용된다.
-export async function findNearestCandidates(embeddingLiteral, species, limit = 20) {
+// eventDate(실종일)가 주어지면, 그 날짜 이후에 발견/구조된 공고만 후보로 남긴다
+// (발견일을 모르는 공고는 걸러내지 않고 그대로 후보에 둔다).
+export async function findNearestCandidates(embeddingLiteral, species, limit = 20, eventDate = null) {
   const [rescueResult, pawinhandResult] = await Promise.all([
     query(
       `
@@ -33,10 +35,11 @@ export async function findNearestCandidates(embeddingLiteral, species, limit = 2
       JOIN rescue_animals ra ON ra.desertion_no = i.desertion_no
       WHERE (ra.notice_edt IS NULL OR ra.notice_edt >= CURRENT_DATE)
         AND ra.up_kind_nm = $2
+        AND ($4::date IS NULL OR ra.happen_dt IS NULL OR ra.happen_dt >= $4::date)
       ORDER BY e.embedding <=> $1::vector
       LIMIT $3
       `,
-      [embeddingLiteral, species, limit],
+      [embeddingLiteral, species, limit, eventDate],
     ),
     query(
       `
@@ -47,10 +50,11 @@ export async function findNearestCandidates(embeddingLiteral, species, limit = 2
       WHERE (pa.notice_edt IS NULL OR pa.notice_edt >= CURRENT_DATE)
         AND pa.up_kind_nm = $2
         AND pa.duplicate_of_desertion_no IS NULL
+        AND ($4::date IS NULL OR pa.happen_dt IS NULL OR pa.happen_dt >= $4::date)
       ORDER BY e.embedding <=> $1::vector
       LIMIT $3
       `,
-      [embeddingLiteral, species, limit],
+      [embeddingLiteral, species, limit, eventDate],
     ),
   ])
   return [...rescueResult.rows, ...pawinhandResult.rows]
