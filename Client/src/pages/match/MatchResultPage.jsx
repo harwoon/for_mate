@@ -15,12 +15,21 @@ import Breadcrumb from "../../components/common/Breadcrumb.jsx"
 import Empty from "../../components/common/Empty.jsx"
 import ErrorState from "../../components/common/ErrorState.jsx"
 import Loading from "../../components/common/Loading.jsx"
+import MatchFilterModal, { EMPTY_MATCH_FILTERS } from "../../components/match/MatchFilterModal.jsx"
+import FilterBar from "../../components/post/FilterBar.jsx"
 import PostGrid from "../../components/post/PostGrid.jsx"
 import { formatDate } from "../../utils/date.js"
 
 const INITIAL_LIMIT = 8
 const LOAD_MORE_SIZE = 8
 const DEFAULT_MAX_LIMIT = 50
+
+const SORT_OPTIONS = [
+    { value: "similarity_desc", label: "유사도 높은 순" },
+    { value: "happen_date_desc", label: "최근 발견순" },
+    { value: "happen_date_asc", label: "오래된 발견순" },
+    { value: "notice_end_asc", label: "공고 마감 임박순" }
+]
 
 const SOURCE_LABELS = {
     rescue: "공공데이터",
@@ -32,6 +41,19 @@ const SEX_LABELS = {
     F: "암컷",
     Q: "미상",
     U: "미상"
+}
+
+const NEUTER_LABELS = {
+    Y: "중성화 완료",
+    N: "중성화 안 됨",
+    U: "미상"
+}
+
+function matchParams(filters, sort, limit) {
+    return Object.fromEntries(
+        Object.entries({ ...filters, sort, limit })
+            .filter(([, value]) => value !== "" && value != null)
+    )
 }
 
 function similarityValue(value) {
@@ -61,6 +83,8 @@ function normalizeResult(result) {
                 result.max_limit
             ) ||
             DEFAULT_MAX_LIMIT,
+        total:
+            Number(result.total) || 0,
         hasMore:
             Boolean(
                 result.has_more
@@ -205,6 +229,13 @@ function MatchCard({
                     </div>
 
                     <div>
+                        <dt>중성화</dt>
+                        <dd>
+                            {NEUTER_LABELS[match.neuter] || "미상"}
+                        </dd>
+                    </div>
+
+                    <div>
                         <dt>
                             발견일
                         </dt>
@@ -311,6 +342,10 @@ export default function MatchResultPage() {
             false
     )
 
+    const [resultTotal, setResultTotal] = useState(
+        () => initialResult?.total ?? 0
+    )
+
     const [
         loading,
         setLoading
@@ -339,35 +374,24 @@ export default function MatchResultPage() {
         setRetryCount
     ] = useState(0)
 
+    const [filters, setFilters] = useState(() => ({ ...EMPTY_MATCH_FILTERS }))
+    const [sort, setSort] = useState("similarity_desc")
+    const [filterOpen, setFilterOpen] = useState(false)
+
     const requestRef =
         useRef(null)
+
+    const skipInitialRequestRef = useRef(Boolean(initialResult))
+    const requestKey = JSON.stringify({ lostPostId, filters, sort, retryCount })
 
     useEffect(() => {
         let cancelled = false
 
         setError(null)
 
-        // AI로 찾기 페이지에서 이미 1~10위 결과를 받아온 경우
-        // 같은 요청을 다시 보내지 않고 전달받은 결과를 바로 사용한다.
-        if (initialResult) {
-            setMatches(
-                initialResult.items
-            )
-
-            setResultLimit(
-                initialResult.limit
-            )
-
-            setMaxLimit(
-                initialResult.maxLimit
-            )
-
-            setHasMore(
-                initialResult.hasMore
-            )
-
-            setLoading(false)
-
+        // AI 검색 화면에서 전달된 기본 결과는 최초 한 번만 재사용한다.
+        if (skipInitialRequestRef.current) {
+            skipInitialRequestRef.current = false
             return
         }
 
@@ -383,22 +407,23 @@ export default function MatchResultPage() {
                     !previous ||
                     previous.id !==
                         lostPostId ||
-                    previous.retry !==
-                        retryCount
+                    previous.key !==
+                        requestKey
                 ) {
                     requestRef.current =
                         {
                             id:
                                 lostPostId,
-                            retry:
-                                retryCount,
+                            key:
+                                requestKey,
                             promise:
                                 getMatches(
                                     lostPostId,
-                                    {
-                                        limit:
-                                            INITIAL_LIMIT
-                                    }
+                                    matchParams(
+                                        filters,
+                                        sort,
+                                        INITIAL_LIMIT
+                                    )
                                 )
                         }
                 }
@@ -438,6 +463,10 @@ export default function MatchResultPage() {
                 setHasMore(
                     result.hasMore
                 )
+
+                setResultTotal(
+                    result.total
+                )
             } catch (error) {
                 if (!cancelled) {
                     setError(error)
@@ -456,8 +485,7 @@ export default function MatchResultPage() {
         }
     }, [
         lostPostId,
-        initialMatchResult,
-        retryCount
+        requestKey
     ])
 
     async function handleLoadMore() {
@@ -490,10 +518,11 @@ export default function MatchResultPage() {
             const rawResult =
                 await getMatches(
                     lostPostId,
-                    {
-                        limit:
-                            nextLimit
-                    }
+                    matchParams(
+                        filters,
+                        sort,
+                        nextLimit
+                    )
                 )
 
             const result =
@@ -525,6 +554,10 @@ export default function MatchResultPage() {
             setHasMore(
                 result.hasMore
             )
+
+            setResultTotal(
+                result.total
+            )
         } catch (error) {
             setLoadMoreError(
                 error.message ||
@@ -535,16 +568,28 @@ export default function MatchResultPage() {
         }
     }
 
-    const sortedMatches =
-        [...matches].sort(
-            (a, b) =>
-                similarityValue(
-                    b.similarity
-                ) -
-                similarityValue(
-                    a.similarity
-                )
-        )
+    const filterChips = [
+        filters.sex && {
+            key: "sex",
+            label: `성별: ${SEX_LABELS[filters.sex]}`,
+            onRemove: () => setFilters((current) => ({ ...current, sex: "" }))
+        },
+        filters.neuter && {
+            key: "neuter",
+            label: `중성화: ${NEUTER_LABELS[filters.neuter]}`,
+            onRemove: () => setFilters((current) => ({ ...current, neuter: "" }))
+        },
+        filters.sido && {
+            key: "region",
+            label: `지역: ${[filters.sido, filters.sigungu].filter(Boolean).join(" ")}`,
+            onRemove: () => setFilters((current) => ({ ...current, sido: "", sigungu: "" }))
+        },
+        (filters.start_date || filters.end_date) && {
+            key: "date",
+            label: `발견일: ${filters.start_date || "처음"} ~ ${filters.end_date || "현재"}`,
+            onRemove: () => setFilters((current) => ({ ...current, start_date: "", end_date: "" }))
+        }
+    ].filter(Boolean)
 
     const canRetry =
         error &&
@@ -600,6 +645,21 @@ export default function MatchResultPage() {
                 </div>
             </div>
 
+            {filterOpen && (
+                <MatchFilterModal
+                    initialFilters={filters}
+                    onClose={() => setFilterOpen(false)}
+                    onApply={(nextFilters) => {
+                        setFilters(nextFilters)
+                        setFilterOpen(false)
+                    }}
+                    onReset={() => {
+                        setFilters({ ...EMPTY_MATCH_FILTERS })
+                        setFilterOpen(false)
+                    }}
+                />
+            )}
+
             {loading && (
                 <Loading message="AI 매칭 결과를 불러오는 중입니다." />
             )}
@@ -629,9 +689,20 @@ export default function MatchResultPage() {
                     />
                 )}
 
+            {!loading && !error && (
+                <FilterBar
+                    total={resultTotal}
+                    onOpenFilter={() => setFilterOpen(true)}
+                    sort={sort}
+                    onChangeSort={setSort}
+                    chips={filterChips}
+                    sortOptions={SORT_OPTIONS}
+                />
+            )}
+
             {!loading &&
                 !error &&
-                sortedMatches.length ===
+                matches.length ===
                     0 && (
                     <Empty
                         message="현재 유사한 보호동물을 찾지 못했습니다."
@@ -657,21 +728,21 @@ export default function MatchResultPage() {
 
             {!loading &&
                 !error &&
-                sortedMatches.length >
+                matches.length >
                     0 && (
                     <section aria-label="AI 매칭 후보">
                         <p className="match-result-count">
                             유사한 후보{" "}
                             <strong>
                                 {
-                                    sortedMatches.length
+                                    matches.length
                                 }
                                 건
                             </strong>
                         </p>
 
                         <PostGrid>
-                            {sortedMatches.map(
+                            {matches.map(
                                 (
                                     match,
                                     index

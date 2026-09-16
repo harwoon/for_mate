@@ -12,6 +12,100 @@ const DEFAULT_RESULT_LIMIT = 8
 // 사용자가 추가로 확인할 수 있는 최대 순위
 const MAX_RESULT_LIMIT = 50
 
+const MATCH_SORTS = new Set([
+    "similarity_desc",
+    "happen_date_desc",
+    "happen_date_asc",
+    "notice_end_asc"
+])
+
+function invalidQuery(message, code) {
+    const error = new Error(message)
+    error.status = 400
+    error.code = code
+    return error
+}
+
+function parseDate(value, field) {
+    if (!value) return null
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(`${value}T00:00:00Z`))) {
+        throw invalidQuery(`${field}는 YYYY-MM-DD 형식이어야 합니다.`, "INVALID_DATE")
+    }
+    return value
+}
+
+function parseMatchOptions(rawOptions) {
+    const options = rawOptions && typeof rawOptions === "object"
+        ? rawOptions
+        : { limit: rawOptions }
+    const sex = options.sex || null
+    const neuter = options.neuter || null
+    const sort = options.sort || "similarity_desc"
+    const startDate = parseDate(options.start_date, "start_date")
+    const endDate = parseDate(options.end_date, "end_date")
+
+    if (sex && !["M", "F", "U"].includes(sex)) {
+        throw invalidQuery("sex는 M, F, U 중 하나여야 합니다.", "INVALID_SEX")
+    }
+    if (neuter && !["Y", "N", "U"].includes(neuter)) {
+        throw invalidQuery("neuter는 Y, N, U 중 하나여야 합니다.", "INVALID_NEUTER")
+    }
+    if (!MATCH_SORTS.has(sort)) {
+        throw invalidQuery("지원하지 않는 정렬 방식입니다.", "INVALID_SORT")
+    }
+    if (startDate && endDate && startDate > endDate) {
+        throw invalidQuery("시작일은 종료일보다 늦을 수 없습니다.", "INVALID_DATE_RANGE")
+    }
+
+    return {
+        limit: parseResultLimit(options.limit),
+        sort,
+        filters: {
+            sex,
+            neuter,
+            sido: String(options.sido || "").trim() || null,
+            sigungu: String(options.sigungu || "").trim() || null,
+            start_date: startDate,
+            end_date: endDate
+        }
+    }
+}
+
+function dateValue(value) {
+    if (!value) return null
+    const timestamp = new Date(value).getTime()
+    return Number.isFinite(timestamp) ? timestamp : null
+}
+
+function compareDates(a, b, direction) {
+    const aDate = dateValue(a)
+    const bDate = dateValue(b)
+    if (aDate === null && bDate === null) return 0
+    if (aDate === null) return 1
+    if (bDate === null) return -1
+    return direction === "desc" ? bDate - aDate : aDate - bDate
+}
+
+function sortCandidates(candidates, sort) {
+    return candidates.sort((a, b) => {
+        let primary = 0
+        if (sort === "happen_date_desc") {
+            primary = compareDates(a.happen_dt, b.happen_dt, "desc")
+        } else if (sort === "happen_date_asc") {
+            primary = compareDates(a.happen_dt, b.happen_dt, "asc")
+        } else if (sort === "notice_end_asc") {
+            primary = compareDates(a.notice_edt, b.notice_edt, "asc")
+        } else {
+            primary = b.similarity - a.similarity
+        }
+
+        if (primary !== 0) return primary
+        const similarityOrder = b.similarity - a.similarity
+        if (similarityOrder !== 0) return similarityOrder
+        return b.ref_id - a.ref_id
+    })
+}
+
 function parseResultLimit(value) {
     if (
         value === undefined ||
@@ -42,7 +136,7 @@ function parseResultLimit(value) {
 }
 
 // 캐시 조회가 아니라 요청마다 실시간으로 계산
-export async function getMatches(lostPostId, userId, rawLimit) {
+export async function getMatches(lostPostId, userId, rawOptions) {
     if (!Number.isInteger(lostPostId) || lostPostId <= 0) {
         throw Object.assign(
             new Error("공고 ID가 올바르지 않습니다."),
@@ -53,7 +147,7 @@ export async function getMatches(lostPostId, userId, rawLimit) {
         )
     }
 
-    const limit = parseResultLimit(rawLimit)
+    const { limit, sort, filters } = parseMatchOptions(rawOptions)
 
     const post = await findLostPostById(lostPostId)
 
@@ -107,13 +201,16 @@ export async function getMatches(lostPostId, userId, rawLimit) {
         const candidates = await repository.findNearestCandidates(
             vector,
             species,
-            CANDIDATE_LIMIT_PER_VECTOR
+            CANDIDATE_LIMIT_PER_VECTOR,
+            filters
         )
 
         for (const {
             ref_id,
             source_type,
-            distance
+            distance,
+            happen_dt,
+            notice_edt
         } of candidates) {
             const key = `${source_type}:${ref_id}`
             const current = bestByAnimal.get(key)
@@ -126,16 +223,20 @@ export async function getMatches(lostPostId, userId, rawLimit) {
                 bestByAnimal.set(key, {
                     distance,
                     source_type,
-                    ref_id: Number(ref_id)
+                    ref_id: Number(ref_id),
+                    happen_dt,
+                    notice_edt
                 })
             }
         }
     }
 
     // 전체 후보를 유사도 순으로 정렬
-    const rankedAll = [...bestByAnimal.values()]
-        .map(({ source_type, ref_id, distance }) => ({
+    const rankedAll = sortCandidates(
+        [...bestByAnimal.values()]
+        .map(({ source_type, ref_id, distance, happen_dt, notice_edt }) => ({
             source_type,
+            ref_id,
             desertion_no:
                 source_type === "rescue"
                     ? ref_id
@@ -144,12 +245,12 @@ export async function getMatches(lostPostId, userId, rawLimit) {
                 source_type === "pawinhand"
                     ? ref_id
                     : null,
-            similarity: 1 - distance
-        }))
-        .sort(
-            (a, b) =>
-                b.similarity - a.similarity
-        )
+            similarity: 1 - distance,
+            happen_dt,
+            notice_edt
+        })),
+        sort
+    )
 
     // 최초 10개, 더 보기 시 20 / 30 / 40 / 50개까지 사용
     const ranked = rankedAll.slice(
@@ -162,7 +263,8 @@ export async function getMatches(lostPostId, userId, rawLimit) {
             items: [],
             limit,
             max_limit: MAX_RESULT_LIMIT,
-            has_more: false
+            has_more: false,
+            total: 0
         }
     }
 
@@ -201,6 +303,7 @@ export async function getMatches(lostPostId, userId, rawLimit) {
         items,
         limit,
         max_limit: MAX_RESULT_LIMIT,
+        total: rankedAll.length,
         has_more:
             limit < MAX_RESULT_LIMIT &&
             rankedAll.length > limit

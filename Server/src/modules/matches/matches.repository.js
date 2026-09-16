@@ -23,34 +23,61 @@ export async function findLostPostEmbeddings(lostPostId) {
 
 // 벡터 하나를 기준으로 가장 가까운 구조동물 후보 K개를 조회한다.
 // "ORDER BY 거리 LIMIT" 형태를 유지해야 pgvector HNSW 인덱스가 실제로 사용된다.
-export async function findNearestCandidates(embeddingLiteral, species, limit = 20) {
+export async function findNearestCandidates(embeddingLiteral, species, limit = 20, filters = {}) {
+  const params = [
+    embeddingLiteral,
+    species,
+    limit,
+    filters.sex || null,
+    filters.neuter || null,
+    filters.sido || null,
+    filters.sigungu || null,
+    filters.start_date || null,
+    filters.end_date || null,
+  ]
+  const filterSql = `
+    AND ($4::text IS NULL OR
+      ($4 = 'U' AND COALESCE(NULLIF(sex_cd, ''), 'U') IN ('Q', 'U')) OR sex_cd = $4)
+    AND ($5::text IS NULL OR
+      ($5 = 'U' AND COALESCE(NULLIF(neuter_yn, ''), 'U') = 'U') OR neuter_yn = $5)
+    AND ($6::text IS NULL OR region_sido = $6)
+    AND ($7::text IS NULL OR region_sigungu = $7)
+    AND ($8::date IS NULL OR happen_dt >= $8::date)
+    AND ($9::date IS NULL OR happen_dt <= $9::date)`
+
   const [rescueResult, pawinhandResult] = await Promise.all([
     query(
       `
-      SELECT ra.desertion_no AS ref_id, 'rescue' AS source_type, (e.embedding <=> $1::vector) AS distance
+      SELECT ra.desertion_no AS ref_id, 'rescue' AS source_type,
+        (e.embedding <=> $1::vector) AS distance,
+        ra.happen_dt, ra.notice_edt
       FROM embeddings e
       JOIN images i ON i.id = e.image_id AND i.post_type = 'rescue'
       JOIN rescue_animals ra ON ra.desertion_no = i.desertion_no
       WHERE (ra.notice_edt IS NULL OR ra.notice_edt >= CURRENT_DATE)
         AND ra.up_kind_nm = $2
+        ${filterSql}
       ORDER BY e.embedding <=> $1::vector
       LIMIT $3
       `,
-      [embeddingLiteral, species, limit],
+      params,
     ),
     query(
       `
-      SELECT pa.id AS ref_id, 'pawinhand' AS source_type, (e.embedding <=> $1::vector) AS distance
+      SELECT pa.id AS ref_id, 'pawinhand' AS source_type,
+        (e.embedding <=> $1::vector) AS distance,
+        pa.happen_dt, pa.notice_edt
       FROM embeddings e
       JOIN images i ON i.id = e.image_id AND i.post_type = 'pawinhand'
       JOIN pawinhand_animals pa ON pa.id = i.pawinhand_animal_id
       WHERE (pa.notice_edt IS NULL OR pa.notice_edt >= CURRENT_DATE)
         AND pa.up_kind_nm = $2
         AND pa.duplicate_of_desertion_no IS NULL
+        ${filterSql}
       ORDER BY e.embedding <=> $1::vector
       LIMIT $3
       `,
-      [embeddingLiteral, species, limit],
+      params,
     ),
   ])
   return [...rescueResult.rows, ...pawinhandResult.rows]
@@ -105,8 +132,10 @@ export async function findMatchCandidates(matchIds) {
             ) AS image_url,
             r.up_kind_nm AS species, r.kind_nm AS breed,
             r.color_cd AS color, r.color_tags, r.sex_cd AS sex,
+            r.neuter_yn AS neuter,
             r.happen_place, r.region_sido, r.region_sigungu,
-            TO_CHAR(r.happen_dt, 'YYYY-MM-DD') AS happen_dt
+            TO_CHAR(r.happen_dt, 'YYYY-MM-DD') AS happen_dt,
+            TO_CHAR(r.notice_edt, 'YYYY-MM-DD') AS notice_edt
         FROM matches m
         LEFT JOIN (${animalsSql}) r ON r.source_type = m.source_type
             AND r.animal_id = COALESCE(m.desertion_no, m.pawinhand_animal_id)

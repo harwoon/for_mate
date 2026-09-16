@@ -59,7 +59,7 @@ const vector = (angle) =>
         Math.cos(angle),
         Math.sin(angle),
         ...Array(
-            1022
+            510
         ).fill(0)
     ])
 
@@ -254,6 +254,19 @@ try {
         }
     )
 
+    await check(
+        "match filters and sorting reject invalid query values",
+        async () => {
+            await expectError(1, "101", 400, "INVALID_SEX", { sex: "X" })
+            await expectError(1, "101", 400, "INVALID_NEUTER", { neuter: "X" })
+            await expectError(1, "101", 400, "INVALID_SORT", { sort: "unknown" })
+            await expectError(1, "101", 400, "INVALID_DATE_RANGE", {
+                start_date: "2026-09-20",
+                end_date: "2026-09-01"
+            })
+        }
+    )
+
     for (
         const angle of [
             0,
@@ -309,7 +322,8 @@ try {
                     items: [],
                     limit: 8,
                     max_limit: 50,
-                    has_more: false
+                    has_more: false,
+                    total: 0
                 }
             )
         }

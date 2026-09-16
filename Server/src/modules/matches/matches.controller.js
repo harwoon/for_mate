@@ -5,7 +5,7 @@ import { ok} from "../../utils/response.js"
 export async function getMatches(req, res, next) {
     try {
         const lostPostId = Number(req.params.id)
-        const results = await service.getMatches(lostPostId, req.userId, req.query.limit)
+        const results = await service.getMatches(lostPostId, req.userId, req.query)
         ok(res, results)
     } catch (err) {
         next(err)
