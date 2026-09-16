@@ -188,28 +188,78 @@ def extract_embedding(cropped_bgr, species):
 
 
 # ── 3. DB 저장 ───────────────────────────────────────────
-def save_to_db(desertion_no, image_url, embedding):
-    """images 에 사진 등록 + embeddings 에 벡터 저장 (한 트랜잭션)."""
+# 같은 동물(desertion_no/pawinhand_animal_id) 안에서 구도가 거의 같은 사진은
+# 임베딩을 중복 저장하지 않는다 (매칭 시 사진 수가 많다는 이유만으로 유리해지는 걸 방지).
+DEDUP_SIMILARITY_THRESHOLD = float(os.environ.get("DEDUP_SIMILARITY_THRESHOLD", "0.97"))
+
+_ALLOWED_REF_COLUMNS = {"desertion_no", "pawinhand_animal_id"}
+
+
+def _validate_ref_col(ref_col):
+    if ref_col not in _ALLOWED_REF_COLUMNS:
+        raise ValueError(f"허용되지 않은 ref_col입니다: {ref_col}")
+
+
+def save_image(post_type, ref_col, ref_value, image_url):
+    """images 행만 저장하고 image_id를 반환한다."""
+    _validate_ref_col(ref_col)
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                f"""
+                INSERT INTO images (post_type, {ref_col}, image_url)
+                VALUES (%s, %s, %s)
+                RETURNING id
+                """,
+                (post_type, ref_value, image_url),
+            )
+            return cur.fetchone()[0]
+    finally:
+        conn.close()
+
+
+def save_embedding_row(image_id, embedding, model_version=MODEL_VERSION):
+    """embeddings 행만 저장한다. 이미 있으면 아무 것도 하지 않는다(image_id UNIQUE)."""
     vector_literal = "[" + ",".join(map(str, embedding.tolist())) + "]"
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     try:
         with conn, conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO images (post_type, desertion_no, image_url)
-                VALUES ('rescue', %s, %s)
-                RETURNING id
-                """,
-                (desertion_no, image_url),
-            )
-            image_id = cur.fetchone()[0]
-            cur.execute(
-                """
                 INSERT INTO embeddings (image_id, embedding, model_version)
                 VALUES (%s, %s::vector, %s)
+                ON CONFLICT (image_id) DO NOTHING
                 """,
-                (image_id, vector_literal, MODEL_VERSION),
+                (image_id, vector_literal, model_version),
             )
+    finally:
+        conn.close()
+
+
+def is_duplicate_within_animal(post_type, ref_col, ref_value, embedding, threshold=DEDUP_SIMILARITY_THRESHOLD):
+    """같은 동물의 기존 임베딩 중 코사인 유사도가 threshold 이상인 게 하나라도 있으면 True.
+
+    임베딩은 L2-normalize되어 있으므로 코사인 거리(pgvector `<=>`)를 그대로 쓴다.
+    """
+    _validate_ref_col(ref_col)
+    vector_literal = "[" + ",".join(map(str, embedding.tolist())) + "]"
+    distance_threshold = 1 - threshold
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT 1
+                FROM embeddings e
+                JOIN images i ON i.id = e.image_id
+                WHERE i.post_type = %s AND i.{ref_col} = %s
+                  AND (e.embedding <=> %s::vector) <= %s
+                LIMIT 1
+                """,
+                (post_type, ref_value, vector_literal, distance_threshold),
+            )
+            return cur.fetchone() is not None
     finally:
         conn.close()
 
@@ -254,5 +304,6 @@ if __name__ == "__main__":
             f"norm={np.linalg.norm(emb):.6f}"
         )
 
-        # 아직 DB는 VECTOR(1024)이므로 저장하지 않는다.
-        # save_to_db(desertion_no, url, emb)
+        # 테스트 스크립트라 DB에는 저장하지 않는다.
+        # image_id = save_image("rescue", "desertion_no", desertion_no, url)
+        # save_embedding_row(image_id, emb)

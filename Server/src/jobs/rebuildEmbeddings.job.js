@@ -71,6 +71,7 @@ async function rebuildEmbeddings() {
     }
 
     let successCount = 0
+    let duplicateSkippedCount = 0
     let failedCount = 0
 
     for (
@@ -119,13 +120,15 @@ async function rebuildEmbeddings() {
             for (const result of data.results) {
                 if (result.status === "ok") {
                     successCount += 1
+                } else if (result.status === "duplicate_skipped") {
+                    duplicateSkippedCount += 1
                 } else {
                     failedCount += 1
                 }
             }
 
             console.log(
-                `현재 성공 ${successCount} / 실패 ${failedCount}`
+                `현재 성공 ${successCount} / 중복스킵 ${duplicateSkippedCount} / 실패 ${failedCount}`
             )
         } catch (error) {
             failedCount += chunk.length
@@ -142,6 +145,7 @@ async function rebuildEmbeddings() {
     console.log("")
     console.log("DINOv2 재임베딩 완료")
     console.log(`성공: ${successCount}`)
+    console.log(`중복스킵: ${duplicateSkippedCount}`)
     console.log(`실패: ${failedCount}`)
 }
 

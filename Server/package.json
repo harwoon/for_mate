@@ -9,7 +9,8 @@
     "dev": "node --watch src/server.js",
     "job:sync": "node src/jobs/rescueAnimalSync.job.js",
     "job:pawinhand-sync": "node src/jobs/pawinhandSync.job.js",
-    "job:backfill-region": "node src/jobs/backfillRegion.js"
+    "job:backfill-region": "node src/jobs/backfillRegion.js",
+    "job:backfill-dedup-embeddings": "node src/jobs/backfillDedupEmbeddings.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1129.0",
