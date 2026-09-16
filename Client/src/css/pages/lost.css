@@ -110,6 +110,567 @@
     margin: 36px 0 64px;
 }
 
+/* ============================= 찾고있어요 작성/수정 ============================= */
+
+.lost-photo-upload-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+}
+
+.lost-photo-upload-heading h2 span {
+    color: var(--color-danger);
+}
+
+.lost-photo-upload-heading p {
+    color: var(--color-text-light);
+    font-size: var(--font-sm);
+}
+
+.lost-photo-input-field {
+    margin-bottom: 0;
+}
+
+.lost-photo-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+.lost-photo-dropzone {
+    display: flex;
+    min-height: 230px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 32px;
+    border: 2px dashed var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: #fbfcfd;
+    color: var(--color-text-light);
+    text-align: center;
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.lost-photo-empty-trigger {
+    display: flex;
+    width: 100%;
+    min-height: 162px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.lost-photo-dropzone.has-images {
+    display: block;
+    min-height: 0;
+    padding: 20px;
+    text-align: left;
+}
+
+.lost-photo-dropzone:hover,
+.lost-photo-dropzone.is-dragging {
+    border-color: var(--color-primary);
+    background: var(--color-primary-soft);
+}
+
+.lost-photo-dropzone.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.lost-photo-dropzone-icon {
+    color: #b8bec7;
+    font-size: 54px;
+    line-height: 1;
+}
+
+.lost-photo-dropzone strong {
+    color: var(--color-text);
+    font-size: var(--font-md);
+}
+
+.lost-photo-preview-grid {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 12px;
+}
+
+.lost-photo-preview-item {
+    position: relative;
+    min-width: 0;
+}
+
+.lost-photo-preview-frame {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1;
+    border-radius: 8px;
+    background: var(--color-surface-soft);
+}
+
+.lost-photo-preview-frame img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lost-photo-primary-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+}
+
+.lost-photo-remove-button {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    z-index: 2;
+    display: grid;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--color-danger);
+    color: #fff;
+    cursor: pointer;
+}
+
+.lost-photo-remove-button:hover {
+    background: var(--color-danger-dark);
+}
+
+.lost-photo-remove-button i {
+    font-size: 18px;
+}
+
+.lost-photo-add-tile {
+    display: flex;
+    min-height: 128px;
+    aspect-ratio: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px dashed var(--color-border-strong);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-text-sub);
+    cursor: pointer;
+}
+
+.lost-photo-add-tile:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.lost-photo-add-tile i {
+    font-size: 28px;
+}
+
+.lost-photo-count {
+    margin-top: 8px;
+    font-weight: var(--weight-semibold);
+}
+
+.lost-photo-guide {
+    display: grid;
+    grid-template-columns: minmax(330px, 1fr) auto;
+    align-items: center;
+    gap: 32px;
+    padding: 32px;
+    border-radius: var(--radius-md);
+    background: #fff8f8;
+}
+
+.lost-photo-guide-copy {
+    display: flex;
+    min-height: 112px;
+    align-items: center;
+    gap: 20px;
+    padding: 12px 32px 12px 8px;
+    border-right: 1px solid var(--color-border);
+}
+
+.lost-photo-guide-copy > i {
+    color: #ef7176;
+    font-size: 56px;
+}
+
+.lost-photo-guide-copy h3 {
+    margin-bottom: 10px;
+    font-size: var(--font-lg);
+}
+
+.lost-photo-guide-copy p {
+    margin: 0;
+    color: var(--color-text-sub);
+    font-size: var(--font-sm);
+    line-height: 1.7;
+}
+
+.lost-photo-guide-examples {
+    display: grid;
+    grid-template-columns: repeat(5, 84px);
+    justify-content: end;
+    gap: 12px;
+}
+
+.lost-photo-guide-example {
+    min-width: 0;
+    margin: 0;
+    text-align: center;
+}
+
+.lost-photo-guide-image-wrap {
+    position: relative;
+    display: flex;
+    width: 100%;
+    aspect-ratio: 1;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: var(--color-surface);
+    color: var(--color-text-light);
+}
+
+.lost-photo-guide-example.is-good .lost-photo-guide-image-wrap {
+    border-color: #65b85a;
+}
+
+.lost-photo-guide-image {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.lost-photo-guide-image[hidden] {
+    display: none;
+}
+
+.lost-photo-guide-mark {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    z-index: 1;
+    display: grid;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #ef6269;
+    color: #fff;
+    font-size: 14px;
+}
+
+.lost-photo-guide-example.is-good .lost-photo-guide-mark {
+    background: #65b85a;
+}
+
+.lost-photo-guide-example figcaption {
+    margin-top: 8px;
+    color: var(--color-text-sub);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.lost-animal-info-card {
+    gap: 24px;
+}
+
+.lost-form-section-heading {
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.lost-form-section-heading h2 {
+    margin-bottom: 6px;
+}
+
+.lost-form-section-heading p {
+    margin: 0;
+    color: var(--color-text-sub);
+    font-size: var(--font-sm);
+}
+
+.lost-animal-info-card .form-field {
+    margin-bottom: 0;
+}
+
+.lost-animal-info-card .form-label,
+.lost-choice-field legend {
+    margin-bottom: 10px;
+    color: var(--color-text);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-bold);
+}
+
+.lost-animal-info-card .form-input {
+    min-height: 48px;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.lost-breed-field {
+    position: relative;
+    z-index: 5;
+}
+
+.lost-breed-combobox {
+    position: relative;
+}
+
+.lost-breed-combobox .form-input {
+    padding-right: 48px;
+}
+
+.lost-breed-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: grid;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    place-items: center;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-sub);
+    cursor: pointer;
+}
+
+.lost-breed-toggle:disabled {
+    color: var(--color-text-disabled);
+    cursor: not-allowed;
+}
+
+.lost-breed-toggle i {
+    font-size: 20px;
+}
+
+.lost-breed-options {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    left: 0;
+    z-index: 20;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+    box-shadow: var(--shadow-md);
+}
+
+.lost-breed-options button {
+    display: flex;
+    width: 100%;
+    min-height: 42px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text);
+    font-size: var(--font-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.lost-breed-options button:hover,
+.lost-breed-options button.is-selected {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+}
+
+.lost-breed-options button.is-selected {
+    font-weight: var(--weight-bold);
+}
+
+.lost-breed-state {
+    margin: 0;
+    padding: 18px 12px;
+    color: var(--color-text-light);
+    font-size: var(--font-sm);
+    text-align: center;
+}
+
+.lost-choice-field {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 0;
+    border: 0;
+}
+
+.lost-choice-field legend {
+    width: 100%;
+}
+
+.lost-choice-field label {
+    position: relative;
+    display: inline-flex;
+    min-width: 92px;
+    min-height: 42px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-surface);
+    color: var(--color-text-sub);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+}
+
+.lost-choice-field label:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary-dark);
+}
+
+.lost-choice-field label.is-selected {
+    border-color: var(--color-primary);
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+    font-weight: var(--weight-bold);
+    box-shadow: 0 0 0 2px rgba(71, 120, 79, 0.08);
+}
+
+.lost-choice-field label.is-selected::before {
+    content: "✓";
+    font-size: 13px;
+    font-weight: var(--weight-bold);
+}
+
+.lost-choice-field input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
+.lost-choice-field label:has(input:focus-visible) {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.lost-color-field label {
+    min-width: 0;
+    min-height: 38px;
+    padding: 7px 14px;
+    border-radius: var(--radius-full);
+}
+
+.lost-color-preview {
+    width: 11px;
+    height: 11px;
+    flex: 0 0 11px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 50%;
+}
+
+.lost-color-preview.is-white { border-color: #d8dbd4; background: #fff; }
+.lost-color-preview.is-black { background: #1f211f; }
+.lost-color-preview.is-brown { background: #95613f; }
+.lost-color-preview.is-yellow { background: #f2bd27; }
+.lost-color-preview.is-gray { background: #9ca09b; }
+.lost-color-preview.is-cream { background: #eadfbf; }
+.lost-color-preview.is-other { background: #c5c9c3; }
+
+.lost-choice-field > .form-error {
+    width: 100%;
+}
+
+@media (max-width: 1100px) {
+    .lost-photo-guide {
+        grid-template-columns: minmax(280px, 1fr) auto;
+        gap: 24px;
+        padding: 28px;
+    }
+
+    .lost-photo-guide-examples {
+        grid-template-columns: repeat(5, 72px);
+        gap: 10px;
+    }
+}
+
+@media (max-width: 600px) {
+    .lost-photo-upload-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .lost-photo-dropzone {
+        min-height: 190px;
+        padding: 24px 16px;
+    }
+
+    .lost-photo-dropzone.has-images {
+        padding: 12px;
+    }
+
+    .lost-photo-preview-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .lost-photo-guide {
+        grid-template-columns: 1fr;
+        padding: 18px;
+    }
+
+    .lost-photo-guide-copy {
+        min-height: 0;
+        padding: 4px 0 18px;
+        border-right: 0;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .lost-photo-guide-examples {
+        grid-template-columns: repeat(5, 78px);
+        justify-content: start;
+        overflow-x: auto;
+        padding: 6px 4px 8px;
+    }
+
+    .lost-animal-info-card {
+        gap: 20px;
+    }
+
+    .lost-choice-field label {
+        min-width: calc(50% - 5px);
+    }
+
+    .lost-color-field label {
+        min-width: 0;
+    }
+}
+
 /* ============================= 찾고있어요 상세 ============================= */
 
 .lost-detail-page {
