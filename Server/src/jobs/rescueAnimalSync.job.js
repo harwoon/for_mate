@@ -11,10 +11,28 @@ import { createClient } from "@supabase/supabase-js"
 import { parseRegion } from "./regionParser.js"
 import { notifyNewMatches } from "./notifyNewMatches.js"
 import { setGlobalDispatcher, Agent } from "undici"
+import { downloadAndUploadExternalImage } from "../utils/externalImage.js"
+import { deleteFromR2, extractR2Key } from "../utils/r2.js"
 
 setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }))
 
 const execAsync = promisify(exec)
+
+function applySyncLimit(processed) {
+  const rawLimit = process.env.RESCUE_SYNC_LIMIT
+  if (!rawLimit) return processed
+
+  const limit = Number(rawLimit)
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error("RESCUE_SYNC_LIMIT는 1 이상의 정수여야 합니다.")
+  }
+
+  console.log(`구조동물 테스트 범위: ${limit}건`)
+  return {
+    results: processed.results.slice(0, limit),
+    jsonData: processed.jsonData.slice(0, limit),
+  }
+}
 
 // 새벽 배치 작업
 // 실행: npm run job:sync (Cron으로 매일 새벽에 실행하도록 등록)
@@ -124,43 +142,137 @@ async function saveAnimals(processed_animals) {
   console.log("DB 저장 완료")
 }
 
-async function extractEmbeddings(processed) {
+async function syncRescueImages(processed) {
   const { results } = processed
-  const { rows: existing } = await pool.query(
-    `SELECT DISTINCT desertion_no FROM images WHERE post_type = 'rescue'`
-  )
-  const alreadyProcessed = new Set(existing.map((row) => Number(row.desertion_no)))
-
   const animals = results
     .map((animal) => {
       const key = Object.keys(animal).find((k) => k.includes("desertionNo"))
       const desertionNo = Number(animal[key])
-      const imageUrls = [animal.popfile1, animal.popfile2].filter(Boolean)
+      const imageUrls = [...new Set([animal.popfile1, animal.popfile2].filter(Boolean))]
       return { desertion_no: desertionNo, image_urls: imageUrls, species: animal.upKindNm }
     })
-    .filter((animal) => !alreadyProcessed.has(animal.desertion_no) && animal.image_urls.length > 0)
+    .filter(
+      (animal) =>
+        Number.isSafeInteger(animal.desertion_no) &&
+        ["개", "고양이"].includes(animal.species) &&
+        animal.image_urls.length > 0,
+    )
 
-  if (animals.length === 0) {
-    console.log("임베딩 추출 대상 없음 (신규 동물 없음)")
+  for (const animal of animals) {
+    const client = await pool.connect()
+    const uploadedKeys = []
+    let staleKeys = []
+
+    try {
+      await client.query("BEGIN")
+      const { rows: currentImages } = await client.query(
+        `SELECT id, source_url, image_url
+         FROM images
+         WHERE post_type = 'rescue' AND desertion_no = $1
+         ORDER BY id ASC
+         FOR UPDATE`,
+        [animal.desertion_no],
+      )
+
+      const incoming = new Set(animal.image_urls)
+      const currentBySource = new Map(
+        currentImages.map((image) => [image.source_url ?? image.image_url, image]),
+      )
+      const staleImages = currentImages.filter(
+        (image) => !incoming.has(image.source_url ?? image.image_url),
+      )
+      staleKeys = staleImages
+        .map((image) => extractR2Key(image.image_url))
+        .filter(Boolean)
+
+      if (staleImages.length > 0) {
+        await client.query(
+          `DELETE FROM images
+           WHERE post_type = 'rescue'
+             AND desertion_no = $1
+             AND id = ANY($2::bigint[])`,
+          [animal.desertion_no, staleImages.map((image) => image.id)],
+        )
+      }
+
+      for (const sourceUrl of animal.image_urls) {
+        const current = currentBySource.get(sourceUrl)
+        if (current?.source_url && extractR2Key(current.image_url)) continue
+
+        const uploaded = await downloadAndUploadExternalImage(sourceUrl, "rescue-animals")
+        uploadedKeys.push(uploaded.key)
+
+        if (current) {
+          await client.query(
+            `UPDATE images SET source_url = $1, image_url = $2 WHERE id = $3`,
+            [sourceUrl, uploaded.url, current.id],
+          )
+        } else {
+          await client.query(
+            `INSERT INTO images (post_type, desertion_no, source_url, image_url)
+             VALUES ('rescue', $1, $2, $3)`,
+            [animal.desertion_no, sourceUrl, uploaded.url],
+          )
+        }
+      }
+
+      await client.query("COMMIT")
+      await Promise.allSettled(staleKeys.map((key) => deleteFromR2(key)))
+    } catch (error) {
+      await client.query("ROLLBACK")
+      await Promise.allSettled(uploadedKeys.map((key) => deleteFromR2(key)))
+      console.error(`구조동물 이미지 저장 실패 (${animal.desertion_no}):`, error.message)
+    } finally {
+      client.release()
+    }
+  }
+}
+
+async function extractEmbeddings(processed) {
+  await syncRescueImages(processed)
+
+  const { rows: pending } = await pool.query(
+    `SELECT i.id, i.image_url, i.desertion_no, ra.up_kind_nm AS species
+     FROM images i
+     JOIN rescue_animals ra ON ra.desertion_no = i.desertion_no
+     LEFT JOIN embeddings e ON e.image_id = i.id
+     WHERE i.post_type = 'rescue'
+       AND e.id IS NULL
+     ORDER BY i.id ASC`,
+  )
+
+  if (pending.length === 0) {
+    console.log("임베딩 추출 대상 없음")
     return
   }
 
   const AI_SERVER_URL = process.env.AI_SERVER_URL ?? "http://localhost:8001"
   const CHUNK_SIZE = 30
   const processedDesertionNos = new Set()
-  console.log(`임베딩 추출 요청: 신규 ${animals.length}마리, ${CHUNK_SIZE}마리씩 나눠서 처리`)
+  console.log(`임베딩 추출 요청: ${pending.length}장, ${CHUNK_SIZE}장씩 나눠서 처리`)
 
-  for (let i = 0; i < animals.length; i += CHUNK_SIZE) {
-    const chunk = animals.slice(i, i + CHUNK_SIZE)
-    console.log(`  진행: ${Math.min(i + CHUNK_SIZE, animals.length)}/${animals.length}`)
+  for (let i = 0; i < pending.length; i += CHUNK_SIZE) {
+    const chunk = pending.slice(i, i + CHUNK_SIZE)
+    console.log(`  진행: ${Math.min(i + CHUNK_SIZE, pending.length)}/${pending.length}`)
     try {
-      const response = await fetch(`${AI_SERVER_URL}/embeddings/rescue-animals`, {
+      const response = await fetch(`${AI_SERVER_URL}/embeddings/images`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ animals: chunk }),
+        body: JSON.stringify({
+          images: chunk.map((image) => ({
+            id: image.id,
+            image_url: image.image_url,
+            species: image.species,
+          })),
+        }),
       })
+      if (!response.ok) throw new Error(`AI 서버 응답 오류 (${response.status})`)
       const data = await response.json()
-      data.results.forEach((r) => processedDesertionNos.add(Number(r.desertion_no)))
+      data.results.forEach((result, index) => {
+        if (result.status === "ok") {
+          processedDesertionNos.add(Number(chunk[index].desertion_no))
+        }
+      })
 
       const failed = data.results.filter((r) => r.status !== "ok").length
       console.log(`  완료: 성공 ${data.results.length - failed}건, 실패 ${failed}건`)
@@ -177,8 +289,7 @@ async function extractEmbeddings(processed) {
 async function run() {
   console.log("배치 시작")
 
-  const processed = await preprocess()
-  console.log('processed', processed)
+  const processed = applySyncLimit(await preprocess())
   await saveAnimals(processed)
   await extractEmbeddings(processed)
 

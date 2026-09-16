@@ -162,6 +162,7 @@ CREATE TABLE images (
   found_post_id   BIGINT REFERENCES found_posts(id) ON DELETE CASCADE,
   desertion_no    BIGINT REFERENCES rescue_animals(desertion_no) ON DELETE CASCADE,
   pawinhand_animal_id BIGINT REFERENCES pawinhand_animals(id) ON DELETE CASCADE,
+  source_url      TEXT,
   image_url       TEXT         NOT NULL,
   created_at      TIMESTAMP    NOT NULL DEFAULT NOW(),
 
@@ -181,6 +182,14 @@ CREATE TABLE images (
 CREATE INDEX idx_images_pawinhand_animal
   ON images (pawinhand_animal_id, id)
   WHERE post_type = 'pawinhand';
+
+CREATE UNIQUE INDEX uq_images_pawinhand_source_url
+  ON images (pawinhand_animal_id, source_url)
+  WHERE post_type = 'pawinhand' AND source_url IS NOT NULL;
+
+CREATE UNIQUE INDEX uq_images_rescue_source_url
+  ON images (desertion_no, source_url)
+  WHERE post_type = 'rescue' AND source_url IS NOT NULL;
 
 -- 이미지 임베딩
 CREATE TABLE embeddings (

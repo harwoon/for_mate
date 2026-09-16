@@ -4,6 +4,8 @@ import { pool } from "../db/pool.js"
 import { parseRegion } from "./regionParser.js"
 import { notifyNewMatches } from "./notifyNewMatches.js"
 import { markDuplicatePawinhandAnimals } from "./markDuplicateAnimals.js"
+import { downloadAndUploadExternalImage } from "../utils/externalImage.js"
+import { deleteFromR2, extractR2Key } from "../utils/r2.js"
 
 setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }))
 
@@ -311,9 +313,9 @@ async function fetchAnimal(sourceId) {
   return normalizeAnimal(raw, sourceId)
 }
 
-async function syncImages(client, pawinhandAnimalId, imageUrls) {
+async function syncImages(client, pawinhandAnimalId, imageUrls, uploadedKeys) {
   const currentResult = await client.query(
-    `SELECT id, image_url
+    `SELECT id, source_url, image_url
      FROM images
      WHERE post_type = 'pawinhand' AND pawinhand_animal_id = $1
      ORDER BY id ASC`,
@@ -325,10 +327,16 @@ async function syncImages(client, pawinhandAnimalId, imageUrls) {
   if (imageUrls.length === 0) return
 
   const incoming = new Set(imageUrls)
-  const currentByUrl = new Map(currentResult.rows.map((image) => [image.image_url, image]))
+  const currentByUrl = new Map(
+    currentResult.rows.map((image) => [image.source_url ?? image.image_url, image]),
+  )
   const staleIds = currentResult.rows
-    .filter((image) => !incoming.has(image.image_url))
+    .filter((image) => !incoming.has(image.source_url ?? image.image_url))
     .map((image) => image.id)
+  const staleKeys = currentResult.rows
+    .filter((image) => staleIds.includes(image.id))
+    .map((image) => extractR2Key(image.image_url))
+    .filter(Boolean)
 
   if (staleIds.length > 0) {
     await client.query(
@@ -341,17 +349,33 @@ async function syncImages(client, pawinhandAnimalId, imageUrls) {
   }
 
   for (const imageUrl of imageUrls) {
-    if (currentByUrl.has(imageUrl)) continue
-    await client.query(
-      `INSERT INTO images (post_type, pawinhand_animal_id, image_url)
-       VALUES ('pawinhand', $1, $2)`,
-      [pawinhandAnimalId, imageUrl],
-    )
+    const current = currentByUrl.get(imageUrl)
+    if (current?.source_url && extractR2Key(current.image_url)) continue
+
+    const uploaded = await downloadAndUploadExternalImage(imageUrl, "pawinhand")
+    uploadedKeys.push(uploaded.key)
+
+    if (current) {
+      await client.query(
+        `UPDATE images SET source_url = $1, image_url = $2 WHERE id = $3`,
+        [imageUrl, uploaded.url, current.id],
+      )
+    } else {
+      await client.query(
+        `INSERT INTO images (post_type, pawinhand_animal_id, source_url, image_url)
+         VALUES ('pawinhand', $1, $2, $3)`,
+        [pawinhandAnimalId, imageUrl, uploaded.url],
+      )
+    }
   }
+
+  return { staleKeys }
 }
 
 async function saveAnimal(animal) {
   const client = await pool.connect()
+  let uploadedKeys = []
+  let staleKeys = []
   try {
     await client.query("BEGIN")
 
@@ -431,11 +455,19 @@ async function saveAnimal(animal) {
       ],
     )
 
-    await syncImages(client, result.rows[0].id, animal.imageUrls)
+    const imageSync = await syncImages(
+      client,
+      result.rows[0].id,
+      animal.imageUrls,
+      uploadedKeys,
+    )
+    staleKeys = imageSync?.staleKeys ?? []
     await client.query("COMMIT")
+    await Promise.allSettled(staleKeys.map((key) => deleteFromR2(key)))
     return existingResult.rowCount === 0 ? "inserted" : "updated"
   } catch (error) {
     await client.query("ROLLBACK")
+    await Promise.allSettled(uploadedKeys.map((key) => deleteFromR2(key)))
     throw error
   } finally {
     client.release()
