@@ -12,6 +12,11 @@ const DEFAULT_RESULT_LIMIT = 8
 // 사용자가 추가로 확인할 수 있는 최대 순위
 const MAX_RESULT_LIMIT = 50
 
+// 반복 등장 1회당 정렬용 가점
+// similarity는 0~1 범위이므로 0.05 = 5%p
+// 실험하면서 값을 변경해 비교할 예정
+const REPEAT_BONUS = 0.05
+
 function parseResultLimit(value) {
     if (
         value === undefined ||
@@ -99,9 +104,9 @@ export async function getMatches(lostPostId, userId, rawLimit) {
         lostPostId
     )
 
-    // 같은 동물이 여러 사진에서 후보로 잡힐 수 있으므로
-    // source_type + 동물 ID 기준으로 하나만 유지
-    const bestByAnimal = new Map()
+    // 여러 실종사진에서 같은 동물이 반복 등장한 횟수와
+    // 최고 유사도를 함께 집계
+    const aggregatedByAnimal = new Map()
 
     for (const vector of vectors) {
         const candidates = await repository.findNearestCandidates(
@@ -110,46 +115,107 @@ export async function getMatches(lostPostId, userId, rawLimit) {
             CANDIDATE_LIMIT_PER_VECTOR
         )
 
+        // 같은 실종사진 한 장에서 동일 동물의 이미지가
+        // 여러 장 후보로 잡힐 수 있으므로 개체별 최고 유사도만 사용
+        const bestForVector = new Map()
+
         for (const {
             ref_id,
             source_type,
             distance
         } of candidates) {
             const key = `${source_type}:${ref_id}`
-            const current = bestByAnimal.get(key)
+            const similarity = 1 - Number(distance)
+            const current = bestForVector.get(key)
 
-            // 동일 개체의 여러 이미지 중 가장 가까운 거리 사용
             if (
                 current === undefined ||
-                distance < current.distance
+                similarity > current.similarity
             ) {
-                bestByAnimal.set(key, {
-                    distance,
+                bestForVector.set(key, {
                     source_type,
-                    ref_id: Number(ref_id)
+                    ref_id: Number(ref_id),
+                    similarity
                 })
             }
         }
+
+        // 실종사진별 중복 제거가 끝난 후
+        // 전체 실종사진 기준으로 등장 횟수 집계
+        for (const candidate of bestForVector.values()) {
+            const key =
+                `${candidate.source_type}:${candidate.ref_id}`
+
+            const current = aggregatedByAnimal.get(key)
+
+            if (current === undefined) {
+                aggregatedByAnimal.set(key, {
+                    source_type: candidate.source_type,
+                    ref_id: candidate.ref_id,
+                    max_similarity: candidate.similarity,
+                    hit_count: 1
+                })
+
+                continue
+            }
+
+            current.hit_count += 1
+            current.max_similarity = Math.max(
+                current.max_similarity,
+                candidate.similarity
+            )
+        }
     }
 
-    // 전체 후보를 유사도 순으로 정렬
-    const rankedAll = [...bestByAnimal.values()]
-        .map(({ source_type, ref_id, distance }) => ({
-            source_type,
-            desertion_no:
-                source_type === "rescue"
-                    ? ref_id
-                    : null,
-            pawinhand_animal_id:
-                source_type === "pawinhand"
-                    ? ref_id
-                    : null,
-            similarity: 1 - distance
-        }))
-        .sort(
-            (a, b) =>
-                b.similarity - a.similarity
-        )
+    // 방법 1:
+    // 최고 유사도 + 반복 등장 횟수에 따른 가점
+    const rankedAll = [...aggregatedByAnimal.values()]
+        .map((candidate) => {
+            // 최초 등장은 반복으로 보지 않음
+            // 3장의 사진에서 등장했다면 반복 횟수는 2회
+            const repeatCount = Math.max(
+                candidate.hit_count - 1,
+                0
+            )
+
+            const repeatBonus =
+                repeatCount * REPEAT_BONUS
+
+            return {
+                source_type: candidate.source_type,
+
+                desertion_no:
+                    candidate.source_type === "rescue"
+                        ? candidate.ref_id
+                        : null,
+
+                pawinhand_animal_id:
+                    candidate.source_type === "pawinhand"
+                        ? candidate.ref_id
+                        : null,
+
+                // 실제 사용자에게 보여줄 원본 최고 유사도
+                similarity: candidate.max_similarity,
+
+                // 실험 결과 확인용
+                hit_count: candidate.hit_count,
+                repeat_count: repeatCount,
+                repeat_bonus: repeatBonus,
+
+                // 정렬에만 사용하는 점수
+                ranking_score:
+                    candidate.max_similarity +
+                    repeatBonus
+            }
+        })
+        .sort((a, b) => {
+            if (b.ranking_score !== a.ranking_score) {
+                return b.ranking_score - a.ranking_score
+            }
+
+            return b.similarity - a.similarity
+        })
+        
 
     // 최초 10개, 더 보기 시 20 / 30 / 40 / 50개까지 사용
     const ranked = rankedAll.slice(
