@@ -17,6 +17,9 @@ const MAX_RESULT_LIMIT = 50
 // 실험하면서 값을 변경해 비교할 예정
 const REPEAT_BONUS = 0.05
 
+// 실종사진별 상위 10개 후보만 반복 등장으로 인정
+const REPEAT_TOP_N = 10
+
 function parseResultLimit(value) {
     if (
         value === undefined ||
@@ -140,30 +143,54 @@ export async function getMatches(lostPostId, userId, rawLimit) {
             }
         }
 
-        // 실종사진별 중복 제거가 끝난 후
-        // 전체 실종사진 기준으로 등장 횟수 집계
-        for (const candidate of bestForVector.values()) {
+        // 한 실종사진에서 개체별 최고 유사도 기준으로 정렬
+        const vectorCandidates = [
+            ...bestForVector.values()
+        ].sort(
+            (a, b) =>
+                b.similarity - a.similarity
+        )
+
+        // 전체 후보의 최고 유사도는 유지
+        for (const candidate of vectorCandidates) {
             const key =
                 `${candidate.source_type}:${candidate.ref_id}`
 
-            const current = aggregatedByAnimal.get(key)
+            const current =
+                aggregatedByAnimal.get(key)
 
             if (current === undefined) {
                 aggregatedByAnimal.set(key, {
-                    source_type: candidate.source_type,
-                    ref_id: candidate.ref_id,
-                    max_similarity: candidate.similarity,
-                    hit_count: 1
+                    source_type:
+                        candidate.source_type,
+                    ref_id:
+                        candidate.ref_id,
+                    max_similarity:
+                        candidate.similarity,
+                    hit_count: 0
                 })
 
                 continue
             }
 
-            current.hit_count += 1
             current.max_similarity = Math.max(
                 current.max_similarity,
                 candidate.similarity
             )
+        }
+
+        // 반복 가점은 실종사진별 Top 10 후보에게만 적용
+        for (
+            const candidate of
+            vectorCandidates.slice(0, REPEAT_TOP_N)
+        ) {
+            const key =
+                `${candidate.source_type}:${candidate.ref_id}`
+
+            const current =
+                aggregatedByAnimal.get(key)
+
+            current.hit_count += 1
         }
     }
 
