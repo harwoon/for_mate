@@ -515,8 +515,10 @@ async function extractEmbeddings() {
         }),
       })
       const data = await response.json()
-      const failed = data.results.filter((r) => r.status !== "ok").length
-      console.log(`  완료: 성공 ${data.results.length - failed}건, 실패 ${failed}건`)
+      const ok = data.results.filter((r) => r.status === "ok").length
+      const duplicateSkipped = data.results.filter((r) => r.status === "duplicate_skipped").length
+      const failed = data.results.length - ok - duplicateSkipped
+      console.log(`  완료: 성공 ${ok}건, 중복스킵 ${duplicateSkipped}건, 실패 ${failed}건`)
     } catch (error) {
       console.error(`  청크 처리 실패 (${i}~${i + chunk.length}):`, error.message)
     }
