@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useEffect, useMemo, useState } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { imageUrl } from "../../api/client.js"
 import { getRescueAnimals } from "../../api/rescueAnimals.api.js"
 import Breadcrumb from "../../components/common/Breadcrumb.jsx"
@@ -11,6 +11,7 @@ import FilterBar from "../../components/post/FilterBar.jsx"
 import FilterModal from "../../components/post/FilterModal.jsx"
 import PostCard from "../../components/post/PostCard.jsx"
 import PostGrid from "../../components/post/PostGrid.jsx"
+import { createListQuery, readListQuery } from "../../utils/listQuery.js"
 
 const PAGE_SIZE = 12
 const SORT_OPTIONS = [
@@ -53,11 +54,15 @@ function getDetailPath(animal) {
 
 export default function RescueListPage() {
     const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams()
+    const queryKey = searchParams.toString()
+    const allowedSorts = SORT_OPTIONS.map((option) => option.value)
+    const { filters, page, sort } = useMemo(
+        () => readListQuery(searchParams, allowedSorts),
+        [queryKey]
+    )
 
-    const [filters, setFilters] = useState(EMPTY_FILTERS)
     const [isFilterOpen, setIsFilterOpen] = useState(false)
-    const [sort, setSort] = useState("latest")
-    const [page, setPage] = useState(1)
 
     const [animals, setAnimals] = useState([])
     const [total, setTotal] = useState(0)
@@ -67,6 +72,13 @@ export default function RescueListPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
     const [retryCount, setRetryCount] = useState(0)
+
+    function updateListQuery(nextFilters, nextPage = page, nextSort = sort) {
+        setSearchParams(
+            createListQuery({ filters: nextFilters, page: nextPage, sort: nextSort }),
+            { replace: true }
+        )
+    }
 
     useEffect(() => {
         let cancelled = false
@@ -127,53 +139,34 @@ export default function RescueListPage() {
     ])
 
     function handleApplyFilters(nextFilters) {
-        setFilters(nextFilters)
-        setPage(1)
+        updateListQuery(nextFilters, 1)
         setIsFilterOpen(false)
     }
 
     // 필터 값만 초기화하고 모달은 그대로 유지한다.
     function handleResetFilters() {
-        setFilters({
+        updateListQuery({
             ...EMPTY_FILTERS,
             colors: []
-        })
-
-        setPage(1)
+        }, 1)
     }
 
     function handleChangeSort(nextSort) {
-        setSort(nextSort)
-        setPage(1)
+        updateListQuery(filters, 1, nextSort)
     }
 
     // 적용된 필터 chip의 X를 눌렀을 때 해당 조건만 제거한다.
     function handleRemoveFilter(field, value) {
-        setFilters((current) => {
-            if (field === "colors") {
-                return {
-                    ...current,
-                    colors: current.colors.filter(
-                        (color) => color !== value
-                    )
-                }
+        const nextFilters = field === "colors"
+            ? {
+                ...filters,
+                colors: filters.colors.filter((color) => color !== value)
             }
+            : field === "region"
+                ? { ...filters, sido: "", sigungu: "" }
+                : { ...filters, [field]: "" }
 
-            if (field === "region") {
-                return {
-                    ...current,
-                    sido: "",
-                    sigungu: ""
-                }
-            }
-
-            return {
-                ...current,
-                [field]: ""
-            }
-        })
-
-        setPage(1)
+        updateListQuery(nextFilters, 1)
     }
 
     const filterChips = [
@@ -358,7 +351,7 @@ export default function RescueListPage() {
                             page={responsePage}
                             total={total}
                             size={responseSize}
-                            onChange={setPage}
+                            onChange={(nextPage) => updateListQuery(filters, nextPage)}
                         />
                     </>
                 )}

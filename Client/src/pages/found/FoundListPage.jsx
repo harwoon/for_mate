@@ -1,6 +1,6 @@
 import { formatDateTime as formatCreatedAt } from "../../utils/date.js"
-import { useEffect, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useEffect, useMemo, useState } from "react"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { getFoundPosts } from "../../api/foundPosts.api.js"
 import Breadcrumb from "../../components/common/Breadcrumb.jsx"
 import Empty from "../../components/common/Empty.jsx"
@@ -9,6 +9,7 @@ import Loading from "../../components/common/Loading.jsx"
 import Pagination from "../../components/common/Pagination.jsx"
 import FilterBar from "../../components/post/FilterBar.jsx"
 import FilterModal from "../../components/post/FilterModal.jsx"
+import { createListQuery, readListQuery } from "../../utils/listQuery.js"
 
 const PAGE_SIZE = 20
 const SORT_OPTIONS = [
@@ -30,11 +31,15 @@ const EMPTY_FILTERS = {
 
 export default function FoundListPage() {
     const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams()
+    const queryKey = searchParams.toString()
+    const allowedSorts = SORT_OPTIONS.map((option) => option.value)
+    const { filters, page, sort } = useMemo(
+        () => readListQuery(searchParams, allowedSorts),
+        [queryKey]
+    )
 
-    const [filters, setFilters] = useState(EMPTY_FILTERS)
     const [isFilterOpen, setIsFilterOpen] = useState(false)
-    const [sort, setSort] = useState("latest")
-    const [page, setPage] = useState(1)
 
     const [posts, setPosts] = useState([])
     const [total, setTotal] = useState(0)
@@ -42,6 +47,13 @@ export default function FoundListPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
     const [retryCount, setRetryCount] = useState(0)
+
+    function updateListQuery(nextFilters, nextPage = page, nextSort = sort) {
+        setSearchParams(
+            createListQuery({ filters: nextFilters, page: nextPage, sort: nextSort }),
+            { replace: true }
+        )
+    }
 
     useEffect(() => {
         let cancelled = false
@@ -95,50 +107,31 @@ export default function FoundListPage() {
     }, [filters, page, sort, retryCount])
 
     function handleApplyFilters(nextFilters) {
-        setFilters(nextFilters)
-        setPage(1)
+        updateListQuery(nextFilters, 1)
         setIsFilterOpen(false)
     }
 
     function handleResetFilters() {
-        setFilters({
+        updateListQuery({
             ...EMPTY_FILTERS,
             colors: []
-        })
-
-        setPage(1)
+        }, 1)
     }
 
     function handleChangeSort(nextSort) {
-        setSort(nextSort)
-        setPage(1)
+        updateListQuery(filters, 1, nextSort)
     }
     function handleRemoveFilter(field, value) {
-        setFilters((current) => {
-            if (field === "colors") {
-                return {
-                    ...current,
-                    colors: current.colors.filter(
-                        (color) => color !== value
-                    )
-                }
+        const nextFilters = field === "colors"
+            ? {
+                ...filters,
+                colors: filters.colors.filter((color) => color !== value)
             }
+            : field === "region"
+                ? { ...filters, sido: "", sigungu: "" }
+                : { ...filters, [field]: "" }
 
-            if (field === "region") {
-                return {
-                    ...current,
-                    sido: "",
-                    sigungu: ""
-                }
-            }
-
-            return {
-                ...current,
-                [field]: ""
-            }
-        })
-
-        setPage(1)
+        updateListQuery(nextFilters, 1)
     }
 
     const filterChips = [
@@ -305,7 +298,7 @@ export default function FoundListPage() {
                         page={page}
                         total={total}
                         size={PAGE_SIZE}
-                        onChange={setPage}
+                        onChange={(nextPage) => updateListQuery(filters, nextPage)}
                     />
                 </>
             )}

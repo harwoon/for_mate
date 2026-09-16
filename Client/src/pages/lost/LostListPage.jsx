@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { useEffect, useMemo, useState } from "react"
+import { Link, useSearchParams } from "react-router-dom"
 import { getLostPosts } from "../../api/lostPosts.api.js"
 import Breadcrumb from "../../components/common/Breadcrumb.jsx"
 import Empty from "../../components/common/Empty.jsx"
@@ -10,6 +10,7 @@ import FilterBar from "../../components/post/FilterBar.jsx"
 import FilterModal from "../../components/post/FilterModal.jsx"
 import PostCard from "../../components/post/PostCard.jsx"
 import PostGrid from "../../components/post/PostGrid.jsx"
+import { createListQuery, readListQuery } from "../../utils/listQuery.js"
 
 const PAGE_SIZE = 12
 const SORT_OPTIONS = [
@@ -30,11 +31,16 @@ const EMPTY_FILTERS = {
 }
 
 export default function LostListPage() {
+    const [searchParams, setSearchParams] = useSearchParams()
+    const queryKey = searchParams.toString()
+    const allowedSorts = SORT_OPTIONS.map((option) => option.value)
+    const { filters, page, sort } = useMemo(
+        () => readListQuery(searchParams, allowedSorts),
+        [queryKey]
+    )
+
     // 모달 안의 임시 선택과 구분되는, 실제 목록 조회에 적용된 필터이다.
-    const [filters, setFilters] = useState(EMPTY_FILTERS)
     const [isFilterOpen, setIsFilterOpen] = useState(false)
-    const [sort, setSort] = useState("latest")
-    const [page, setPage] = useState(1)
 
     const [posts, setPosts] = useState([])
     const [pagination, setPagination] = useState({
@@ -47,6 +53,17 @@ export default function LostListPage() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
     const [retryCount, setRetryCount] = useState(0)
+
+    function updateListQuery(nextFilters, nextPage = page, nextSort = sort) {
+        setSearchParams(
+            createListQuery({
+                filters: nextFilters,
+                page: nextPage,
+                sort: nextSort
+            }),
+            { replace: true }
+        )
+    }
 
     // 페이지 또는 적용 필터가 바뀔 때마다 서버에서 목록을 다시 가져온다.
     useEffect(() => {
@@ -119,53 +136,34 @@ export default function LostListPage() {
 
     // 모달의 검색하기 버튼이 전달한 값을 실제 필터로 확정한다.
     function handleApplyFilters(nextFilters) {
-        setFilters(nextFilters)
-        setPage(1)
+        updateListQuery(nextFilters, 1)
         setIsFilterOpen(false)
     }
 
     // 필터 값만 초기화하고 모달은 그대로 유지한다.
     function handleResetFilters() {
-        setFilters({
+        updateListQuery({
             ...EMPTY_FILTERS,
             colors: []
-        })
-
-        setPage(1)
+        }, 1)
     }
 
     function handleChangeSort(nextSort) {
-        setSort(nextSort)
-        setPage(1)
+        updateListQuery(filters, 1, nextSort)
     }
 
     // 적용된 필터 chip의 X를 눌렀을 때 해당 조건만 제거한다.
     function handleRemoveFilter(field, value) {
-        setFilters((current) => {
-            if (field === "colors") {
-                return {
-                    ...current,
-                    colors: current.colors.filter(
-                        (color) => color !== value
-                    )
-                }
+        const nextFilters = field === "colors"
+            ? {
+                ...filters,
+                colors: filters.colors.filter((color) => color !== value)
             }
+            : field === "region"
+                ? { ...filters, sido: "", sigungu: "" }
+                : { ...filters, [field]: "" }
 
-            if (field === "region") {
-                return {
-                    ...current,
-                    sido: "",
-                    sigungu: ""
-                }
-            }
-
-            return {
-                ...current,
-                [field]: ""
-            }
-        })
-
-        setPage(1)
+        updateListQuery(nextFilters, 1)
     }
 
     const filterChips = [
@@ -341,7 +339,7 @@ export default function LostListPage() {
                                     pagination.size ??
                                     PAGE_SIZE
                                 }
-                                onChange={setPage}
+                                onChange={(nextPage) => updateListQuery(filters, nextPage)}
                             />
                         </>
                     )}
