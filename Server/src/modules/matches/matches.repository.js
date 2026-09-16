@@ -23,7 +23,13 @@ export async function findLostPostEmbeddings(lostPostId) {
 
 // 벡터 하나를 기준으로 가장 가까운 구조동물 후보 K개를 조회한다.
 // "ORDER BY 거리 LIMIT" 형태를 유지해야 pgvector HNSW 인덱스가 실제로 사용된다.
-export async function findNearestCandidates(embeddingLiteral, species, limit = 20, filters = {}) {
+export async function findNearestCandidates(
+  embeddingLiteral,
+  species,
+  limit = 20,
+  filters = {},
+  eventDate = null,
+) {
   const params = [
     embeddingLiteral,
     species,
@@ -34,20 +40,19 @@ export async function findNearestCandidates(embeddingLiteral, species, limit = 2
     filters.sigungu || null,
     filters.start_date || null,
     filters.end_date || null,
+    eventDate,
   ]
-  const filterSql = `
+  const filterSql = (alias) => `
     AND ($4::text IS NULL OR
-      ($4 = 'U' AND COALESCE(NULLIF(sex_cd, ''), 'U') IN ('Q', 'U')) OR sex_cd = $4)
+      ($4 = 'U' AND COALESCE(NULLIF(${alias}.sex_cd, ''), 'U') IN ('Q', 'U')) OR ${alias}.sex_cd = $4)
     AND ($5::text IS NULL OR
-      ($5 = 'U' AND COALESCE(NULLIF(neuter_yn, ''), 'U') = 'U') OR neuter_yn = $5)
-    AND ($6::text IS NULL OR region_sido = $6)
-    AND ($7::text IS NULL OR region_sigungu = $7)
-    AND ($8::date IS NULL OR happen_dt >= $8::date)
-    AND ($9::date IS NULL OR happen_dt <= $9::date)`
+      ($5 = 'U' AND COALESCE(NULLIF(${alias}.neuter_yn, ''), 'U') = 'U') OR ${alias}.neuter_yn = $5)
+    AND ($6::text IS NULL OR ${alias}.region_sido = $6)
+    AND ($7::text IS NULL OR ${alias}.region_sigungu = $7)
+    AND ($8::date IS NULL OR ${alias}.happen_dt >= $8::date)
+    AND ($9::date IS NULL OR ${alias}.happen_dt <= $9::date)
+    AND ($10::date IS NULL OR ${alias}.happen_dt IS NULL OR ${alias}.happen_dt >= $10::date)`
 
-// eventDate(실종일)가 주어지면, 그 날짜 이후에 발견/구조된 공고만 후보로 남긴다
-// (발견일을 모르는 공고는 걸러내지 않고 그대로 후보에 둔다).
-export async function findNearestCandidates(embeddingLiteral, species, limit = 20, eventDate = null) {
   const [rescueResult, pawinhandResult] = await Promise.all([
     query(
       `
@@ -59,11 +64,11 @@ export async function findNearestCandidates(embeddingLiteral, species, limit = 2
       JOIN rescue_animals ra ON ra.desertion_no = i.desertion_no
       WHERE (ra.notice_edt IS NULL OR ra.notice_edt >= CURRENT_DATE)
         AND ra.up_kind_nm = $2
-        AND ($4::date IS NULL OR ra.happen_dt IS NULL OR ra.happen_dt >= $4::date)
+        ${filterSql("ra")}
       ORDER BY e.embedding <=> $1::vector
       LIMIT $3
       `,
-      [embeddingLiteral, species, limit, eventDate],
+      params,
     ),
     query(
       `
@@ -76,11 +81,11 @@ export async function findNearestCandidates(embeddingLiteral, species, limit = 2
       WHERE (pa.notice_edt IS NULL OR pa.notice_edt >= CURRENT_DATE)
         AND pa.up_kind_nm = $2
         AND pa.duplicate_of_desertion_no IS NULL
-        AND ($4::date IS NULL OR pa.happen_dt IS NULL OR pa.happen_dt >= $4::date)
+        ${filterSql("pa")}
       ORDER BY e.embedding <=> $1::vector
       LIMIT $3
       `,
-      [embeddingLiteral, species, limit, eventDate],
+      params,
     ),
   ])
   return [...rescueResult.rows, ...pawinhandResult.rows]

@@ -202,6 +202,7 @@ export async function getMatches(lostPostId, userId, rawOptions) {
             vector,
             species,
             CANDIDATE_LIMIT_PER_VECTOR,
+            filters,
             post.event_date
         )
 
