@@ -191,14 +191,57 @@ CREATE UNIQUE INDEX uq_images_rescue_source_url
   ON images (desertion_no, source_url)
   WHERE post_type = 'rescue' AND source_url IS NOT NULL;
 
+-- 모델 버전
+CREATE TABLE model_versions (
+  id           BIGSERIAL PRIMARY KEY,
+  version_key  VARCHAR(100) NOT NULL UNIQUE,
+  backbone     VARCHAR(150) NOT NULL,
+  description  TEXT,
+  is_active    BOOLEAN      NOT NULL DEFAULT FALSE,
+  created_at   TIMESTAMP    NOT NULL DEFAULT NOW()
+);
+
+-- 모델별 임베딩 공간
+CREATE TABLE embedding_spaces (
+  id                 BIGSERIAL PRIMARY KEY,
+  model_version_id   BIGINT       NOT NULL
+    REFERENCES model_versions(id) ON DELETE RESTRICT,
+  space_key          VARCHAR(150) NOT NULL UNIQUE,
+  species            VARCHAR(20)  NOT NULL,
+  checkpoint_name    VARCHAR(255) NOT NULL,
+  embedding_dim      INTEGER      NOT NULL DEFAULT 512,
+  preprocessing_key  VARCHAR(150) NOT NULL,
+  is_usable          BOOLEAN      NOT NULL DEFAULT TRUE,
+  created_at         TIMESTAMP    NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT embedding_spaces_species_check
+    CHECK (species IN ('개', '고양이')),
+
+  CONSTRAINT embedding_spaces_dimension_check
+    CHECK (embedding_dim > 0)
+);
+
 -- 이미지 임베딩
 CREATE TABLE embeddings (
-  id             BIGSERIAL PRIMARY KEY,
-  image_id       BIGINT      NOT NULL UNIQUE REFERENCES images(id) ON DELETE CASCADE,
-  embedding      VECTOR(512) NOT NULL,
-  model_version  VARCHAR(30)  NOT NULL,
-  created_at     TIMESTAMP    NOT NULL DEFAULT NOW()
+  id                  BIGSERIAL PRIMARY KEY,
+  image_id            BIGINT      NOT NULL
+    REFERENCES images(id) ON DELETE CASCADE,
+  embedding_space_id  BIGINT      NOT NULL
+    REFERENCES embedding_spaces(id) ON DELETE RESTRICT,
+  embedding           VECTOR(512) NOT NULL,
+  model_version       VARCHAR(30) NOT NULL,
+  created_at          TIMESTAMP   NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT embeddings_image_space_key
+    UNIQUE (image_id, embedding_space_id)
 );
+
+CREATE INDEX idx_embeddings_space
+  ON embeddings (embedding_space_id);
+
+CREATE INDEX idx_embeddings_vector
+  ON embeddings
+  USING hnsw (embedding vector_cosine_ops);
 
 
 -- 매칭 결과 (실종 공고 <-> 구조동물/포인핸드)
