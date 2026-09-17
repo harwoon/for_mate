@@ -14,7 +14,18 @@ const BUCKET = process.env.R2_BUCKET_NAME
 const PUBLIC_URL = process.env.R2_PUBLIC_URL // 끝에 슬래시(/) 없이, 예: https://pub-xxxx.r2.dev
 
 export async function uploadToR2(buffer, folder, contentType = "image/jpeg") {
-  const key = `${folder}/${crypto.randomUUID()}.jpg`
+  if (!BUCKET || !PUBLIC_URL) {
+    throw new Error("R2_BUCKET_NAME 또는 R2_PUBLIC_URL 환경변수가 설정되지 않았습니다.")
+  }
+
+  const extensions = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+  }
+  const extension = extensions[contentType] ?? "jpg"
+  const key = `${folder}/${crypto.randomUUID()}.${extension}`
 
   await r2.send(
     new PutObjectCommand({
