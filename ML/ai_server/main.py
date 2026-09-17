@@ -8,11 +8,12 @@ sys.path.append(
     str(Path(__file__).resolve().parent.parent / "scripts")
 )
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 # 작성한 파일(extract_embeddings.py) 불러오기라 밑줄 그어져도 오류 있는거 아님
 from extract_embeddings import (
+    MODEL_VERSION_KEY,
     crop,
     download,
     extract_embedding,
@@ -31,6 +32,7 @@ class ImageIn(BaseModel):
 
 class EmbedRequest(BaseModel):
     images: list[ImageIn]
+    model_version_key: str | None = None
 
 
 class RescueAnimalIn(BaseModel):
@@ -41,12 +43,33 @@ class RescueAnimalIn(BaseModel):
 
 class RescueEmbedRequest(BaseModel):
     animals: list[RescueAnimalIn]
+    model_version_key: str | None = None
 
 
+# 요청한 모델 버전과 AI Server가 실제 로드한 모델 버전이 같은지 확인
+def validate_model_version(requested_model_version):
+    if requested_model_version is None:
+        return
+
+    if requested_model_version != MODEL_VERSION_KEY:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "임베딩 모델 버전이 일치하지 않습니다: "
+                f"requested={requested_model_version}, "
+                f"ai_server={MODEL_VERSION_KEY}"
+            )
+        )
+
+    
 # 실종 동물, 포인핸드 크롤링 임베딩
 @app.post("/embeddings/lost-posts")
 @app.post("/embeddings/images")
 def embed_images(req: EmbedRequest):
+    validate_model_version(
+        req.model_version_key
+    )
+
     results = []
 
     for image in req.images:
@@ -98,6 +121,10 @@ def embed_images(req: EmbedRequest):
 # 구조 동물 임베딩
 @app.post("/embeddings/rescue-animals")
 def embed_rescue_animals(req: RescueEmbedRequest):
+    validate_model_version(
+        req.model_version_key
+    )
+
     results = []
 
     for animal in req.animals:

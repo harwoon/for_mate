@@ -13,52 +13,152 @@ const AI_SERVER_URL = (
     process.env.AI_SERVER_URL ?? "http://localhost:8001"
 ).replace(/\/+$/, "")
 
+const MODEL_VERSION_KEY = (
+    process.env.EMBEDDING_MODEL_VERSION_KEY ?? ""
+).trim()
+
 const CHUNK_SIZE = 30
 
+// rebuild 전 DB에서 선택한 모델 버전 확인 후 사용가능한 임베드 space확인한 다음 dog/cat 공간 확인하는 역할
+async function getTargetEmbeddingSpaces() {
+    if (!MODEL_VERSION_KEY) {
+        throw new Error(
+            "EMBEDDING_MODEL_VERSION_KEY가 설정되지 않았습니다."
+        )
+    }
 
-async function findPendingImages() {
     const { rows } = await pool.query(
         `
         SELECT
-            i.id,
-            i.image_url,
-            i.post_type,
-            CASE
-                WHEN i.post_type = 'lost'
-                    THEN lp.species
-                WHEN i.post_type = 'rescue'
-                    THEN ra.up_kind_nm
-                WHEN i.post_type = 'pawinhand'
-                    THEN pa.up_kind_nm
-            END AS species
-        FROM images i
-        LEFT JOIN lost_posts lp
-            ON lp.id = i.lost_post_id
-        LEFT JOIN rescue_animals ra
-            ON ra.desertion_no = i.desertion_no
-        LEFT JOIN pawinhand_animals pa
-            ON pa.id = i.pawinhand_animal_id
-        LEFT JOIN embeddings e
-            ON e.image_id = i.id
-        WHERE i.post_type IN (
-            'lost',
-            'rescue',
-            'pawinhand'
-        )
-          AND e.id IS NULL
-        ORDER BY i.id ASC
-        `
+            es.id,
+            es.space_key,
+            es.species,
+            es.checkpoint_name,
+            es.embedding_dim
+        FROM embedding_spaces es
+        JOIN model_versions mv
+            ON mv.id = es.model_version_id
+        WHERE mv.version_key = $1
+          AND es.is_usable = TRUE
+        ORDER BY
+            es.species,
+            es.id
+        `,
+        [MODEL_VERSION_KEY]
     )
 
+    if (rows.length === 0) {
+        throw new Error(
+            `사용 가능한 임베딩 공간이 없습니다: ${MODEL_VERSION_KEY}`
+        )
+    }
+
+    const speciesSet = new Set()
+
+    for (const space of rows) {
+        if (
+            space.species !== "개" &&
+            space.species !== "고양이"
+        ) {
+            continue
+        }
+
+        if (speciesSet.has(space.species)) {
+            throw new Error(
+                "같은 모델 버전과 species에 " +
+                "사용 가능한 임베딩 공간이 여러 개입니다: " +
+                `model=${MODEL_VERSION_KEY}, ` +
+                `species=${space.species}`
+            )
+        }
+
+        speciesSet.add(space.species)
+    }
+
     return rows.filter(
-        (row) =>
-            row.species === "개" ||
-            row.species === "고양이"
+        (space) =>
+            space.species === "개" ||
+            space.species === "고양이"
     )
+}
+
+// 현재 모델 버전에 맞는 해당 임베딩 공간에 벡터 없는 이미지만 조회함
+async function findPendingImages() {
+    const { rows } = await pool.query(
+        `
+        WITH image_species AS (
+            SELECT
+                i.id,
+                i.image_url,
+                i.post_type,
+                CASE
+                    WHEN i.post_type = 'lost'
+                        THEN lp.species
+                    WHEN i.post_type = 'rescue'
+                        THEN ra.up_kind_nm
+                    WHEN i.post_type = 'pawinhand'
+                        THEN pa.up_kind_nm
+                END AS species
+            FROM images i
+            LEFT JOIN lost_posts lp
+                ON lp.id = i.lost_post_id
+            LEFT JOIN rescue_animals ra
+                ON ra.desertion_no = i.desertion_no
+            LEFT JOIN pawinhand_animals pa
+                ON pa.id = i.pawinhand_animal_id
+            WHERE i.post_type IN (
+                'lost',
+                'rescue',
+                'pawinhand'
+            )
+        )
+        SELECT
+            image_species.id,
+            image_species.image_url,
+            image_species.post_type,
+            image_species.species,
+            es.id AS embedding_space_id,
+            es.space_key
+        FROM image_species
+        JOIN embedding_spaces es
+            ON es.species = image_species.species
+           AND es.is_usable = TRUE
+        JOIN model_versions mv
+            ON mv.id = es.model_version_id
+           AND mv.version_key = $1
+        WHERE image_species.species IN (
+            '개',
+            '고양이'
+        )
+          AND NOT EXISTS (
+              SELECT 1
+              FROM embeddings e
+              WHERE e.image_id = image_species.id
+                AND e.embedding_space_id = es.id
+          )
+        ORDER BY image_species.id ASC
+        `,
+        [MODEL_VERSION_KEY]
+    )
+
+    return rows
 }
 
 
 async function rebuildEmbeddings() {
+    const spaces = await getTargetEmbeddingSpaces()
+
+    console.log(
+        `대상 모델 버전: ${MODEL_VERSION_KEY}`
+    )
+
+    for (const space of spaces) {
+        console.log(
+            `임베딩 공간: ${space.space_key} ` +
+            `(${space.species}, ${space.embedding_dim}차원)`
+        )
+    }
+
     const images = await findPendingImages()
 
     console.log(
@@ -100,6 +200,7 @@ async function rebuildEmbeddings() {
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
+                        model_version_key: MODEL_VERSION_KEY,
                         images: chunk.map((image) => ({
                             id: image.id,
                             image_url: image.image_url,
