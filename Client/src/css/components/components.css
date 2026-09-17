@@ -21,7 +21,7 @@
 }
 
 .btn-primary {
-    background: var(--color-text-light);
+    background: var(--color-primary);
     color: #fff;
 }
 

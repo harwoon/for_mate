@@ -183,7 +183,7 @@
 
 .lost-photo-dropzone.is-disabled {
     cursor: not-allowed;
-    opacity: 0.55;
+    /* opacity: 0.55; */
 }
 
 .lost-photo-dropzone-icon {
@@ -214,7 +214,7 @@
     overflow: hidden;
     aspect-ratio: 1;
     border-radius: 8px;
-    background: var(--color-surface-soft);
+    /* background: var(--color-surface-soft); */
 }
 
 .lost-photo-preview-frame img {
@@ -228,6 +228,7 @@
     position: absolute;
     top: 8px;
     left: 8px;
+    background-color: var(--color-primary);
 }
 
 .lost-photo-remove-button {
