@@ -381,19 +381,25 @@ export default function MatchResultPage() {
     const requestRef =
         useRef(null)
 
-    const skipInitialRequestRef = useRef(Boolean(initialResult))
     const requestKey = JSON.stringify({ lostPostId, filters, sort, retryCount })
+    const initialRequestKeyRef = useRef(
+        initialResult
+            ? requestKey
+            : null
+    )
 
     useEffect(() => {
         let cancelled = false
 
         setError(null)
 
-        // AI 검색 화면에서 전달된 기본 결과는 최초 한 번만 재사용한다.
-        if (skipInitialRequestRef.current) {
-            skipInitialRequestRef.current = false
+        // AI 검색 화면에서 전달된 결과는 StrictMode의 effect 재실행 때도 재사용한다.
+        if (initialRequestKeyRef.current === requestKey) {
             return
         }
+
+        // 필터·정렬·재시도 조건이 바뀐 뒤에는 같은 조건으로 돌아와도 다시 조회한다.
+        initialRequestKeyRef.current = null
 
         async function loadMatches() {
             setLoading(true)

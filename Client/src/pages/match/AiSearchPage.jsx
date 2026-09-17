@@ -12,7 +12,8 @@ import { formatDate } from "../../utils/date.js"
 const RETRY_INTERVAL = 2000
 const MAX_RETRIES = 15
 const INITIAL_MATCH_LIMIT = 8
-const MIN_MATCHING_DISPLAY_TIME = 1500
+const MIN_MATCHING_DISPLAY_TIME = 3000
+const MATCHING_COMPLETE_DISPLAY_TIME = 1000
 
 function wait(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds))
@@ -34,6 +35,7 @@ export default function AiSearchPage() {
     const [reloadCount, setReloadCount] = useState(0)
     const [selectedPostId, setSelectedPostId] = useState("")
     const [matching, setMatching] = useState(false)
+    const [matchingComplete, setMatchingComplete] = useState(false)
     const [waiting, setWaiting] = useState(false)
     const [delayed, setDelayed] = useState(false)
     const [matchError, setMatchError] = useState(null)
@@ -52,6 +54,7 @@ export default function AiSearchPage() {
             setPostsLoading(true)
             setPostsError("")
             setMatching(false)
+            setMatchingComplete(false)
             setWaiting(false)
             setDelayed(false)
             setMatchError(null)
@@ -130,10 +133,10 @@ export default function AiSearchPage() {
 
         setSelectedPostId(String(id))
         setMatching(false)
+        setMatchingComplete(false)
         setWaiting(false)
         setDelayed(false)
         setMatchError(null)
-        matchingStartedAtRef.current = Date.now()
     }
 
     async function startMatching() {
@@ -143,10 +146,12 @@ export default function AiSearchPage() {
         const postId = selectedPostId
 
         matchingRef.current = true
+        matchingStartedAtRef.current = Date.now()
 
         clearTimeout(timerRef.current)
 
         setMatching(true)
+        setMatchingComplete(false)
         setWaiting(false)
         setDelayed(false)
         setMatchError(null)
@@ -196,6 +201,13 @@ export default function AiSearchPage() {
 
                 if (run !== runRef.current) return
 
+                setMatchingComplete(true)
+                setMatching(false)
+                await wait(MATCHING_COMPLETE_DISPLAY_TIME)
+
+                if (run !== runRef.current) return
+                matchingRef.current = false
+
                 navigate(
                     `/lost-posts/${postId}/matches`,
                     {
@@ -232,6 +244,7 @@ export default function AiSearchPage() {
 
                 matchingRef.current = false
                 setMatching(false)
+                setMatchingComplete(false)
             } finally {
                 if (pendingRef.current === request) {
                     pendingRef.current = null
@@ -420,20 +433,22 @@ export default function AiSearchPage() {
                                 className="btn btn-primary"
                                 disabled={
                                     !selectedPost ||
-                                    matching
+                                    matching ||
+                                    matchingComplete
                                 }
                                 onClick={startMatching}
                             >
-                                {matching
+                                {matching || matchingComplete
                                     ? "AI 매칭 진행 중"
                                     : "AI 매칭 시작"}
                             </button>
                         </div>
 
-                        {matching && (
+                        {(matching || matchingComplete) && (
                             <Loading
                                 loading={matching}
                                 message={`AI가 유사한 보호동물을 찾고 있습니다. ${MATCHING_MESSAGES[messageIndex]}`}
+                                completeDelay={MATCHING_COMPLETE_DISPLAY_TIME}
                             />
                         )}
 

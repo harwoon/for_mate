@@ -13,11 +13,12 @@ const FINISH_FRAME = "/loading/dog-run-6.png"
 const FRAME_INTERVAL = 160
 const PROGRESS_INTERVAL = 180
 const SMOOTH_INTERVAL = 60
-const COMPLETE_DELAY = 300
+const DEFAULT_COMPLETE_DELAY = 300
 
 export default function Loading({
     loading = true,
-    message = "불러오는 중..."
+    message = "불러오는 중...",
+    completeDelay = DEFAULT_COMPLETE_DELAY
 }) {
     const [visible, setVisible] = useState(true)
     const [targetProgress, setTargetProgress] = useState(0)
@@ -132,14 +133,15 @@ export default function Loading({
 
         const timer = setTimeout(() => {
             setVisible(false)
-        }, COMPLETE_DELAY)
+        }, completeDelay)
 
         return () => {
             clearTimeout(timer)
         }
     }, [
         loading,
-        displayProgress
+        displayProgress,
+        completeDelay
     ])
 
     if (!visible) return null
