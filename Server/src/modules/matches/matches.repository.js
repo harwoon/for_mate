@@ -7,88 +7,137 @@ export async function findLostPostSpecies(lostPostId) {
   return rows[0]?.species ?? null
 }
 
-// 실종 공고에 연결된 임베딩 벡터들을 가져온다 (사진 장수만큼 나옴).
-export async function findLostPostEmbeddings(lostPostId) {
+// 모델 버전과 species에 해당하는 사용 가능한 임베딩 공간 조회
+export async function findEmbeddingSpace(
+  modelVersionKey,
+  species
+) {
   const { rows } = await query(
     `
-    SELECT e.embedding::text AS embedding
-    FROM embeddings e
-    JOIN images i ON i.id = e.image_id
-    WHERE i.post_type = 'lost' AND i.lost_post_id = $1
+    SELECT
+      es.id,
+      es.space_key,
+      es.species,
+      es.embedding_dim,
+      es.checkpoint_name
+    FROM embedding_spaces es
+    JOIN model_versions mv
+      ON mv.id = es.model_version_id
+    WHERE mv.version_key = $1
+      AND es.species = $2
+      AND es.is_usable = TRUE
+    ORDER BY es.id ASC
     `,
-    [lostPostId],
+    [
+      modelVersionKey,
+      species
+    ]
   )
-  return rows.map((row) => row.embedding) // "[0.1,0.2,...]" 형태 문자열
+
+  return rows
 }
 
-// 벡터 하나를 기준으로 가장 가까운 구조동물 후보 K개를 조회한다.
-// "ORDER BY 거리 LIMIT" 형태를 유지해야 pgvector HNSW 인덱스가 실제로 사용된다.
+
+// 선택한 임베딩 공간의 실종 공고 벡터만 조회
+export async function findLostPostEmbeddings(
+  lostPostId,
+  embeddingSpaceId
+) {
+  const { rows } = await query(
+    `
+    SELECT
+      e.embedding::text AS embedding
+    FROM embeddings e
+    JOIN images i
+      ON i.id = e.image_id
+    WHERE i.post_type = 'lost'
+      AND i.lost_post_id = $1
+      AND e.embedding_space_id = $2
+    ORDER BY i.id ASC
+    `,
+    [
+      lostPostId,
+      embeddingSpaceId
+    ]
+  )
+
+  return rows.map(
+    (row) => row.embedding
+  )
+}
+
+// 같은 임베딩 공간 안에서 가장 가까운 구조동물 후보 K개 조회
+// "ORDER BY 거리 LIMIT" 형태를 유지해 pgvector HNSW 인덱스를 사용한다.
 export async function findNearestCandidates(
   embeddingLiteral,
   species,
-  limit = 20,
-  filters = {},
-  eventDate = null,
+  embeddingSpaceId,
+  limit = 20
 ) {
-  const params = [
-    embeddingLiteral,
-    species,
-    limit,
-    filters.sex || null,
-    filters.neuter || null,
-    filters.sido || null,
-    filters.sigungu || null,
-    filters.start_date || null,
-    filters.end_date || null,
-    eventDate,
-  ]
-  const filterSql = (alias) => `
-    AND ($4::text IS NULL OR
-      ($4 = 'U' AND COALESCE(NULLIF(${alias}.sex_cd, ''), 'U') IN ('Q', 'U')) OR ${alias}.sex_cd = $4)
-    AND ($5::text IS NULL OR
-      ($5 = 'U' AND COALESCE(NULLIF(${alias}.neuter_yn, ''), 'U') = 'U') OR ${alias}.neuter_yn = $5)
-    AND ($6::text IS NULL OR ${alias}.region_sido = $6)
-    AND ($7::text IS NULL OR ${alias}.region_sigungu = $7)
-    AND ($8::date IS NULL OR ${alias}.happen_dt >= $8::date)
-    AND ($9::date IS NULL OR ${alias}.happen_dt <= $9::date)
-    AND ($10::date IS NULL OR ${alias}.happen_dt IS NULL OR ${alias}.happen_dt >= $10::date)`
-
   const [rescueResult, pawinhandResult] = await Promise.all([
     query(
       `
-      SELECT ra.desertion_no AS ref_id, 'rescue' AS source_type,
-        (e.embedding <=> $1::vector) AS distance,
-        ra.happen_dt, ra.notice_edt
+      SELECT
+          ra.desertion_no AS ref_id,
+          'rescue' AS source_type,
+          (e.embedding <=> $1::vector) AS distance
       FROM embeddings e
-      JOIN images i ON i.id = e.image_id AND i.post_type = 'rescue'
-      JOIN rescue_animals ra ON ra.desertion_no = i.desertion_no
-      WHERE (ra.notice_edt IS NULL OR ra.notice_edt >= CURRENT_DATE)
+      JOIN images i
+          ON i.id = e.image_id
+          AND i.post_type = 'rescue'
+      JOIN rescue_animals ra
+          ON ra.desertion_no = i.desertion_no
+      WHERE e.embedding_space_id = $3
+        AND (
+            ra.notice_edt IS NULL
+            OR ra.notice_edt >= CURRENT_DATE
+        )
         AND ra.up_kind_nm = $2
-        ${filterSql("ra")}
       ORDER BY e.embedding <=> $1::vector
-      LIMIT $3
+      LIMIT $4
       `,
-      params,
+      [
+        embeddingLiteral,
+        species,
+        embeddingSpaceId,
+        limit
+      ]
     ),
     query(
       `
-      SELECT pa.id AS ref_id, 'pawinhand' AS source_type,
-        (e.embedding <=> $1::vector) AS distance,
-        pa.happen_dt, pa.notice_edt
+      SELECT
+          pa.id AS ref_id,
+          'pawinhand' AS source_type,
+          (e.embedding <=> $1::vector) AS distance
       FROM embeddings e
-      JOIN images i ON i.id = e.image_id AND i.post_type = 'pawinhand'
-      JOIN pawinhand_animals pa ON pa.id = i.pawinhand_animal_id
-      WHERE (pa.notice_edt IS NULL OR pa.notice_edt >= CURRENT_DATE)
+      JOIN images i
+          ON i.id = e.image_id
+          AND i.post_type = 'pawinhand'
+      JOIN pawinhand_animals pa
+          ON pa.id = i.pawinhand_animal_id
+      WHERE e.embedding_space_id = $3
+        AND (
+            pa.notice_edt IS NULL
+            OR pa.notice_edt >= CURRENT_DATE
+        )
         AND pa.up_kind_nm = $2
         AND pa.duplicate_of_desertion_no IS NULL
-        ${filterSql("pa")}
       ORDER BY e.embedding <=> $1::vector
-      LIMIT $3
+      LIMIT $4
       `,
-      params,
-    ),
+      [
+        embeddingLiteral,
+        species,
+        embeddingSpaceId,
+        limit
+      ]
+    )
   ])
-  return [...rescueResult.rows, ...pawinhandResult.rows]
+
+  return [
+    ...rescueResult.rows,
+    ...pawinhandResult.rows
+  ]
 }
 
 // 계산 결과를 이력으로 저장한다. 같은 날 같은 쌍이면 최신 값으로 덮어쓴다(캐시 아님, append 성격의 upsert).
