@@ -40,6 +40,7 @@ function parseMatchOptions(rawOptions) {
         : { limit: rawOptions }
     const sex = options.sex || null
     const neuter = options.neuter || null
+    const sourceType = options.source_type || null
     const sort = options.sort || "similarity_desc"
     const startDate = parseDate(options.start_date, "start_date")
     const endDate = parseDate(options.end_date, "end_date")
@@ -49,6 +50,9 @@ function parseMatchOptions(rawOptions) {
     }
     if (neuter && !["Y", "N", "U"].includes(neuter)) {
         throw invalidQuery("neuter는 Y, N, U 중 하나여야 합니다.", "INVALID_NEUTER")
+    }
+    if (sourceType && !["rescue", "pawinhand"].includes(sourceType)) {
+        throw invalidQuery("source_type은 rescue, pawinhand 중 하나여야 합니다.", "INVALID_SOURCE_TYPE")
     }
     if (!MATCH_SORTS.has(sort)) {
         throw invalidQuery("지원하지 않는 정렬 방식입니다.", "INVALID_SORT")
@@ -61,6 +65,7 @@ function parseMatchOptions(rawOptions) {
         limit: parseResultLimit(options.limit),
         sort,
         filters: {
+            source_type: sourceType,
             sex,
             neuter,
             sido: String(options.sido || "").trim() || null,

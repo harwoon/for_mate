@@ -106,7 +106,8 @@ export async function findNearestCandidates(
     filters.sigungu || null,
     filters.start_date || null,
     filters.end_date || null,
-    eventDate
+    eventDate,
+    filters.source_type || null
   ]
 
   const filterSql = (alias) => `
@@ -174,6 +175,7 @@ export async function findNearestCandidates(
       JOIN rescue_animals ra
           ON ra.desertion_no = i.desertion_no
       WHERE e.embedding_space_id = $3
+        AND ($12::text IS NULL OR $12 = 'rescue')
         AND (
             ra.notice_edt IS NULL
             OR ra.notice_edt >= CURRENT_DATE
@@ -200,6 +202,7 @@ export async function findNearestCandidates(
       JOIN pawinhand_animals pa
           ON pa.id = i.pawinhand_animal_id
       WHERE e.embedding_space_id = $3
+        AND ($12::text IS NULL OR $12 = 'pawinhand')
         AND (
             pa.notice_edt IS NULL
             OR pa.notice_edt >= CURRENT_DATE

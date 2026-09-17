@@ -158,6 +158,7 @@ export async function getMyMatches({ userId, query }) {
 
     const sex = query.sex || null
     const neuter = query.neuter || null
+    const sourceType = query.source_type || null
     const sort = query.sort || "similarity_desc"
     const startDate = parseMatchDate(query.start_date, "start_date")
     const endDate = parseMatchDate(query.end_date, "end_date")
@@ -167,6 +168,9 @@ export async function getMyMatches({ userId, query }) {
     }
     if (neuter && !["Y", "N", "U"].includes(neuter)) {
         throw serviceError("neuter는 Y, N, U 중 하나여야 합니다.", 400, "INVALID_NEUTER")
+    }
+    if (sourceType && !["rescue", "pawinhand"].includes(sourceType)) {
+        throw serviceError("source_type은 rescue, pawinhand 중 하나여야 합니다.", 400, "INVALID_SOURCE_TYPE")
     }
     if (!MY_MATCH_SORTS.has(sort)) {
         throw serviceError("지원하지 않는 정렬 방식입니다.", 400, "INVALID_SORT")
@@ -180,6 +184,7 @@ export async function getMyMatches({ userId, query }) {
         userId,
         lostPostId,
         filters: {
+            source_type: sourceType,
             sex,
             neuter,
             sido: String(query.sido || "").trim() || null,

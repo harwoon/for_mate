@@ -3,6 +3,7 @@ import { getRegions } from "../../api/catalog.api.js"
 import Modal from "../common/Modal.jsx"
 
 export const EMPTY_MATCH_FILTERS = {
+    source_type: "",
     sex: "",
     neuter: "",
     sido: "",
@@ -12,6 +13,10 @@ export const EMPTY_MATCH_FILTERS = {
 }
 
 const OPTIONS = {
+    source: [
+        { value: "rescue", label: "공공데이터" },
+        { value: "pawinhand", label: "포인핸드" }
+    ],
     sex: [
         { value: "M", label: "수컷" },
         { value: "F", label: "암컷" },
@@ -103,6 +108,25 @@ export default function MatchFilterModal({ initialFilters, onClose, onApply, onR
         >
             <div className="filter-modal-content">
                 {error && <p className="filter-error-message" role="alert">{error}</p>}
+
+                <section className="filter-section">
+                    <h3 className="filter-section-title">공고 출처</h3>
+                    <div className="filter-option-row">
+                        <button
+                            type="button"
+                            className={!draft.source_type ? "filter-pill is-selected" : "filter-pill"}
+                            onClick={() => setField("source_type", "")}
+                        >전체</button>
+                        {OPTIONS.source.map((option) => (
+                            <button
+                                type="button"
+                                key={option.value}
+                                className={draft.source_type === option.value ? "filter-pill is-selected" : "filter-pill"}
+                                onClick={() => setField("source_type", option.value)}
+                            >{option.label}</button>
+                        ))}
+                    </div>
+                </section>
 
                 <section className="filter-section">
                     <h3 className="filter-section-title">성별</h3>
