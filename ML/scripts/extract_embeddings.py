@@ -7,6 +7,7 @@ crop -> DINOv2 임베딩 추출 -> DB(images/embeddings) 저장.
 # 모델이 바뀔 경우 모델 로드, 전처리, db 벡터 차원수 변경 필요
 import os
 from pathlib import Path
+from functools import lru_cache
 
 import cv2
 import numpy as np
@@ -31,19 +32,47 @@ ANIMAL_CLASSES = {"bird", "cat", "dog", "horse", "sheep",
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # MEGADESCRIPTOR_CKPT = ML_DIR / "checkpoints" / "megadescriptor_mpdd_best.pth"
+MODEL_VERSION_KEY = os.environ.get(
+    "EMBEDDING_MODEL_VERSION_KEY",
+    ""
+).strip()
+
+if not MODEL_VERSION_KEY:
+    raise RuntimeError(
+        "EMBEDDING_MODEL_VERSION_KEY가 설정되지 않았습니다."
+    )
+
+DOG_CKPT_NAME = os.environ.get(
+    "DOG_EMBEDDING_CHECKPOINT",
+    ""
+).strip()
+
+if not DOG_CKPT_NAME:
+    raise RuntimeError(
+        "DOG_EMBEDDING_CHECKPOINT가 설정되지 않았습니다."
+    )
+
+CAT_CKPT_NAME = os.environ.get(
+    "CAT_EMBEDDING_CHECKPOINT",
+    ""
+).strip()
+
+if not CAT_CKPT_NAME:
+    raise RuntimeError(
+        "CAT_EMBEDDING_CHECKPOINT가 설정되지 않았습니다."
+    )
+
 DOG_CKPT = (
     ML_DIR
     / "checkpoints"
-    / "dinov2_proj_dog_small_full_baseline.pth"
+    / DOG_CKPT_NAME
 )
 
 CAT_CKPT = (
     ML_DIR
     / "checkpoints"
-    / "dinov2_proj_cat_small_full_baseline.pth"
+    / CAT_CKPT_NAME
 )
-
-MODEL_VERSION = "dinov2-small-proj512-dogcat-v2"  # embeddings.model_version 에 그대로 저장
 
 # ── 1. 탐지기 (collect_dataset.py 와 동일 설정) ──────────────
 _DET_WEIGHTS = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
@@ -190,76 +219,254 @@ def extract_embedding(cropped_bgr, species):
 # ── 3. DB 저장 ───────────────────────────────────────────
 # 같은 동물(desertion_no/pawinhand_animal_id) 안에서 구도가 거의 같은 사진은
 # 임베딩을 중복 저장하지 않는다 (매칭 시 사진 수가 많다는 이유만으로 유리해지는 걸 방지).
-DEDUP_SIMILARITY_THRESHOLD = float(os.environ.get("DEDUP_SIMILARITY_THRESHOLD", "0.97"))
+@lru_cache(maxsize=2)
+def get_embedding_space(species):
+    """
+    현재 MODEL_VERSION_KEY와 species에 해당하는
+    사용 가능한 임베딩 공간을 조회한다.
 
-_ALLOWED_REF_COLUMNS = {"desertion_no", "pawinhand_animal_id"}
+    DB에 등록된 checkpoint와
+    실제 AI 서버가 사용하는 checkpoint도 일치하는지 확인한다.
+    """
 
+    if species == "개":
+        configured_checkpoint = DOG_CKPT_NAME
+    elif species == "고양이":
+        configured_checkpoint = CAT_CKPT_NAME
+    else:
+        raise ValueError(
+            f"지원하지 않는 species입니다: {species}"
+        )
 
-def _validate_ref_col(ref_col):
-    if ref_col not in _ALLOWED_REF_COLUMNS:
-        raise ValueError(f"허용되지 않은 ref_col입니다: {ref_col}")
+    conn = psycopg2.connect(
+        os.environ["DATABASE_URL"]
+    )
 
-
-def save_image(post_type, ref_col, ref_value, image_url):
-    """images 행만 저장하고 image_id를 반환한다."""
-    _validate_ref_col(ref_col)
-    conn = psycopg2.connect(os.environ["DATABASE_URL"])
     try:
-        with conn, conn.cursor() as cur:
+        with conn.cursor() as cur:
             cur.execute(
-                f"""
-                INSERT INTO images (post_type, {ref_col}, image_url)
-                VALUES (%s, %s, %s)
-                RETURNING id
+                """
+                SELECT
+                    es.id,
+                    es.space_key,
+                    es.embedding_dim,
+                    es.checkpoint_name
+                FROM embedding_spaces es
+                JOIN model_versions mv
+                    ON mv.id = es.model_version_id
+                WHERE mv.version_key = %s
+                  AND es.species = %s
+                  AND es.is_usable = TRUE
+                ORDER BY es.id ASC
                 """,
-                (post_type, ref_value, image_url),
+                (
+                    MODEL_VERSION_KEY,
+                    species
+                ),
             )
-            return cur.fetchone()[0]
+
+            rows = cur.fetchall()
+
     finally:
         conn.close()
 
+    if len(rows) == 0:
+        raise ValueError(
+            "사용 가능한 임베딩 공간을 찾을 수 없습니다: "
+            f"model={MODEL_VERSION_KEY}, "
+            f"species={species}"
+        )
 
-def save_embedding_row(image_id, embedding, model_version=MODEL_VERSION):
-    """embeddings 행만 저장한다. 이미 있으면 아무 것도 하지 않는다(image_id UNIQUE)."""
-    vector_literal = "[" + ",".join(map(str, embedding.tolist())) + "]"
-    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    if len(rows) > 1:
+        raise RuntimeError(
+            "사용 가능한 임베딩 공간이 여러 개입니다: "
+            f"model={MODEL_VERSION_KEY}, "
+            f"species={species}"
+        )
+
+    (
+        space_id,
+        space_key,
+        embedding_dim,
+        checkpoint_name
+    ) = rows[0]
+
+    if checkpoint_name != configured_checkpoint:
+        raise RuntimeError(
+            "임베딩 공간과 checkpoint가 일치하지 않습니다: "
+            f"DB={checkpoint_name}, "
+            f"AI_SERVER={configured_checkpoint}"
+        )
+
+    return {
+        "id": space_id,
+        "space_key": space_key,
+        "embedding_dim": embedding_dim,
+        "checkpoint_name": checkpoint_name
+    }
+
+
+def save_embedding_row(
+    image_id,
+    embedding,
+    species
+):
+    """
+    기존 임베딩을 덮어쓰지 않고
+    현재 모델의 임베딩 공간에 벡터를 저장한다.
+    """
+
+    space = get_embedding_space(
+        species
+    )
+
+    if len(embedding) != space["embedding_dim"]:
+        raise ValueError(
+            "임베딩 차원 불일치: "
+            f"실제={len(embedding)}, "
+            f"공간={space['embedding_dim']}"
+        )
+
+    vector_literal = (
+        "["
+        + ",".join(
+            map(
+                str,
+                embedding.tolist()
+            )
+        )
+        + "]"
+    )
+
+    conn = psycopg2.connect(
+        os.environ["DATABASE_URL"]
+    )
+
     try:
         with conn, conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO embeddings (image_id, embedding, model_version)
-                VALUES (%s, %s::vector, %s)
-                ON CONFLICT (image_id) DO NOTHING
+                INSERT INTO embeddings (
+                    image_id,
+                    embedding_space_id,
+                    embedding,
+                    model_version
+                )
+                VALUES (
+                    %s,
+                    %s,
+                    %s::vector,
+                    %s
+                )
+                ON CONFLICT (
+                    image_id,
+                    embedding_space_id
+                )
+                DO NOTHING
                 """,
-                (image_id, vector_literal, model_version),
+                (
+                    image_id,
+                    space["id"],
+                    vector_literal,
+                    MODEL_VERSION_KEY
+                ),
             )
+
+            return cur.rowcount > 0
+
     finally:
         conn.close()
 
 
-def is_duplicate_within_animal(post_type, ref_col, ref_value, embedding, threshold=DEDUP_SIMILARITY_THRESHOLD):
-    """같은 동물의 기존 임베딩 중 코사인 유사도가 threshold 이상인 게 하나라도 있으면 True.
-
-    임베딩은 L2-normalize되어 있으므로 코사인 거리(pgvector `<=>`)를 그대로 쓴다.
+def save_to_db(
+    desertion_no,
+    image_url,
+    embedding,
+    species
+):
     """
-    _validate_ref_col(ref_col)
-    vector_literal = "[" + ",".join(map(str, embedding.tolist())) + "]"
-    distance_threshold = 1 - threshold
-    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    구조동물 이미지를 images에 등록하고
+    현재 모델 공간의 임베딩을 저장한다.
+    """
+
+    space = get_embedding_space(
+        species
+    )
+
+    if len(embedding) != space["embedding_dim"]:
+        raise ValueError(
+            "임베딩 차원 불일치: "
+            f"실제={len(embedding)}, "
+            f"공간={space['embedding_dim']}"
+        )
+
+    vector_literal = (
+        "["
+        + ",".join(
+            map(
+                str,
+                embedding.tolist()
+            )
+        )
+        + "]"
+    )
+
+    conn = psycopg2.connect(
+        os.environ["DATABASE_URL"]
+    )
+
     try:
         with conn, conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT 1
-                FROM embeddings e
-                JOIN images i ON i.id = e.image_id
-                WHERE i.post_type = %s AND i.{ref_col} = %s
-                  AND (e.embedding <=> %s::vector) <= %s
-                LIMIT 1
+                """
+                INSERT INTO images (
+                    post_type,
+                    desertion_no,
+                    image_url
+                )
+                VALUES (
+                    'rescue',
+                    %s,
+                    %s
+                )
+                RETURNING id
                 """,
-                (post_type, ref_value, vector_literal, distance_threshold),
+                (
+                    desertion_no,
+                    image_url
+                ),
             )
-            return cur.fetchone() is not None
+
+            image_id = cur.fetchone()[0]
+
+            cur.execute(
+                """
+                INSERT INTO embeddings (
+                    image_id,
+                    embedding_space_id,
+                    embedding,
+                    model_version
+                )
+                VALUES (
+                    %s,
+                    %s,
+                    %s::vector,
+                    %s
+                )
+                ON CONFLICT (
+                    image_id,
+                    embedding_space_id
+                )
+                DO NOTHING
+                """,
+                (
+                    image_id,
+                    space["id"],
+                    vector_literal,
+                    MODEL_VERSION_KEY
+                ),
+            )
+
     finally:
         conn.close()
 
@@ -306,4 +513,3 @@ if __name__ == "__main__":
 
         # 테스트 스크립트라 DB에는 저장하지 않는다.
         # image_id = save_image("rescue", "desertion_no", desertion_no, url)
-        # save_embedding_row(image_id, emb)
