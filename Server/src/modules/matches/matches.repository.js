@@ -7,6 +7,25 @@ export async function findLostPostSpecies(lostPostId) {
   return rows[0]?.species ?? null
 }
 
+// 서비스에서 사용할 활성 모델 버전 조회
+export async function findActiveModelVersions() {
+  const { rows } = await query(
+    `
+    SELECT
+      id,
+      version_key,
+      backbone,
+      description
+    FROM model_versions
+    WHERE is_active = TRUE
+    ORDER BY id ASC
+    `
+  )
+
+  return rows
+}
+
+
 // 모델 버전과 species에 해당하는 사용 가능한 임베딩 공간 조회
 export async function findEmbeddingSpace(
   modelVersionKey,
@@ -72,15 +91,82 @@ export async function findNearestCandidates(
   embeddingLiteral,
   species,
   embeddingSpaceId,
-  limit = 20
+  limit = 20,
+  filters = {},
+  eventDate = null
 ) {
-  const [rescueResult, pawinhandResult] = await Promise.all([
+  const params = [
+    embeddingLiteral,
+    species,
+    embeddingSpaceId,
+    limit,
+    filters.sex || null,
+    filters.neuter || null,
+    filters.sido || null,
+    filters.sigungu || null,
+    filters.start_date || null,
+    filters.end_date || null,
+    eventDate
+  ]
+
+  const filterSql = (alias) => `
+    AND (
+        $5::text IS NULL
+        OR (
+            $5 = 'U'
+            AND COALESCE(
+                NULLIF(${alias}.sex_cd, ''),
+                'U'
+            ) IN ('Q', 'U')
+        )
+        OR ${alias}.sex_cd = $5
+    )
+    AND (
+        $6::text IS NULL
+        OR (
+            $6 = 'U'
+            AND COALESCE(
+                NULLIF(${alias}.neuter_yn, ''),
+                'U'
+            ) = 'U'
+        )
+        OR ${alias}.neuter_yn = $6
+    )
+    AND (
+        $7::text IS NULL
+        OR ${alias}.region_sido = $7
+    )
+    AND (
+        $8::text IS NULL
+        OR ${alias}.region_sigungu = $8
+    )
+    AND (
+        $9::date IS NULL
+        OR ${alias}.happen_dt >= $9::date
+    )
+    AND (
+        $10::date IS NULL
+        OR ${alias}.happen_dt <= $10::date
+    )
+    AND (
+        $11::date IS NULL
+        OR ${alias}.happen_dt IS NULL
+        OR ${alias}.happen_dt >= $11::date
+    )
+  `
+
+  const [
+    rescueResult,
+    pawinhandResult
+  ] = await Promise.all([
     query(
       `
       SELECT
           ra.desertion_no AS ref_id,
           'rescue' AS source_type,
-          (e.embedding <=> $1::vector) AS distance
+          (e.embedding <=> $1::vector) AS distance,
+          ra.happen_dt,
+          ra.notice_edt
       FROM embeddings e
       JOIN images i
           ON i.id = e.image_id
@@ -93,22 +179,20 @@ export async function findNearestCandidates(
             OR ra.notice_edt >= CURRENT_DATE
         )
         AND ra.up_kind_nm = $2
+        ${filterSql("ra")}
       ORDER BY e.embedding <=> $1::vector
       LIMIT $4
       `,
-      [
-        embeddingLiteral,
-        species,
-        embeddingSpaceId,
-        limit
-      ]
+      params
     ),
     query(
       `
       SELECT
           pa.id AS ref_id,
           'pawinhand' AS source_type,
-          (e.embedding <=> $1::vector) AS distance
+          (e.embedding <=> $1::vector) AS distance,
+          pa.happen_dt,
+          pa.notice_edt
       FROM embeddings e
       JOIN images i
           ON i.id = e.image_id
@@ -122,15 +206,11 @@ export async function findNearestCandidates(
         )
         AND pa.up_kind_nm = $2
         AND pa.duplicate_of_desertion_no IS NULL
+        ${filterSql("pa")}
       ORDER BY e.embedding <=> $1::vector
       LIMIT $4
       `,
-      [
-        embeddingLiteral,
-        species,
-        embeddingSpaceId,
-        limit
-      ]
+      params
     )
   ])
 

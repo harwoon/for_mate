@@ -174,13 +174,90 @@ export async function getMatches(lostPostId, userId, rawOptions) {
         )
     }
 
-    const vectors = await repository.findLostPostEmbeddings(
+    const species = await repository.findLostPostSpecies(
         lostPostId
     )
 
+    if (
+        species !== "개" &&
+        species !== "고양이"
+    ) {
+        const error = new Error(
+            "지원하지 않는 동물 종입니다."
+        )
+
+        error.status = 400
+        error.code = "UNSUPPORTED_SPECIES"
+
+        throw error
+    }
+
+    const activeModels =
+        await repository.findActiveModelVersions()
+
+    if (activeModels.length === 0) {
+        const error = new Error(
+            "활성화된 임베딩 모델이 없습니다."
+        )
+
+        error.status = 503
+        error.code = "ACTIVE_MODEL_NOT_FOUND"
+
+        throw error
+    }
+
+    if (activeModels.length > 1) {
+        const error = new Error(
+            "활성화된 임베딩 모델이 여러 개입니다."
+        )
+
+        error.status = 500
+        error.code = "MULTIPLE_ACTIVE_MODELS"
+
+        throw error
+    }
+
+    const activeModel = activeModels[0]
+
+    const embeddingSpaces =
+        await repository.findEmbeddingSpace(
+            activeModel.version_key,
+            species
+        )
+
+    if (embeddingSpaces.length === 0) {
+        const error = new Error(
+            "사용 가능한 임베딩 공간이 없습니다."
+        )
+
+        error.status = 503
+        error.code = "EMBEDDING_SPACE_NOT_FOUND"
+
+        throw error
+    }
+
+    if (embeddingSpaces.length > 1) {
+        const error = new Error(
+            "사용 가능한 임베딩 공간이 여러 개입니다."
+        )
+
+        error.status = 500
+        error.code = "MULTIPLE_EMBEDDING_SPACES"
+
+        throw error
+    }
+
+    const embeddingSpace = embeddingSpaces[0]
+
+    const vectors =
+        await repository.findLostPostEmbeddings(
+            lostPostId,
+            embeddingSpace.id
+        )
+
     if (vectors.length === 0) {
         const error = new Error(
-            "이미지 임베딩이 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요."
+            "현재 모델의 이미지 임베딩이 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요."
         )
 
         error.status = 409
@@ -188,10 +265,6 @@ export async function getMatches(lostPostId, userId, rawOptions) {
 
         throw error
     }
-
-    const species = await repository.findLostPostSpecies(
-        lostPostId
-    )
 
     // 같은 동물이 여러 사진에서 후보로 잡힐 수 있으므로
     // source_type + 동물 ID 기준으로 하나만 유지
@@ -201,6 +274,7 @@ export async function getMatches(lostPostId, userId, rawOptions) {
         const candidates = await repository.findNearestCandidates(
             vector,
             species,
+            embeddingSpace.id,
             CANDIDATE_LIMIT_PER_VECTOR,
             filters,
             post.event_date
