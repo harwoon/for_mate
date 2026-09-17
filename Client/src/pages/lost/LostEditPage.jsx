@@ -776,6 +776,11 @@ export default function LostEditPage() {
                         {fieldErrors.images && <p className="form-error">{fieldErrors.images}</p>}
                     </div>
 
+                    <p className="lost-photo-ai-warning" role="note">
+                        <i className="ri-error-warning-line" aria-hidden="true" />
+                        <span>유사한 사진이나 같은 사진을 올릴 경우 AI 매칭이 어려울 수 있습니다!</span>
+                    </p>
+
                     <aside className="lost-photo-guide" aria-label="반려동물 사진 촬영 안내">
                         <div className="lost-photo-guide-copy">
                             <i className="ri-lightbulb-flash-line" aria-hidden="true" />

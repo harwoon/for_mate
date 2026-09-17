@@ -284,6 +284,29 @@
     font-weight: var(--weight-semibold);
 }
 
+.lost-photo-ai-warning {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0;
+    padding: 11px 16px;
+    border: 1px solid #f0ddb2;
+    border-radius: 10px;
+    background: var(--color-warning-light);
+    color: #9a6b18;
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+    line-height: 1.5;
+    text-align: center;
+}
+
+.lost-photo-ai-warning i {
+    flex: 0 0 auto;
+    color: var(--color-warning);
+    font-size: 18px;
+}
+
 .lost-photo-guide {
     display: grid;
     grid-template-columns: minmax(330px, 1fr) auto;
