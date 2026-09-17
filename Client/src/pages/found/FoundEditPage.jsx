@@ -1174,6 +1174,7 @@ export default function FoundEditPage() {
                                 form.find_date
                             }
                             max={getToday()}
+                            onClick={(event) => event.currentTarget.showPicker?.()}
                             onChange={(event) => (
                                 handleChange(
                                     "find_date",

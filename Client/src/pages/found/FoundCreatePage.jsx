@@ -835,6 +835,7 @@ export default function FoundCreatePage() {
                             className={`form-input ${fieldErrors.find_date ? "is-error" : ""}`}
                             value={form.find_date}
                             max={getToday()}
+                            onClick={(event) => event.currentTarget.showPicker?.()}
                             onChange={(event) => handleChange("find_date", event.target.value)}
                         />
 

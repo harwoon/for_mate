@@ -1069,6 +1069,7 @@ export default function LostCreatePage() {
                             className={`form-input${fieldErrors.event_date ? " is-error" : ""}`}
                             value={form.event_date}
                             max={getToday()}
+                            onClick={(event) => event.currentTarget.showPicker?.()}
                             onChange={(event) => handleChange("event_date", event.target.value)}
                         />
 
