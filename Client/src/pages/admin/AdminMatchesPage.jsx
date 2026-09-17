@@ -53,6 +53,7 @@ function MatchImage({ value, name }) {
 }
 
 function animalPath(animal) {
+    if (animal?.source_type === "found" && animal.id) return `/found-posts/${encodeURIComponent(animal.id)}`
     if (!["rescue", "pawinhand"].includes(animal?.source_type) || !animal.id) return null
     return `/rescue-animals/${animal.source_type}/${encodeURIComponent(animal.id)}`
 }
@@ -325,7 +326,7 @@ export default function AdminMatchesPage() {
                                                         <span className="admin-match-rank">{index + 1}위</span>
                                                         <strong>{animal?.kind_nm || "품종 정보 없음"}</strong>
                                                         <span>{animal?.up_kind_nm || "종류 정보 없음"}</span>
-                                                        <small>{animal?.source_type === "pawinhand" ? "포인핸드 공고" : "구조동물 번호"}: {animal?.id ?? "-"}</small>
+                                                        <small>{animal?.source_type === "found" ? "발견제보" : animal?.source_type === "pawinhand" ? "포인핸드 공고" : "구조동물 번호"}: {animal?.id ?? "-"}</small>
                                                     </div>
                                                     <div className="admin-match-candidate-score">
                                                         <span>유사도</span>

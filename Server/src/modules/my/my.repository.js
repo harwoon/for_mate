@@ -85,7 +85,7 @@ export async function findSummary(userId) {
                     m.source_post_id AS lost_post_id,
                     m.source_type,
                     m.desertion_no,
-                    m.pawinhand_animal_id,
+                    m.pawinhand_animal_id, m.found_post_id,
                     first_image.image_url AS thumbnail_url,
                     m.similarity_score
                 FROM matches m
@@ -104,6 +104,7 @@ export async function findSummary(userId) {
                                 m.source_type = 'pawinhand'
                                 AND pawinhand_animal_id = m.pawinhand_animal_id
                             )
+                            OR (m.source_type = 'found' AND found_post_id = m.found_post_id)
                         )
                     ORDER BY created_at ASC, id ASC
                     LIMIT 1
@@ -239,7 +240,7 @@ export async function findMyFoundPosts({ userId, status, size, offset }) {
 // 8.4 내 매칭 기록 목록 조회
 export async function findMyMatches({ userId, lostPostId, filters, sort, size, offset }) {
     const params = [userId]
-    const conditions = ["lp.user_id = $1"]
+    const conditions = ["lp.user_id = $1", "(m.source_type <> 'found' OR fp.status <> 'blind')"]
 
     if (lostPostId) {
         params.push(lostPostId)
@@ -269,26 +270,28 @@ export async function findMyMatches({ userId, lostPostId, filters, sort, size, o
     }
     if (filters.sido) {
         params.push(filters.sido)
-        conditions.push(`COALESCE(ra.region_sido, pa.region_sido) = $${params.length}`)
+        conditions.push(`(COALESCE(ra.region_sido, pa.region_sido) = $${params.length}
+            OR (m.source_type = 'found' AND fp.region ILIKE '%' || $${params.length} || '%'))`)
     }
     if (filters.sigungu) {
         params.push(filters.sigungu)
-        conditions.push(`COALESCE(ra.region_sigungu, pa.region_sigungu) = $${params.length}`)
+        conditions.push(`(COALESCE(ra.region_sigungu, pa.region_sigungu) = $${params.length}
+            OR (m.source_type = 'found' AND fp.region ILIKE '%' || $${params.length} || '%'))`)
     }
     if (filters.start_date) {
         params.push(filters.start_date)
-        conditions.push(`COALESCE(ra.happen_dt, pa.happen_dt) >= $${params.length}::date`)
+        conditions.push(`COALESCE(ra.happen_dt, pa.happen_dt, fp.find_date) >= $${params.length}::date`)
     }
     if (filters.end_date) {
         params.push(filters.end_date)
-        conditions.push(`COALESCE(ra.happen_dt, pa.happen_dt) <= $${params.length}::date`)
+        conditions.push(`COALESCE(ra.happen_dt, pa.happen_dt, fp.find_date) <= $${params.length}::date`)
     }
 
     const whereSql = conditions.join(" AND ")
     const orderSql = {
         similarity_desc: "m.similarity_score DESC, m.id DESC",
-        happen_date_desc: "COALESCE(ra.happen_dt, pa.happen_dt) DESC NULLS LAST, m.similarity_score DESC, m.id DESC",
-        happen_date_asc: "COALESCE(ra.happen_dt, pa.happen_dt) ASC NULLS LAST, m.similarity_score DESC, m.id DESC",
+        happen_date_desc: "COALESCE(ra.happen_dt, pa.happen_dt, fp.find_date) DESC NULLS LAST, m.similarity_score DESC, m.id DESC",
+        happen_date_asc: "COALESCE(ra.happen_dt, pa.happen_dt, fp.find_date) ASC NULLS LAST, m.similarity_score DESC, m.id DESC",
         notice_end_asc: "COALESCE(ra.notice_edt, pa.notice_edt) ASC NULLS LAST, m.similarity_score DESC, m.id DESC"
     }[sort] || "m.similarity_score DESC, m.id DESC"
 
@@ -298,6 +301,7 @@ export async function findMyMatches({ userId, lostPostId, filters, sort, size, o
         JOIN lost_posts lp ON lp.id = m.source_post_id
         LEFT JOIN rescue_animals ra ON m.source_type = 'rescue' AND ra.desertion_no = m.desertion_no
         LEFT JOIN pawinhand_animals pa ON m.source_type = 'pawinhand' AND pa.id = m.pawinhand_animal_id
+        LEFT JOIN found_posts fp ON m.source_type = 'found' AND fp.id = m.found_post_id
         WHERE ${whereSql}`,
         params
     )
@@ -309,23 +313,25 @@ export async function findMyMatches({ userId, lostPostId, filters, sort, size, o
     const listResult = await query(
         `SELECT
             m.id, m.source_post_id AS lost_post_id, m.source_type,
-            m.desertion_no, m.pawinhand_animal_id,
+            m.desertion_no, m.pawinhand_animal_id, m.found_post_id,
             m.similarity_score, m.matched_date, m.created_at,
             lp.pet_name, lp.species AS lost_species,
-            COALESCE(ra.up_kind_nm, pa.up_kind_nm) AS up_kind_nm,
-            COALESCE(ra.kind_nm, pa.kind_nm) AS kind_nm,
+            COALESCE(ra.up_kind_nm, pa.up_kind_nm, fp.species) AS up_kind_nm,
+            COALESCE(ra.kind_nm, pa.kind_nm, fp.breed) AS kind_nm,
             animal_image.image_url AS animal_image_url
         FROM matches m
         JOIN lost_posts lp ON lp.id = m.source_post_id
         LEFT JOIN rescue_animals ra ON m.source_type = 'rescue' AND ra.desertion_no = m.desertion_no
         LEFT JOIN pawinhand_animals pa ON m.source_type = 'pawinhand' AND pa.id = m.pawinhand_animal_id
+        LEFT JOIN found_posts fp ON m.source_type = 'found' AND fp.id = m.found_post_id
         LEFT JOIN LATERAL (
             SELECT image_url
             FROM images
             WHERE post_type = m.source_type
               AND (
                 (m.source_type = 'rescue' AND desertion_no = m.desertion_no) OR
-                (m.source_type = 'pawinhand' AND pawinhand_animal_id = m.pawinhand_animal_id)
+                (m.source_type = 'pawinhand' AND pawinhand_animal_id = m.pawinhand_animal_id) OR
+                (m.source_type = 'found' AND found_post_id = m.found_post_id)
               )
             ORDER BY created_at ASC, id ASC
             LIMIT 1

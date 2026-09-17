@@ -51,9 +51,17 @@ function parseMatchOptions(rawOptions) {
     if (neuter && !["Y", "N", "U"].includes(neuter)) {
         throw invalidQuery("neuter는 Y, N, U 중 하나여야 합니다.", "INVALID_NEUTER")
     }
-    if (sourceType && !["rescue", "pawinhand"].includes(sourceType)) {
-        throw invalidQuery("source_type은 rescue, pawinhand 중 하나여야 합니다.", "INVALID_SOURCE_TYPE")
+
+    if (
+        sourceType &&
+        !["rescue", "pawinhand", "found"].includes(sourceType)
+    ) {
+        throw invalidQuery(
+            "source_type은 rescue, pawinhand, found 중 하나여야 합니다.",
+            "INVALID_SOURCE_TYPE"
+        )
     }
+
     if (!MATCH_SORTS.has(sort)) {
         throw invalidQuery("지원하지 않는 정렬 방식입니다.", "INVALID_SORT")
     }
@@ -271,8 +279,8 @@ export async function getMatches(lostPostId, userId, rawOptions) {
         throw error
     }
 
-    // 같은 동물이 여러 사진에서 후보로 잡힐 수 있으므로
-    // source_type + 동물 ID 기준으로 하나만 유지
+    // 같은 후보가 여러 이미지에서 잡힐 수 있으므로
+    // source_type + 후보 ID 기준으로 하나만 유지
     const bestByAnimal = new Map()
 
     for (const vector of vectors) {
@@ -314,21 +322,35 @@ export async function getMatches(lostPostId, userId, rawOptions) {
     // 전체 후보를 유사도 순으로 정렬
     const rankedAll = sortCandidates(
         [...bestByAnimal.values()]
-        .map(({ source_type, ref_id, distance, happen_dt, notice_edt }) => ({
-            source_type,
-            ref_id,
-            desertion_no:
-                source_type === "rescue"
-                    ? ref_id
-                    : null,
-            pawinhand_animal_id:
-                source_type === "pawinhand"
-                    ? ref_id
-                    : null,
-            similarity: 1 - distance,
-            happen_dt,
-            notice_edt
-        })),
+            .map(({
+                source_type,
+                ref_id,
+                distance,
+                happen_dt,
+                notice_edt
+            }) => ({
+                source_type,
+                ref_id,
+
+                desertion_no:
+                    source_type === "rescue"
+                        ? ref_id
+                        : null,
+
+                pawinhand_animal_id:
+                    source_type === "pawinhand"
+                        ? ref_id
+                        : null,
+
+                found_post_id:
+                    source_type === "found"
+                        ? ref_id
+                        : null,
+
+                similarity: 1 - distance,
+                happen_dt,
+                notice_edt
+            })),
         sort
     )
 
@@ -353,10 +375,7 @@ export async function getMatches(lostPostId, userId, rawOptions) {
         lostPostId,
         ranked.map((result) => ({
             source_type: result.source_type,
-            ref_id:
-                result.source_type === "rescue"
-                    ? result.desertion_no
-                    : result.pawinhand_animal_id,
+            ref_id: result.ref_id,
             similarity: result.similarity
         }))
     )
@@ -517,6 +536,15 @@ function compareRegion(
         (
             regionSigungu &&
             lostRegion.includes(regionSigungu)
+        ) ||
+        (
+            !regionSido &&
+            !regionSigungu &&
+            happenPlace &&
+            (
+                lostRegion.includes(happenPlace) ||
+                happenPlace.includes(lostRegion)
+            )
         )
 
     return {

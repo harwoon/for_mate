@@ -19,7 +19,8 @@ const PAGE_SIZE = 10
 
 const SOURCE_LABELS = {
     rescue: "공공데이터",
-    pawinhand: "포인핸드"
+    pawinhand: "포인핸드",
+    found: "발견제보"
 }
 
 function formatSimilarity(value) {
@@ -36,6 +37,8 @@ function getAnimalId(notification) {
     if (notification.animal_id) {
         return notification.animal_id
     }
+
+    if (notification.source_type === "found") return notification.found_post_id
 
     return notification.source_type === "pawinhand"
         ? notification.pawinhand_animal_id
@@ -237,7 +240,9 @@ export default function NotificationPage() {
                 getAnimalId(notification)
 
             navigate(
-                `/rescue-animals/${notification.source_type}/${animalId}`
+                notification.source_type === "found"
+                    ? `/found-posts/${animalId}`
+                    : `/rescue-animals/${notification.source_type}/${animalId}`
             )
         } catch (error) {
             setActionError(

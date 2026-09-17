@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { imageUrl } from "../../api/client.js"
+import { getFoundPost } from "../../api/foundPosts.api.js"
 import { getLostPost } from "../../api/lostPosts.api.js"
 import { getMatchDetail } from "../../api/matches.api.js"
 import { getAnimalBySource } from "../../api/rescueAnimals.api.js"
@@ -12,7 +13,8 @@ import { formatDate } from "../../utils/date.js"
 
 const SOURCE_LABELS = {
     rescue: "공공데이터",
-    pawinhand: "포인핸드"
+    pawinhand: "포인핸드",
+    found: "발견제보"
 }
 
 const SEX_LABELS = {
@@ -52,6 +54,7 @@ function displaySex(value) {
 }
 
 function displayRegion(animal) {
+    if (animal.region) return animal.region
     if (!animal) return "정보 없음"
 
     if (animal.happen_place) {
@@ -162,7 +165,9 @@ export default function MatchComparePage() {
                 const [lostResult, animalResult] =
                     await Promise.allSettled([
                         getLostPost(lostPostId),
-                        getAnimalBySource(sourceType, animalId)
+                        sourceType === "found"
+                            ? getFoundPost(animalId)
+                            : getAnimalBySource(sourceType, animalId)
                     ])
 
                 if (cancelled) return
@@ -301,6 +306,7 @@ export default function MatchComparePage() {
         dateComparison?.lost
 
     const animalDate =
+        animal?.find_date ||
         animal?.happen_dt ||
         dateComparison?.rescue
 
@@ -366,7 +372,7 @@ export default function MatchComparePage() {
                     </span>
 
                     <h2>
-                        {lostName}와 유사한 보호동물
+                        {lostName}와 유사한 {sourceType === "found" ? "발견제보" : "보호동물"}
                         후보입니다.
                     </h2>
 
@@ -638,11 +644,13 @@ export default function MatchComparePage() {
                     className="btn btn-primary"
                     onClick={() =>
                         navigate(
-                            `/rescue-animals/${sourceType}/${match.animal.id}`
+                            sourceType === "found"
+                                ? `/found-posts/${match.animal.id}`
+                                : `/rescue-animals/${sourceType}/${match.animal.id}`
                         )
                     }
                 >
-                    보호동물 공고 보기
+                    {sourceType === "found" ? "발견제보 상세 보기" : "보호동물 공고 보기"}
                     <i
                         className="ri-arrow-right-line"
                         aria-hidden="true"

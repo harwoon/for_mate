@@ -1,5 +1,6 @@
 import * as repository from "./found-posts.repository.js"
 import { removeFoundImageFiles } from "./found-posts.upload.js"
+import { notifyNewMatches } from "../../jobs/notifyNewMatches.js"
 
 // 발견제보는 실종동물 AI 매칭 후보로 사용 - 0917 바꿈
 
@@ -218,6 +219,43 @@ function validateCreateFields(body) {
     }
 }
 
+// AI 저장 완료 응답 뒤 알림을 계산하며, 실패는 게시글 API에 전파하지 않는다.
+async function embedAndNotifyFound(post, images) {
+    try {
+        if (images.length === 0) return
+
+        const aiServerUrl = (
+            process.env.AI_SERVER_URL ?? "http://localhost:8001"
+        ).replace(/\/+$/, "")
+        const modelVersionKey = (process.env.EMBEDDING_MODEL_VERSION_KEY ?? "").trim()
+        const response = await fetch(`${aiServerUrl}/embeddings/images`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                model_version_key: modelVersionKey || null,
+                images: images.map((image) => ({
+                    id: image.id,
+                    image_url: image.image_url,
+                    species: post.species
+                }))
+            })
+        })
+
+        if (!response.ok) {
+            throw new Error(`AI 서버 응답 오류 (${response.status})`)
+        }
+
+        const data = await response.json()
+        if (data.results?.some((item) =>
+            item.status === "ok" || item.status === "duplicate_skipped"
+        )) {
+            await notifyNewMatches("found", [post.id])
+        }
+    } catch (error) {
+        console.error("발견제보 임베딩/알림 처리 실패:", error)
+    }
+}
+
 // 4.1 발견제보 등록
 export async function createPost({ userId, body, imageUrls = [] }) {
     if (!Array.isArray(imageUrls)) {
@@ -262,36 +300,7 @@ export async function createPost({ userId, body, imageUrls = [] }) {
 
     const createdPost = result.post
 
-    const AI_SERVER_URL = (
-        process.env.AI_SERVER_URL ?? "http://localhost:8001"
-    ).replace(/\/+$/, "")
-
-    const MODEL_VERSION_KEY = (
-        process.env.EMBEDDING_MODEL_VERSION_KEY ?? ""
-    ).trim()
-
-    fetch(
-        `${AI_SERVER_URL}/embeddings/images`,
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model_version_key: MODEL_VERSION_KEY || null,
-                images: result.images.map((image) => ({
-                    id: image.id,
-                    image_url: image.image_url,
-                    species: createdPost.species
-                }))
-            })
-        }
-    ).catch((error) => {
-        console.error(
-            "발견제보 임베딩 추출 요청 실패:",
-            error
-        )
-    })
+    void embedAndNotifyFound(createdPost, result.images)
 
     // API 명세 Response 201과 필드 정확히 맞춤
     return {
@@ -609,41 +618,8 @@ export async function updatePost({
 
     const updatedPost = await repository.findById(id)
 
-    const imagesToEmbed = result.speciesChanged
-        ? updatedPost.imageRows
-        : result.addedImages
-
-    if (imagesToEmbed.length > 0) {
-        const AI_SERVER_URL = (
-            process.env.AI_SERVER_URL ?? "http://localhost:8001"
-        ).replace(/\/+$/, "")
-
-        const MODEL_VERSION_KEY = (
-            process.env.EMBEDDING_MODEL_VERSION_KEY ?? ""
-        ).trim()
-
-        fetch(
-            `${AI_SERVER_URL}/embeddings/images`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model_version_key: MODEL_VERSION_KEY || null,
-                    images: imagesToEmbed.map((image) => ({
-                        id: image.id,
-                        image_url: image.image_url,
-                        species: updatedPost.species
-                    }))
-                })
-            }
-        ).catch((error) => {
-            console.error(
-                "발견제보 수정 이미지 임베딩 추출 요청 실패:",
-                error
-            )
-        })
+    if (result.speciesChanged || imageUrls.length > 0 || deleteImageUrls.length > 0) {
+        void embedAndNotifyFound(updatedPost, updatedPost.imageRows)
     }
 
     try {

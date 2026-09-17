@@ -311,7 +311,7 @@ export async function getDashboard() {
 }
 
 // 관리자 매칭 기록 조회
-const VALID_SOURCE_TYPES = ["rescue", "pawinhand"]
+const VALID_SOURCE_TYPES = ["rescue", "pawinhand", "found"]
 
 export async function getMatches(query) {
     const minSimilarity = query.min_similarity ? Number(query.min_similarity) : null
@@ -328,7 +328,7 @@ export async function getMatches(query) {
     }
 
     if (sourceType !== null && !VALID_SOURCE_TYPES.includes(sourceType)) {
-        const error = new Error("source_type은 rescue 또는 pawinhand여야 합니다.")
+        const error = new Error("source_type은 rescue, pawinhand 또는 found여야 합니다.")
         error.status = 400
         error.code = "INVALID_QUERY"
         throw error
@@ -361,7 +361,7 @@ function toMatchListItem(match) {
         },
         animal: {
             source_type: match.source_type,
-            id: Number(match.source_type === "rescue" ? match.desertion_no : match.pawinhand_animal_id),
+            id: Number(match.desertion_no ?? match.pawinhand_animal_id ?? match.found_post_id),
             up_kind_nm: match.up_kind_nm,
             kind_nm: match.kind_nm,
             image_url: match.animal_image_url

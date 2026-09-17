@@ -215,6 +215,8 @@ export default function Header() {
             return notification.animal_id
         }
 
+        if (notification.source_type === "found") return notification.found_post_id
+
         return notification.source_type ===
             "pawinhand"
             ? notification.pawinhand_animal_id
@@ -280,7 +282,9 @@ export default function Header() {
                 )
 
             navigate(
-                `/rescue-animals/${notification.source_type}/${animalId}`
+                notification.source_type === "found"
+                    ? `/found-posts/${animalId}`
+                    : `/rescue-animals/${notification.source_type}/${animalId}`
             )
         } catch (error) {
             setNotificationError(
@@ -295,6 +299,8 @@ export default function Header() {
     async function handleBookmarkClick(
         notification
     ) {
+        if (notification.source_type === "found") return
+
         if (
             bookmarkingId ===
             notification.notification_id
@@ -651,7 +657,7 @@ export default function Header() {
                                                                             ) *
                                                                                 100
                                                                         )}
-                                                                        %의 보호동물이 등록되었습니다.
+                                                                        %의 {notification.source_type === "found" ? "발견제보가" : "보호동물이"} 등록되었습니다.
                                                                     </p>
 
                                                                     <span className="text-sub">
@@ -663,41 +669,43 @@ export default function Header() {
 
                                                                 <div className="notification-dropdown-actions">
                                                                     <div className="notification-dropdown-icon-actions">
-                                                                        <button
-                                                                            type="button"
-                                                                            className={
-                                                                                bookmark
-                                                                                    ? "notification-action-icon is-bookmarked"
-                                                                                    : "notification-action-icon"
-                                                                            }
-                                                                            aria-label={
-                                                                                bookmark
-                                                                                    ? "북마크 해제"
-                                                                                    : "북마크"
-                                                                            }
-                                                                            title={
-                                                                                bookmark
-                                                                                    ? "북마크 해제"
-                                                                                    : "북마크"
-                                                                            }
-                                                                            disabled={
-                                                                                isBookmarking
-                                                                            }
-                                                                            onClick={() =>
-                                                                                handleBookmarkClick(
-                                                                                    notification
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            <i
+                                                                        {notification.source_type !== "found" && (
+                                                                            <button
+                                                                                type="button"
                                                                                 className={
                                                                                     bookmark
-                                                                                        ? "ri-bookmark-fill"
-                                                                                        : "ri-bookmark-line"
+                                                                                        ? "notification-action-icon is-bookmarked"
+                                                                                        : "notification-action-icon"
                                                                                 }
-                                                                                aria-hidden="true"
-                                                                            />
-                                                                        </button>
+                                                                                aria-label={
+                                                                                    bookmark
+                                                                                        ? "북마크 해제"
+                                                                                        : "북마크"
+                                                                                }
+                                                                                title={
+                                                                                    bookmark
+                                                                                        ? "북마크 해제"
+                                                                                        : "북마크"
+                                                                                }
+                                                                                disabled={
+                                                                                    isBookmarking
+                                                                                }
+                                                                                onClick={() =>
+                                                                                    handleBookmarkClick(
+                                                                                        notification
+                                                                                    )
+                                                                                }
+                                                                            >
+                                                                                <i
+                                                                                    className={
+                                                                                        bookmark
+                                                                                            ? "ri-bookmark-fill"
+                                                                                            : "ri-bookmark-line"
+                                                                                    }
+                                                                                    aria-hidden="true"
+                                                                                />
+                                                                            </button>
+                                                                        )}
 
                                                                         <button
                                                                             type="button"

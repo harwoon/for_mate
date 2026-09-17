@@ -1,6 +1,6 @@
 import { get, put, del, postForm, toQuery } from "./client.js"
 
-// 발견제보 (게시판 형식, AI 매칭 대상 아님)
+// 발견제보 (게시판 형식, AI 매칭 후보)
 export const getFoundPosts = (params) => get(`/found-posts${toQuery(params)}`)
 export const getFoundPost = (id) => get(`/found-posts/${id}`)
 export const createFoundPost = (formData) => postForm("/found-posts", formData)

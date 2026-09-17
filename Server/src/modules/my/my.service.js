@@ -169,8 +169,8 @@ export async function getMyMatches({ userId, query }) {
     if (neuter && !["Y", "N", "U"].includes(neuter)) {
         throw serviceError("neuter는 Y, N, U 중 하나여야 합니다.", 400, "INVALID_NEUTER")
     }
-    if (sourceType && !["rescue", "pawinhand"].includes(sourceType)) {
-        throw serviceError("source_type은 rescue, pawinhand 중 하나여야 합니다.", 400, "INVALID_SOURCE_TYPE")
+    if (sourceType && !["rescue", "pawinhand", "found"].includes(sourceType)) {
+        throw serviceError("source_type은 rescue, pawinhand, found 중 하나여야 합니다.", 400, "INVALID_SOURCE_TYPE")
     }
     if (!MY_MATCH_SORTS.has(sort)) {
         throw serviceError("지원하지 않는 정렬 방식입니다.", 400, "INVALID_SORT")
@@ -209,7 +209,7 @@ function toMatchItem(match) {
         lost_post: { id: Number(match.lost_post_id), pet_name: match.pet_name, species: match.lost_species },
         animal: {
             source_type: match.source_type,
-            id: Number(match.source_type === "rescue" ? match.desertion_no : match.pawinhand_animal_id),
+            id: Number(match.desertion_no ?? match.pawinhand_animal_id ?? match.found_post_id),
             up_kind_nm: match.up_kind_nm,
             kind_nm: match.kind_nm,
             image_url: match.animal_image_url

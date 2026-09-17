@@ -26,7 +26,8 @@ const NEUTER_LABELS = { Y: "중성화 완료", N: "중성화 안 됨", U: "미�
 
 const SOURCE_LABELS = {
     rescue: "공공데이터",
-    pawinhand: "포인핸드"
+    pawinhand: "포인핸드",
+    found: "발견제보"
 }
 
 function formatSimilarity(value) {

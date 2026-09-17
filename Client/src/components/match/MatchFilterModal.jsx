@@ -15,7 +15,8 @@ export const EMPTY_MATCH_FILTERS = {
 const OPTIONS = {
     source: [
         { value: "rescue", label: "공공데이터" },
-        { value: "pawinhand", label: "포인핸드" }
+        { value: "pawinhand", label: "포인핸드" },
+        { value: "found", label: "발견제보" }
     ],
     sex: [
         { value: "M", label: "수컷" },

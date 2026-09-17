@@ -1,43 +1,150 @@
 import { pool } from "../db/pool.js"
 
-const DUPLICATE_THRESHOLD = 0.9 // 이 이상이면 "같은 개체"로 판단 (조정 가능)
+
+const DUPLICATE_THRESHOLD = 0.97
+
 
 // 아직 중복 확인을 안 한 포인핸드 동물들을 대상으로,
-// rescue_animals 쪽 사진 중 극단적으로 유사한 게 있는지 확인한다.
+// 동일한 임베딩 공간의 rescue 동물과 비교한다.
 export async function markDuplicatePawinhandAnimals() {
-  const { rows: candidates } = await pool.query(`
-    SELECT pa.id AS pawinhand_animal_id, e.embedding::text AS embedding
-    FROM pawinhand_animals pa
-    JOIN images i ON i.pawinhand_animal_id = pa.id AND i.post_type = 'pawinhand'
-    JOIN embeddings e ON e.image_id = i.id
-    WHERE pa.duplicate_of_desertion_no IS NULL
-  `)
+    const { rows: candidates } = await pool.query(
+        `
+        SELECT
+            pa.id AS pawinhand_animal_id,
+            e.embedding::text AS embedding,
+            e.embedding_space_id,
+            pa.up_kind_nm AS species
 
-  let markedCount = 0
+        FROM pawinhand_animals pa
 
-  for (const { pawinhand_animal_id, embedding } of candidates) {
-    const { rows: nearest } = await pool.query(
-      `
-      SELECT ra.desertion_no, (e.embedding <=> $1::vector) AS distance
-      FROM embeddings e
-      JOIN images i ON i.id = e.image_id AND i.post_type = 'rescue'
-      JOIN rescue_animals ra ON ra.desertion_no = i.desertion_no
-      ORDER BY e.embedding <=> $1::vector
-      LIMIT 1
-      `,
-      [embedding],
+        JOIN images i
+            ON i.pawinhand_animal_id = pa.id
+            AND i.post_type = 'pawinhand'
+
+        JOIN embeddings e
+            ON e.image_id = i.id
+
+        JOIN embedding_spaces es
+            ON es.id = e.embedding_space_id
+
+        JOIN model_versions mv
+            ON mv.id = es.model_version_id
+
+        WHERE pa.duplicate_of_desertion_no IS NULL
+            AND mv.is_active = TRUE
+            AND es.is_usable = TRUE
+            AND es.species = pa.up_kind_nm
+        `
     )
 
-    if (nearest.length === 0) continue
-    const similarity = 1 - nearest[0].distance
-    if (similarity < DUPLICATE_THRESHOLD) continue
+    // 같은 포인핸드 개체에 사진이 여러 장 있을 수 있으므로
+    // 개체별로 가장 높은 유사도의 rescue 후보 하나만 유지한다.
+    const bestByAnimal = new Map()
 
-    await pool.query(
-      `UPDATE pawinhand_animals SET duplicate_of_desertion_no = $1 WHERE id = $2`,
-      [nearest[0].desertion_no, pawinhand_animal_id],
+    for (const {
+        pawinhand_animal_id,
+        embedding,
+        embedding_space_id,
+        species
+    } of candidates) {
+        const { rows: nearest } =
+            await pool.query(
+                `
+                SELECT
+                    ra.desertion_no,
+                    (
+                        e.embedding <=>
+                        $1::vector
+                    ) AS distance
+
+                FROM embeddings e
+
+                JOIN images i
+                    ON i.id = e.image_id
+                    AND i.post_type = 'rescue'
+
+                JOIN rescue_animals ra
+                    ON ra.desertion_no =
+                        i.desertion_no
+
+                WHERE e.embedding_space_id = $2
+                    AND ra.up_kind_nm = $3
+
+                ORDER BY
+                    e.embedding <=> $1::vector
+
+                LIMIT 1
+                `,
+                [
+                    embedding,
+                    embedding_space_id,
+                    species
+                ]
+            )
+
+        if (nearest.length === 0) {
+            continue
+        }
+
+        const similarity =
+            1 - nearest[0].distance
+
+        const current =
+            bestByAnimal.get(
+                pawinhand_animal_id
+            )
+
+        if (
+            !current ||
+            similarity > current.similarity
+        ) {
+            bestByAnimal.set(
+                pawinhand_animal_id,
+                {
+                    desertionNo:
+                        nearest[0].desertion_no,
+                    similarity
+                }
+            )
+        }
+    }
+
+    let markedCount = 0
+
+    for (const [
+        pawinhandAnimalId,
+        {
+            desertionNo,
+            similarity
+        }
+    ] of bestByAnimal.entries()) {
+        if (
+            similarity <
+            DUPLICATE_THRESHOLD
+        ) {
+            continue
+        }
+
+        const result = await pool.query(
+            `
+            UPDATE pawinhand_animals
+            SET duplicate_of_desertion_no = $1
+            WHERE id = $2
+                AND duplicate_of_desertion_no IS NULL
+            RETURNING id
+            `,
+            [
+                desertionNo,
+                pawinhandAnimalId
+            ]
+        )
+
+        if (result.rowCount > 0) {
+            markedCount += 1
+        }
+    }
+
+    console.log(
+        `[pawinhand] 중복 개체 표시: ${markedCount}건`
     )
-    markedCount += 1
-  }
-
-  console.log(`[pawinhand] 중복 개체 표시: ${markedCount}건`)
 }

@@ -33,7 +33,8 @@ const SORT_OPTIONS = [
 
 const SOURCE_LABELS = {
     rescue: "공공데이터",
-    pawinhand: "포인핸드"
+    pawinhand: "포인핸드",
+    found: "발견제보"
 }
 
 const SEX_LABELS = {

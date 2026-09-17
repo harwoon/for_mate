@@ -14,12 +14,14 @@ export async function findMany(userId) {
                 n.source_type,
                 n.desertion_no,
                 n.pawinhand_animal_id,
+                n.found_post_id,
                 COALESCE(
                     n.desertion_no,
-                    n.pawinhand_animal_id
+                    n.pawinhand_animal_id,
+                    n.found_post_id
                 )::text AS animal_id,
-                r.kind_nm AS breed,
-                r.happen_place AS region,
+                COALESCE(r.kind_nm, fp.breed) AS breed,
+                COALESCE(r.happen_place, fp.region) AS region,
                 first_image.image_url AS thumbnail_url,
                 n.similarity_score,
                 n.is_read,
@@ -27,20 +29,27 @@ export async function findMany(userId) {
             FROM notifications n
             JOIN lost_posts lp
                 ON lp.id = n.lost_post_id
-            JOIN (${animalsSql}) r
+            LEFT JOIN (${animalsSql}) r
                 ON r.source_type = n.source_type
                 AND r.animal_id = COALESCE(
                     n.desertion_no,
                     n.pawinhand_animal_id
                 )
+            LEFT JOIN found_posts fp
+                ON n.source_type = 'found' AND fp.id = n.found_post_id
             LEFT JOIN LATERAL (
                 SELECT i.image_url
                 FROM images i
-                WHERE ${animalImageCondition}
+                WHERE (${animalImageCondition})
+                    OR (i.post_type = 'found' AND i.found_post_id = fp.id)
                 ORDER BY i.created_at ASC, i.id ASC
                 LIMIT 1
             ) first_image ON TRUE
             WHERE n.user_id = $1
+                AND (
+                    (n.source_type = 'found' AND fp.status <> 'blind')
+                    OR (n.source_type <> 'found' AND r.animal_id IS NOT NULL)
+                )
             ORDER BY n.created_at DESC, n.id DESC
         `,
         [userId]

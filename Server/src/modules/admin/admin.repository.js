@@ -305,7 +305,7 @@ export async function findAllMatches(filters) {
             m.source_post_id,
             m.source_type,
             m.desertion_no,
-            m.pawinhand_animal_id,
+            m.pawinhand_animal_id, m.found_post_id,
             m.similarity_score,
             m.matched_date,
             m.created_at,
@@ -315,14 +315,15 @@ export async function findAllMatches(filters) {
             u.id AS user_id,
             u.name AS user_name,
             u.email AS user_email,
-            COALESCE(ra.up_kind_nm, pa.up_kind_nm) AS up_kind_nm,
-            COALESCE(ra.kind_nm, pa.kind_nm) AS kind_nm,
+            COALESCE(ra.up_kind_nm, pa.up_kind_nm, fp.species) AS up_kind_nm,
+            COALESCE(ra.kind_nm, pa.kind_nm, fp.breed) AS kind_nm,
             animal_image.image_url AS animal_image_url
         FROM matches m
         JOIN lost_posts lp ON lp.id = m.source_post_id
         JOIN users u ON u.id = lp.user_id
         LEFT JOIN rescue_animals ra ON m.source_type = 'rescue' AND ra.desertion_no = m.desertion_no
         LEFT JOIN pawinhand_animals pa ON m.source_type = 'pawinhand' AND pa.id = m.pawinhand_animal_id
+        LEFT JOIN found_posts fp ON m.source_type = 'found' AND fp.id = m.found_post_id
         LEFT JOIN LATERAL (
             SELECT image_url
             FROM images
@@ -336,7 +337,8 @@ export async function findAllMatches(filters) {
             WHERE post_type = m.source_type
               AND (
                 (m.source_type = 'rescue' AND desertion_no = m.desertion_no) OR
-                (m.source_type = 'pawinhand' AND pawinhand_animal_id = m.pawinhand_animal_id)
+                (m.source_type = 'pawinhand' AND pawinhand_animal_id = m.pawinhand_animal_id) OR
+                (m.source_type = 'found' AND found_post_id = m.found_post_id)
               )
             ORDER BY created_at ASC, id ASC
             LIMIT 1
