@@ -237,21 +237,63 @@ export async function findMyFoundPosts({ userId, status, size, offset }) {
 }
 
 // 8.4 내 매칭 기록 목록 조회
-export async function findMyMatches({ userId, lostPostId, size, offset }) {
+export async function findMyMatches({ userId, lostPostId, filters, sort, size, offset }) {
     const params = [userId]
-    let lostPostCondition = ""
+    const conditions = ["lp.user_id = $1"]
 
     if (lostPostId) {
         params.push(lostPostId)
-        lostPostCondition = `AND lp.id = $${params.length}`
+        conditions.push(`lp.id = $${params.length}`)
     }
+
+    if (filters.sex) {
+        params.push(filters.sex)
+        const param = `$${params.length}`
+        conditions.push(
+            `(${param} <> 'U' AND COALESCE(ra.sex_cd, pa.sex_cd) = ${param}
+              OR ${param} = 'U' AND COALESCE(NULLIF(COALESCE(ra.sex_cd, pa.sex_cd), ''), 'U') IN ('Q', 'U'))`
+        )
+    }
+    if (filters.neuter) {
+        params.push(filters.neuter)
+        const param = `$${params.length}`
+        conditions.push(
+            `(${param} <> 'U' AND COALESCE(ra.neuter_yn, pa.neuter_yn) = ${param}
+              OR ${param} = 'U' AND COALESCE(NULLIF(COALESCE(ra.neuter_yn, pa.neuter_yn), ''), 'U') = 'U')`
+        )
+    }
+    if (filters.sido) {
+        params.push(filters.sido)
+        conditions.push(`COALESCE(ra.region_sido, pa.region_sido) = $${params.length}`)
+    }
+    if (filters.sigungu) {
+        params.push(filters.sigungu)
+        conditions.push(`COALESCE(ra.region_sigungu, pa.region_sigungu) = $${params.length}`)
+    }
+    if (filters.start_date) {
+        params.push(filters.start_date)
+        conditions.push(`COALESCE(ra.happen_dt, pa.happen_dt) >= $${params.length}::date`)
+    }
+    if (filters.end_date) {
+        params.push(filters.end_date)
+        conditions.push(`COALESCE(ra.happen_dt, pa.happen_dt) <= $${params.length}::date`)
+    }
+
+    const whereSql = conditions.join(" AND ")
+    const orderSql = {
+        similarity_desc: "m.similarity_score DESC, m.id DESC",
+        happen_date_desc: "COALESCE(ra.happen_dt, pa.happen_dt) DESC NULLS LAST, m.similarity_score DESC, m.id DESC",
+        happen_date_asc: "COALESCE(ra.happen_dt, pa.happen_dt) ASC NULLS LAST, m.similarity_score DESC, m.id DESC",
+        notice_end_asc: "COALESCE(ra.notice_edt, pa.notice_edt) ASC NULLS LAST, m.similarity_score DESC, m.id DESC"
+    }[sort] || "m.similarity_score DESC, m.id DESC"
 
     const countResult = await query(
         `SELECT COUNT(*)::int AS total
         FROM matches m
         JOIN lost_posts lp ON lp.id = m.source_post_id
-        WHERE lp.user_id = $1
-            ${lostPostCondition}`,
+        LEFT JOIN rescue_animals ra ON m.source_type = 'rescue' AND ra.desertion_no = m.desertion_no
+        LEFT JOIN pawinhand_animals pa ON m.source_type = 'pawinhand' AND pa.id = m.pawinhand_animal_id
+        WHERE ${whereSql}`,
         params
     )
 
@@ -283,9 +325,8 @@ export async function findMyMatches({ userId, lostPostId, size, offset }) {
             ORDER BY created_at ASC, id ASC
             LIMIT 1
         ) animal_image ON TRUE
-        WHERE lp.user_id = $1
-            ${lostPostCondition}
-        ORDER BY m.created_at DESC, m.id DESC
+        WHERE ${whereSql}
+        ORDER BY ${orderSql}
         LIMIT ${sizeParam} OFFSET ${offsetParam}`,
         listParams
     )

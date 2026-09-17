@@ -129,6 +129,21 @@ export async function getMyFoundPosts({ userId, query }) {
 }
 
 // 8.4 내 매칭 기록 목록 조회
+const MY_MATCH_SORTS = new Set([
+    "similarity_desc",
+    "happen_date_desc",
+    "happen_date_asc",
+    "notice_end_asc"
+])
+
+function parseMatchDate(value, fieldName) {
+    if (!value) return null
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(`${value}T00:00:00Z`))) {
+        throw serviceError(`${fieldName}는 YYYY-MM-DD 형식이어야 합니다.`, 400, "INVALID_DATE")
+    }
+    return value
+}
+
 export async function getMyMatches({ userId, query }) {
     const page = parsePagingValue(query.page, 1, "page", Number.MAX_SAFE_INTEGER)
     const size = parsePagingValue(query.size, 10, "size", 100)
@@ -141,8 +156,41 @@ export async function getMyMatches({ userId, query }) {
         }
     }
 
+    const sex = query.sex || null
+    const neuter = query.neuter || null
+    const sort = query.sort || "similarity_desc"
+    const startDate = parseMatchDate(query.start_date, "start_date")
+    const endDate = parseMatchDate(query.end_date, "end_date")
+
+    if (sex && !["M", "F", "U"].includes(sex)) {
+        throw serviceError("sex는 M, F, U 중 하나여야 합니다.", 400, "INVALID_SEX")
+    }
+    if (neuter && !["Y", "N", "U"].includes(neuter)) {
+        throw serviceError("neuter는 Y, N, U 중 하나여야 합니다.", 400, "INVALID_NEUTER")
+    }
+    if (!MY_MATCH_SORTS.has(sort)) {
+        throw serviceError("지원하지 않는 정렬 방식입니다.", 400, "INVALID_SORT")
+    }
+    if (startDate && endDate && startDate > endDate) {
+        throw serviceError("시작일은 종료일보다 늦을 수 없습니다.", 400, "INVALID_DATE_RANGE")
+    }
+
     const offset = (page - 1) * size
-    const { items, total } = await repository.findMyMatches({ userId, lostPostId, size, offset })
+    const { items, total } = await repository.findMyMatches({
+        userId,
+        lostPostId,
+        filters: {
+            sex,
+            neuter,
+            sido: String(query.sido || "").trim() || null,
+            sigungu: String(query.sigungu || "").trim() || null,
+            start_date: startDate,
+            end_date: endDate
+        },
+        sort,
+        size,
+        offset
+    })
 
     return {
         items: items.map(toMatchItem),

@@ -7,8 +7,22 @@ import Empty from "../../components/common/Empty.jsx"
 import ErrorState from "../../components/common/ErrorState.jsx"
 import Loading from "../../components/common/Loading.jsx"
 import Pagination from "../../components/common/Pagination.jsx"
+import FilterBar from "../../components/post/FilterBar.jsx"
+import MatchFilterModal, {
+    EMPTY_MATCH_FILTERS
+} from "../../components/match/MatchFilterModal.jsx"
 
 const PAGE_SIZE = 10
+
+const SORT_OPTIONS = [
+    { value: "similarity_desc", label: "유사도 높은 순" },
+    { value: "happen_date_desc", label: "최근 발견순" },
+    { value: "happen_date_asc", label: "오래된 발견순" },
+    { value: "notice_end_asc", label: "공고 마감 임박순" }
+]
+
+const SEX_LABELS = { M: "수컷", F: "암컷", U: "미상" }
+const NEUTER_LABELS = { Y: "중성화 완료", N: "중성화 안 됨", U: "미상" }
 
 const SOURCE_LABELS = {
     rescue: "공공데이터",
@@ -40,6 +54,9 @@ export default function MyMatchesPage() {
     const [matches, setMatches] = useState([])
     const [lostPosts, setLostPosts] = useState([])
     const [lostPostId, setLostPostId] = useState("")
+    const [filters, setFilters] = useState({ ...EMPTY_MATCH_FILTERS })
+    const [sort, setSort] = useState("similarity_desc")
+    const [filterOpen, setFilterOpen] = useState(false)
     const [page, setPage] = useState(1)
     const [pagination, setPagination] = useState({
         page: 1,
@@ -97,6 +114,10 @@ export default function MyMatchesPage() {
                     params.lost_post_id = lostPostId
                 }
 
+                Object.entries({ ...filters, sort }).forEach(([key, value]) => {
+                    if (value) params[key] = value
+                })
+
                 const result = await getMyMatches(params)
 
                 if (cancelled) return
@@ -134,6 +155,8 @@ export default function MyMatchesPage() {
     }, [
         page,
         lostPostId,
+        filters,
+        sort,
         retryCount
     ])
 
@@ -141,6 +164,52 @@ export default function MyMatchesPage() {
         setLostPostId(event.target.value)
         setPage(1)
     }
+
+    function applyFilters(nextFilters) {
+        setFilters(nextFilters)
+        setPage(1)
+        setFilterOpen(false)
+    }
+
+    function changeSort(nextSort) {
+        setSort(nextSort)
+        setPage(1)
+    }
+
+    const filterChips = [
+        filters.sex && {
+            key: "sex",
+            label: `성별: ${SEX_LABELS[filters.sex]}`,
+            onRemove: () => {
+                setFilters((current) => ({ ...current, sex: "" }))
+                setPage(1)
+            }
+        },
+        filters.neuter && {
+            key: "neuter",
+            label: `중성화: ${NEUTER_LABELS[filters.neuter]}`,
+            onRemove: () => {
+                setFilters((current) => ({ ...current, neuter: "" }))
+                setPage(1)
+            }
+        },
+        filters.sido && {
+            key: "region",
+            label: `지역: ${[filters.sido, filters.sigungu].filter(Boolean).join(" ")}`,
+            onRemove: () => {
+                setFilters((current) => ({ ...current, sido: "", sigungu: "" }))
+                setPage(1)
+            }
+        },
+        (filters.start_date || filters.end_date) && {
+            key: "date",
+            label: `발견일: ${filters.start_date || "처음"} ~ ${filters.end_date || "현재"}`,
+            onRemove: () => {
+                setFilters((current) => ({ ...current, start_date: "", end_date: "" }))
+                setPage(1)
+            }
+        }
+    ].filter(Boolean)
 
     return (
         <div className="container my-matches-page">
@@ -172,6 +241,15 @@ export default function MyMatchesPage() {
                 </div>
             </div>
 
+            {filterOpen && (
+                <MatchFilterModal
+                    initialFilters={filters}
+                    onClose={() => setFilterOpen(false)}
+                    onApply={applyFilters}
+                    onReset={() => applyFilters({ ...EMPTY_MATCH_FILTERS })}
+                />
+            )}
+
             <div className="card card-padded my-match-toolbar">
                 <div className="my-match-filter">
                     <label htmlFor="my-match-lost-post">
@@ -201,10 +279,18 @@ export default function MyMatchesPage() {
                     </select>
                 </div>
 
-                <span className="text-sub">
-                    총 {pagination.total ?? 0}건
-                </span>
             </div>
+
+            {!loading && !error && (
+                <FilterBar
+                    total={pagination.total}
+                    onOpenFilter={() => setFilterOpen(true)}
+                    sort={sort}
+                    onChangeSort={changeSort}
+                    chips={filterChips}
+                    sortOptions={SORT_OPTIONS}
+                />
+            )}
 
             {loading && (
                 <Loading message="AI 매칭 결과를 불러오는 중입니다." />
