@@ -431,44 +431,10 @@ export default function AiSearchPage() {
                         </div>
 
                         {matching && (
-                            <section
-                                className="card card-padded ai-analysis"
-                                aria-labelledby="ai-analysis-title"
-                            >
-                                <div
-                                    className="ai-analysis-loading"
-                                    role="status"
-                                    aria-live="polite"
-                                >
-                                    <div
-                                        className="ai-loading-spinner"
-                                        aria-hidden="true"
-                                    />
-
-                                    <h2 id="ai-analysis-title">
-                                        AI가 유사한 보호동물을 찾고 있습니다.
-                                    </h2>
-
-                                    <div
-                                        className="ai-progress-track"
-                                        aria-hidden="true"
-                                    >
-                                        <div className="ai-progress-bar" />
-                                    </div>
-
-                                    <p className="ai-analysis-message">
-                                        {
-                                            MATCHING_MESSAGES[
-                                                messageIndex
-                                            ]
-                                        }
-                                    </p>
-
-                                    <p className="text-sub ai-analysis-help">
-                                        분석이 완료되면 매칭 결과로 자동 이동합니다.
-                                    </p>
-                                </div>
-                            </section>
+                            <Loading
+                                loading={matching}
+                                message={`AI가 유사한 보호동물을 찾고 있습니다. ${MATCHING_MESSAGES[messageIndex]}`}
+                            />
                         )}
 
                         {delayed && (
