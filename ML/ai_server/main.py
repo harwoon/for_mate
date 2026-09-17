@@ -68,6 +68,7 @@ def validate_model_version(requested_model_version):
 DEDUP_REF_COLUMNS = {
     "rescue": "desertion_no",
     "pawinhand": "pawinhand_animal_id",
+    "found": "found_post_id"
 }
 
 
@@ -75,8 +76,7 @@ def get_image_group(image_id):
     """
     image_id가 어떤 공고/개체에 속하는지 조회한다.
 
-    현재 1차 복구에서는 rescue, pawinhand만
-    중복 제거 대상으로 사용한다.
+    rescue, pawinhand, found를 중복 제거 대상으로 사용
     """
 
     conn = psycopg2.connect(
@@ -90,7 +90,8 @@ def get_image_group(image_id):
                 SELECT
                     post_type,
                     desertion_no,
-                    pawinhand_animal_id
+                    pawinhand_animal_id,
+                    found_post_id
                 FROM images
                 WHERE id = %s
                 """,
@@ -109,6 +110,7 @@ def get_image_group(image_id):
         post_type,
         desertion_no,
         pawinhand_animal_id,
+        found_post_id
     ) = row
 
     ref_col = DEDUP_REF_COLUMNS.get(
@@ -117,11 +119,15 @@ def get_image_group(image_id):
 
     if ref_col is None:
         return post_type, None, None
-
+    
     if post_type == "rescue":
         ref_value = desertion_no
-    else:
+    elif post_type == "pawinhand":
         ref_value = pawinhand_animal_id
+    elif post_type == "found":
+        ref_value = found_post_id
+    else:
+        ref_value = None
 
     return (
         post_type,
@@ -129,7 +135,7 @@ def get_image_group(image_id):
         ref_value,
     )
     
-# 실종 동물, 포인핸드 크롤링 임베딩
+# 실종 동물 및 매칭 후보 이미지 임베딩
 @app.post("/embeddings/lost-posts")
 @app.post("/embeddings/images")
 def embed_images(req: EmbedRequest):

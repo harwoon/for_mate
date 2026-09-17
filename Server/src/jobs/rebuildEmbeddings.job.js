@@ -94,6 +94,8 @@ async function findPendingImages() {
                 CASE
                     WHEN i.post_type = 'lost'
                         THEN lp.species
+                    WHEN i.post_type = 'found'
+                        THEN fp.species
                     WHEN i.post_type = 'rescue'
                         THEN ra.up_kind_nm
                     WHEN i.post_type = 'pawinhand'
@@ -102,12 +104,15 @@ async function findPendingImages() {
             FROM images i
             LEFT JOIN lost_posts lp
                 ON lp.id = i.lost_post_id
+            LEFT JOIN found_posts fp
+                ON fp.id = i.found_post_id
             LEFT JOIN rescue_animals ra
                 ON ra.desertion_no = i.desertion_no
             LEFT JOIN pawinhand_animals pa
                 ON pa.id = i.pawinhand_animal_id
             WHERE i.post_type IN (
                 'lost',
+                'found',
                 'rescue',
                 'pawinhand'
             )

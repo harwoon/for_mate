@@ -230,8 +230,8 @@ DEDUP_SIMILARITY_THRESHOLD = float(
 _ALLOWED_REF_COLUMNS = {
     "desertion_no",
     "pawinhand_animal_id",
+    "found_post_id"
 }
-
 
 def _validate_ref_col(ref_col):
     if ref_col not in _ALLOWED_REF_COLUMNS:

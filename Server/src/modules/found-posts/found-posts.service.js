@@ -1,8 +1,7 @@
 import * as repository from "./found-posts.repository.js"
 import { removeFoundImageFiles } from "./found-posts.upload.js"
 
-// 발견제보는 AI 매칭 대상이 아니다.
-// 연락처 관련 기능도 없다.
+// 발견제보는 실종동물 AI 매칭 후보로 사용 - 0917 바꿈
 
 function serviceError(message, status, code) {
     const error = new Error(message)
@@ -262,6 +261,37 @@ export async function createPost({ userId, body, imageUrls = [] }) {
     })
 
     const createdPost = result.post
+
+    const AI_SERVER_URL = (
+        process.env.AI_SERVER_URL ?? "http://localhost:8001"
+    ).replace(/\/+$/, "")
+
+    const MODEL_VERSION_KEY = (
+        process.env.EMBEDDING_MODEL_VERSION_KEY ?? ""
+    ).trim()
+
+    fetch(
+        `${AI_SERVER_URL}/embeddings/images`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model_version_key: MODEL_VERSION_KEY || null,
+                images: result.images.map((image) => ({
+                    id: image.id,
+                    image_url: image.image_url,
+                    species: createdPost.species
+                }))
+            })
+        }
+    ).catch((error) => {
+        console.error(
+            "발견제보 임베딩 추출 요청 실패:",
+            error
+        )
+    })
 
     // API 명세 Response 201과 필드 정확히 맞춤
     return {
@@ -575,6 +605,45 @@ export async function updatePost({
             403,
             "BLINDED_POST"
         )
+    }
+
+    const updatedPost = await repository.findById(id)
+
+    const imagesToEmbed = result.speciesChanged
+        ? updatedPost.imageRows
+        : result.addedImages
+
+    if (imagesToEmbed.length > 0) {
+        const AI_SERVER_URL = (
+            process.env.AI_SERVER_URL ?? "http://localhost:8001"
+        ).replace(/\/+$/, "")
+
+        const MODEL_VERSION_KEY = (
+            process.env.EMBEDDING_MODEL_VERSION_KEY ?? ""
+        ).trim()
+
+        fetch(
+            `${AI_SERVER_URL}/embeddings/images`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model_version_key: MODEL_VERSION_KEY || null,
+                    images: imagesToEmbed.map((image) => ({
+                        id: image.id,
+                        image_url: image.image_url,
+                        species: updatedPost.species
+                    }))
+                })
+            }
+        ).catch((error) => {
+            console.error(
+                "발견제보 수정 이미지 임베딩 추출 요청 실패:",
+                error
+            )
+        })
     }
 
     try {

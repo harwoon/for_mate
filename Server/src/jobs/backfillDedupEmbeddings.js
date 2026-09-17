@@ -1,7 +1,11 @@
-// 기존에 저장된 구조동물/포인핸드 임베딩 중, 같은 동물 안에서 근접 중복인 것을 정리하는 1회성 백필.
-// 라이브 파이프라인(ML/scripts/extract_embeddings.py의 is_duplicate_within_animal)과
-// 같은 기준(코사인 유사도, 기본 0.97)으로 판정한다. images 행(사진)은 그대로 두고 embeddings 행만 지운다.
-//
+// 기존에 저장된 rescue / pawinhand / found 임베딩 중
+// 같은 개체 또는 공고 + 같은 임베딩 공간 안에서
+// 근접 중복인 것을 정리하는 1회성 백필.
+
+// 코사인 유사도 기본 0.97 이상이면 중복으로 판단
+// images 행은 유지하고 embeddings 행만 삭제
+
+
 // 실행: node src/jobs/backfillDedupEmbeddings.js         (dry-run, 아무것도 지우지 않음)
 //       node src/jobs/backfillDedupEmbeddings.js --apply (실제로 삭제)
 //       DEDUP_SIMILARITY_THRESHOLD=0.98 node src/jobs/backfillDedupEmbeddings.js
@@ -15,6 +19,7 @@ const apply = process.argv.includes("--apply")
 const POST_TYPES = [
     { postType: "rescue", refCol: "desertion_no" },
     { postType: "pawinhand", refCol: "pawinhand_animal_id" },
+    { postType: "found", refCol: "found_post_id" }
 ]
 
 function parseVector(text) {
@@ -77,36 +82,63 @@ async function findDuplicatesForPostType(postType, refCol) {
         SELECT
             e.id AS embedding_id,
             e.image_id,
+            e.embedding_space_id,
             e.embedding::text AS embedding,
-            i.${refCol} AS ref_value
+            i.${refCol} AS ref_value,
+            es.space_key
         FROM embeddings e
-        JOIN images i ON i.id = e.image_id
+        JOIN images i
+            ON i.id = e.image_id
+        JOIN embedding_spaces es
+            ON es.id = e.embedding_space_id
         WHERE i.post_type = $1
-        ORDER BY i.${refCol} ASC, e.id ASC
+        ORDER BY
+            i.${refCol} ASC,
+            e.embedding_space_id ASC,
+            e.id ASC
         `,
         [postType],
     )
 
     const duplicates = []
     let groupRef = undefined
+    let groupSpaceId = undefined
+    let groupSpaceKey = undefined
     let groupRows = []
 
     const flushGroup = () => {
         if (groupRows.length > 1) {
             duplicates.push(
-                ...findDuplicatesInGroup(groupRows).map((d) => ({ ...d, postType, refCol, refValue: groupRef })),
+                ...findDuplicatesInGroup(groupRows).map((d) => ({
+                    ...d,
+                    postType,
+                    refCol,
+                    refValue: groupRef,
+                    embeddingSpaceId: groupSpaceId,
+                    spaceKey: groupSpaceKey,
+                })),
             )
         }
+
         groupRows = []
     }
 
     for (const row of rows) {
-        if (row.ref_value !== groupRef) {
+        const groupChanged =
+            row.ref_value !== groupRef ||
+            row.embedding_space_id !== groupSpaceId
+
+        if (groupChanged) {
             flushGroup()
+
             groupRef = row.ref_value
+            groupSpaceId = row.embedding_space_id
+            groupSpaceKey = row.space_key
         }
+
         groupRows.push(row)
     }
+
     flushGroup()
 
     return { totalEmbeddings: rows.length, duplicates }
@@ -128,7 +160,11 @@ async function run() {
 
         for (const d of duplicates.slice(0, 10)) {
             console.log(
-                `  - ${postType} ${refCol}=${d.refValue}: image_id=${d.imageId} 가 image_id=${d.keptImageId} 와 유사도 ${d.similarity.toFixed(4)} → 중복`,
+                `  - ${postType} ${refCol}=${d.refValue} ` +
+                `[space=${d.spaceKey}]: ` +
+                `image_id=${d.imageId} 가 ` +
+                `image_id=${d.keptImageId} 와 ` +
+                `유사도 ${d.similarity.toFixed(4)} → 중복`,
             )
         }
         if (duplicates.length > 10) {

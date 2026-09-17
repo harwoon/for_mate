@@ -273,7 +273,9 @@ export async function updatePostWithImages({
         // 수정 직전 게시글을 잠그고 블라인드 상태인지 다시 확인
         const postResult = await client.query(
             `
-                SELECT status
+                SELECT
+                    status,
+                    species
                 FROM found_posts
                 WHERE id = $1
                 FOR UPDATE
@@ -298,6 +300,10 @@ export async function updatePostWithImages({
                 outcome: "blinded"
             }
         }
+
+        const speciesChanged =
+            fields.species !== undefined &&
+            fields.species !== post.species
 
         // 일반 게시글 필드 수정
         const columnMap = {
@@ -356,8 +362,10 @@ export async function updatePostWithImages({
         }
 
         // 새 이미지 추가
+        const addedImages = []
+
         for (const imageUrl of newImageUrls) {
-            await client.query(
+            const result = await client.query(
                 `
                     INSERT INTO images (
                         post_type,
@@ -365,8 +373,16 @@ export async function updatePostWithImages({
                         image_url
                     )
                     VALUES ('found', $1, $2)
+                    RETURNING
+                        id,
+                        image_url,
+                        created_at
                 `,
                 [id, imageUrl]
+            )
+
+            addedImages.push(
+                result.rows[0]
             )
         }
 
@@ -374,7 +390,9 @@ export async function updatePostWithImages({
 
         return {
             outcome: "ok",
-            deletedImages
+            deletedImages,
+            addedImages,
+            speciesChanged
         }
     } catch (error) {
         await client.query("ROLLBACK")
