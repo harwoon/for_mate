@@ -217,6 +217,27 @@ def extract_embedding(cropped_bgr, species):
 
 
 # ── 3. DB 저장 ───────────────────────────────────────────
+# 같은 개체 안에서 거의 동일한 사진의 임베딩은 중복 저장하지 않는다.
+# pgvector의 cosine distance = 1 - cosine similarity
+# similarity 0.97 이상이면 distance 0.03 이하이므로 중복으로 판단한다.
+DEDUP_SIMILARITY_THRESHOLD = float(
+    os.environ.get(
+        "DEDUP_SIMILARITY_THRESHOLD",
+        "0.97"
+    )
+)
+
+_ALLOWED_REF_COLUMNS = {
+    "desertion_no",
+    "pawinhand_animal_id",
+}
+
+
+def _validate_ref_col(ref_col):
+    if ref_col not in _ALLOWED_REF_COLUMNS:
+        raise ValueError(
+            f"허용되지 않은 ref_col입니다: {ref_col}"
+        )
 # 같은 동물(desertion_no/pawinhand_animal_id) 안에서 구도가 거의 같은 사진은
 # 임베딩을 중복 저장하지 않는다 (매칭 시 사진 수가 많다는 이유만으로 유리해지는 걸 방지).
 @lru_cache(maxsize=2)
@@ -305,6 +326,124 @@ def get_embedding_space(species):
         "checkpoint_name": checkpoint_name
     }
 
+def is_duplicate_within_animal(
+    post_type,
+    ref_col,
+    ref_value,
+    embedding,
+    species,
+    threshold=DEDUP_SIMILARITY_THRESHOLD
+):
+    """
+    같은 개체 + 같은 임베딩 공간에서
+    cosine similarity가 threshold 이상인 벡터가 이미 존재하면 True.
+    """
+
+    _validate_ref_col(ref_col)
+
+    space = get_embedding_space(
+        species
+    )
+
+    if len(embedding) != space["embedding_dim"]:
+        raise ValueError(
+            "임베딩 차원 불일치: "
+            f"실제={len(embedding)}, "
+            f"공간={space['embedding_dim']}"
+        )
+
+    vector_literal = (
+        "["
+        + ",".join(
+            map(
+                str,
+                embedding.tolist()
+            )
+        )
+        + "]"
+    )
+
+    distance_threshold = 1 - threshold
+
+    conn = psycopg2.connect(
+        os.environ["DATABASE_URL"]
+    )
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT 1
+                FROM embeddings e
+                JOIN images i
+                    ON i.id = e.image_id
+                WHERE i.post_type = %s
+                  AND i.{ref_col} = %s
+                  AND e.embedding_space_id = %s
+                  AND (
+                      e.embedding <=> %s::vector
+                  ) <= %s
+                LIMIT 1
+                """,
+                (
+                    post_type,
+                    ref_value,
+                    space["id"],
+                    vector_literal,
+                    distance_threshold,
+                ),
+            )
+
+            return cur.fetchone() is not None
+
+    finally:
+        conn.close()
+
+def save_image(
+    post_type,
+    ref_col,
+    ref_value,
+    image_url
+):
+    """
+    images 행만 저장하고 image_id를 반환한다.
+
+    임베딩이 중복이어도 원본 사진 자체는 images에 유지한다.
+    """
+
+    _validate_ref_col(ref_col)
+
+    conn = psycopg2.connect(
+        os.environ["DATABASE_URL"]
+    )
+
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                f"""
+                INSERT INTO images (
+                    post_type,
+                    {ref_col},
+                    image_url
+                )
+                VALUES (
+                    %s,
+                    %s,
+                    %s
+                )
+                RETURNING id
+                """,
+                (
+                    post_type,
+                    ref_value,
+                    image_url,
+                ),
+            )
+
+            return cur.fetchone()[0]
+
+    finally:
+        conn.close()
 
 def save_embedding_row(
     image_id,
@@ -373,99 +512,6 @@ def save_embedding_row(
             )
 
             return cur.rowcount > 0
-
-    finally:
-        conn.close()
-
-
-def save_to_db(
-    desertion_no,
-    image_url,
-    embedding,
-    species
-):
-    """
-    구조동물 이미지를 images에 등록하고
-    현재 모델 공간의 임베딩을 저장한다.
-    """
-
-    space = get_embedding_space(
-        species
-    )
-
-    if len(embedding) != space["embedding_dim"]:
-        raise ValueError(
-            "임베딩 차원 불일치: "
-            f"실제={len(embedding)}, "
-            f"공간={space['embedding_dim']}"
-        )
-
-    vector_literal = (
-        "["
-        + ",".join(
-            map(
-                str,
-                embedding.tolist()
-            )
-        )
-        + "]"
-    )
-
-    conn = psycopg2.connect(
-        os.environ["DATABASE_URL"]
-    )
-
-    try:
-        with conn, conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO images (
-                    post_type,
-                    desertion_no,
-                    image_url
-                )
-                VALUES (
-                    'rescue',
-                    %s,
-                    %s
-                )
-                RETURNING id
-                """,
-                (
-                    desertion_no,
-                    image_url
-                ),
-            )
-
-            image_id = cur.fetchone()[0]
-
-            cur.execute(
-                """
-                INSERT INTO embeddings (
-                    image_id,
-                    embedding_space_id,
-                    embedding,
-                    model_version
-                )
-                VALUES (
-                    %s,
-                    %s,
-                    %s::vector,
-                    %s
-                )
-                ON CONFLICT (
-                    image_id,
-                    embedding_space_id
-                )
-                DO NOTHING
-                """,
-                (
-                    image_id,
-                    space["id"],
-                    vector_literal,
-                    MODEL_VERSION_KEY
-                ),
-            )
 
     finally:
         conn.close()

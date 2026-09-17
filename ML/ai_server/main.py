@@ -1,8 +1,11 @@
 # python -m uvicorn main:app --port 8001
 # uvicorn main:app --reload --port 8001
 # uvicorn main:app --port 8001
+import os
 import sys
 from pathlib import Path
+
+import psycopg2
 
 sys.path.append(
     str(Path(__file__).resolve().parent.parent / "scripts")
@@ -17,8 +20,9 @@ from extract_embeddings import (
     crop,
     download,
     extract_embedding,
+    is_duplicate_within_animal,
     save_embedding_row,
-    save_to_db,
+    save_image,
 )
 
 app = FastAPI()
@@ -61,6 +65,69 @@ def validate_model_version(requested_model_version):
             )
         )
 
+DEDUP_REF_COLUMNS = {
+    "rescue": "desertion_no",
+    "pawinhand": "pawinhand_animal_id",
+}
+
+
+def get_image_group(image_id):
+    """
+    image_id가 어떤 공고/개체에 속하는지 조회한다.
+
+    현재 1차 복구에서는 rescue, pawinhand만
+    중복 제거 대상으로 사용한다.
+    """
+
+    conn = psycopg2.connect(
+        os.environ["DATABASE_URL"]
+    )
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    post_type,
+                    desertion_no,
+                    pawinhand_animal_id
+                FROM images
+                WHERE id = %s
+                """,
+                (image_id,),
+            )
+
+            row = cur.fetchone()
+
+    finally:
+        conn.close()
+
+    if row is None:
+        return None, None, None
+
+    (
+        post_type,
+        desertion_no,
+        pawinhand_animal_id,
+    ) = row
+
+    ref_col = DEDUP_REF_COLUMNS.get(
+        post_type
+    )
+
+    if ref_col is None:
+        return post_type, None, None
+
+    if post_type == "rescue":
+        ref_value = desertion_no
+    else:
+        ref_value = pawinhand_animal_id
+
+    return (
+        post_type,
+        ref_col,
+        ref_value,
+    )
     
 # 실종 동물, 포인핸드 크롤링 임베딩
 @app.post("/embeddings/lost-posts")
@@ -90,6 +157,28 @@ def embed_images(req: EmbedRequest):
                 cropped,
                 image.species,
             )
+
+            post_type, ref_col, ref_value = get_image_group(
+                image.id
+            )
+
+            if (
+                ref_col is not None
+                and is_duplicate_within_animal(
+                    post_type,
+                    ref_col,
+                    ref_value,
+                    embedding,
+                    image.species,
+                )
+            ):
+                results.append(
+                    {
+                        "image_id": image.id,
+                        "status": "duplicate_skipped",
+                    }
+                )
+                continue
 
             save_embedding_row(
                 image.id,
@@ -147,9 +236,31 @@ def embed_rescue_animals(req: RescueEmbedRequest):
                     animal.species,
                 )
 
-                save_to_db(
+                image_id = save_image(
+                    "rescue",
+                    "desertion_no",
                     animal.desertion_no,
                     url,
+                )
+
+                if is_duplicate_within_animal(
+                    "rescue",
+                    "desertion_no",
+                    animal.desertion_no,
+                    embedding,
+                    animal.species,
+                ):
+                    results.append(
+                        {
+                            "desertion_no": animal.desertion_no,
+                            "image_id": image_id,
+                            "status": "duplicate_skipped",
+                        }
+                    )
+                    continue
+
+                save_embedding_row(
+                    image_id,
                     embedding,
                     animal.species,
                 )
@@ -157,6 +268,7 @@ def embed_rescue_animals(req: RescueEmbedRequest):
                 results.append(
                     {
                         "desertion_no": animal.desertion_no,
+                        "image_id": image_id,
                         "status": "ok",
                     }
                 )
