@@ -99,106 +99,101 @@ export default function Pagination({
             className="pagination"
             aria-label="페이지 이동"
         >
-            <button
-                type="button"
-                className="pagination-nav"
-                onClick={() => changePage(1)}
-                disabled={currentPage === 1}
-                aria-label="첫 페이지"
-                title="첫 페이지"
-            >
-                <i
-                    className="ri-arrow-left-double-line"
-                    aria-hidden="true"
-                />
-            </button>
+            <div className="pagination-pages">
+                <button
+                    type="button"
+                    className="pagination-nav"
+                    onClick={() => changePage(1)}
+                    disabled={currentPage === 1}
+                    aria-label="첫 페이지"
+                    title="첫 페이지"
+                >
+                    <i
+                        className="ri-arrow-left-double-line"
+                        aria-hidden="true"
+                    />
+                </button>
 
-            <button
-                type="button"
-                className="pagination-nav"
-                onClick={() => changePage(currentPage - 1)}
-                disabled={currentPage === 1}
-                aria-label="이전 페이지"
-                title="이전 페이지"
-            >
-                <i
-                    className="ri-arrow-left-s-line"
-                    aria-hidden="true"
-                />
-            </button>
+                <button
+                    type="button"
+                    className="pagination-nav"
+                    onClick={() => changePage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    aria-label="이전 페이지"
+                    title="이전 페이지"
+                >
+                    <i
+                        className="ri-arrow-left-s-line"
+                        aria-hidden="true"
+                    />
+                </button>
 
-            {pageItems.map((item) => {
-                if (String(item).startsWith("ellipsis")) {
+                {pageItems.map((item) => {
+                    if (String(item).startsWith("ellipsis")) {
+                        return (
+                            <span
+                                key={item}
+                                className="pagination-ellipsis"
+                            >
+                                …
+                            </span>
+                        )
+                    }
+
                     return (
-                        <span
+                        <button
+                            type="button"
                             key={item}
-                            className="pagination-ellipsis"
+                            className={
+                                item === currentPage
+                                    ? "is-active"
+                                    : ""
+                            }
+                            onClick={() => changePage(item)}
+                            aria-current={
+                                item === currentPage
+                                    ? "page"
+                                    : undefined
+                            }
                         >
-                            …
-                        </span>
+                            {item}
+                        </button>
                     )
-                }
+                })}
 
-                return (
-                    <button
-                        type="button"
-                        key={item}
-                        className={
-                            item === currentPage
-                                ? "is-active"
-                                : ""
-                        }
-                        onClick={() => changePage(item)}
-                        aria-current={
-                            item === currentPage
-                                ? "page"
-                                : undefined
-                        }
-                    >
-                        {item}
-                    </button>
-                )
-            })}
+                <button
+                    type="button"
+                    className="pagination-nav"
+                    onClick={() => changePage(currentPage + 1)}
+                    disabled={currentPage === lastPage}
+                    aria-label="다음 페이지"
+                    title="다음 페이지"
+                >
+                    <i
+                        className="ri-arrow-right-s-line"
+                        aria-hidden="true"
+                    />
+                </button>
 
-            <button
-                type="button"
-                className="pagination-nav"
-                onClick={() => changePage(currentPage + 1)}
-                disabled={currentPage === lastPage}
-                aria-label="다음 페이지"
-                title="다음 페이지"
-            >
-                <i
-                    className="ri-arrow-right-s-line"
-                    aria-hidden="true"
-                />
-            </button>
-
-            <button
-                type="button"
-                className="pagination-nav"
-                onClick={() => changePage(lastPage)}
-                disabled={currentPage === lastPage}
-                aria-label="마지막 페이지"
-                title="마지막 페이지"
-            >
-                <i
-                    className="ri-arrow-right-double-line"
-                    aria-hidden="true"
-                />
-            </button>
+                <button
+                    type="button"
+                    className="pagination-nav"
+                    onClick={() => changePage(lastPage)}
+                    disabled={currentPage === lastPage}
+                    aria-label="마지막 페이지"
+                    title="마지막 페이지"
+                >
+                    <i
+                        className="ri-arrow-right-double-line"
+                        aria-hidden="true"
+                    />
+                </button>
+            </div>
 
             <form
                 className="pagination-search"
                 onSubmit={handlePageSearch}
             >
-                <label
-                    className="sr-only"
-                    htmlFor="pagination-page-input"
-                >
-                    이동할 페이지 번호
-                </label>
-
                 <input
                     id="pagination-page-input"
                     type="number"
@@ -214,15 +209,20 @@ export default function Pagination({
                 />
 
                 <span aria-hidden="true">
-                    / {lastPage}
+                    {lastPage}
                 </span>
 
                 <button
                     type="submit"
                     className="pagination-search-button"
                     disabled={!pageInput}
+                    aria-label="입력한 페이지로 이동"
+                    title="페이지 이동"
                 >
-                    이동
+                    <i
+                        className="ri-search-line"
+                        aria-hidden="true"
+                    />
                 </button>
             </form>
         </nav>

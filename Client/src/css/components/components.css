@@ -21,7 +21,7 @@
 }
 
 .btn-primary {
-    background: var(--color-primary);
+    background: var(--color-text-light);
     color: #fff;
 }
 
@@ -801,12 +801,19 @@
 /* ============================= Pagination ============================= */
 
 .pagination {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
     gap: 8px;
     margin-block: 40px 56px;
+}
+
+.pagination-pages {
+    display: flex;
+    grid-column: 2;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 /* 찾고있어요 / 보호중이에요 / 발견제보 목록의 공통 리듬 */
@@ -940,20 +947,35 @@
 
 .pagination-search {
     display: inline-flex;
+    grid-column: 2;
+    grid-row: 2;
     align-items: center;
-    gap: 6px;
-    margin-left: 8px;
-    color: var(--color-text-light);
-    font-size: 13px;
-}
-
-.pagination-search input {
-    width: 68px;
-    height: 38px;
-    padding: 0 8px;
+    justify-self: center;
+    gap: 0;
+    margin-top: 10px;
+    overflow: hidden;
     border: 1px solid var(--color-border);
     border-radius: 10px;
     background: var(--color-surface);
+    color: var(--color-text-light);
+    font-size: 13px;
+    transition:
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.pagination-search:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.pagination-search input {
+    width: 72px;
+    height: 36px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     color: var(--color-text);
     font-size: 13px;
     text-align: center;
@@ -961,12 +983,54 @@
 }
 
 .pagination-search input:focus {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px var(--color-primary-soft);
+    box-shadow: none;
+}
+
+.pagination-search input::-webkit-inner-spin-button,
+.pagination-search input::-webkit-outer-spin-button {
+    margin: 0;
+    appearance: none;
+}
+
+.pagination-search > span {
+    display: inline-flex;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 36px;
+    padding: 0 10px;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+
+.pagination-search > span::before {
+    position: absolute;
+    left: 0;
+    content: "/";
+    transform: translateX(-50%);
 }
 
 .pagination button.pagination-search-button {
-    min-width: 46px;
+    min-width: 42px;
+    height: 36px;
+    padding-inline: 11px;
+    border: 0;
+    border-left: 1px solid var(--color-border);
+    border-radius: 0;
+    background: #474747;
+    color: #ffffff;
+}
+
+.pagination button.pagination-search-button:hover:not(:disabled) {
+    border-color: var(--color-text-sub);
+    background: var(--color-text-sub);
+    color: #ffffff;
+}
+
+.pagination-search-button i {
+    font-size: 16px;
+    line-height: 1;
 }
 
 .pagination button:disabled {
@@ -975,11 +1039,20 @@
 }
 
 @media (max-width: 600px) {
+    .pagination {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .pagination-pages {
+        width: 100%;
+        gap: 4px;
+    }
+
     .pagination-search {
         flex-basis: 100%;
         justify-content: center;
         margin-top: 8px;
-        margin-left: 0;
     }
 }
 
