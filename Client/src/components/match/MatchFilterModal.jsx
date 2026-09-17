@@ -169,6 +169,7 @@ export default function MatchFilterModal({ initialFilters, onClose, onApply, onR
                             type="date"
                             value={draft.start_date}
                             max={draft.end_date || undefined}
+                            onClick={(event) => event.currentTarget.showPicker?.()}
                             onChange={(event) => setField("start_date", event.target.value)}
                         />
                         <input
@@ -176,6 +177,7 @@ export default function MatchFilterModal({ initialFilters, onClose, onApply, onR
                             type="date"
                             value={draft.end_date}
                             min={draft.start_date || undefined}
+                            onClick={(event) => event.currentTarget.showPicker?.()}
                             onChange={(event) => setField("end_date", event.target.value)}
                         />
                     </div>

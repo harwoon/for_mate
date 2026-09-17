@@ -623,6 +623,9 @@ export default function FilterModal({
                                 draftFilters.end_date ||
                                 undefined
                             }
+                            onClick={(event) =>
+                                event.currentTarget.showPicker?.()
+                            }
                             onChange={(event) => (
                                 handleFieldChange(
                                     "start_date",
@@ -640,6 +643,9 @@ export default function FilterModal({
                             min={
                                 draftFilters.start_date ||
                                 undefined
+                            }
+                            onClick={(event) =>
+                                event.currentTarget.showPicker?.()
                             }
                             onChange={(event) => (
                                 handleFieldChange(
