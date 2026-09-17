@@ -1,4 +1,5 @@
 import {
+    findEmbeddingSpace,
     findLostPostEmbeddings,
     findLostPostSpecies,
     findNearestCandidates
@@ -10,16 +11,20 @@ const lostPostId = Number(process.argv[2])
 const targetAnimalId = Number(process.argv[3])
 const repeatBonus = Number(process.argv[4] ?? 0.05)
 const repeatTopN = Number(process.argv[5] ?? 10)
+const modelVersionKey = String(process.argv[6] ?? "").trim()
 
 const CANDIDATE_LIMIT_PER_VECTOR = 100
 const RANK_POINT_LIMIT = 10
 
 if (
     !Number.isInteger(lostPostId) ||
-    !Number.isInteger(targetAnimalId)
+    !Number.isInteger(targetAnimalId) ||
+    !modelVersionKey
 ) {
     console.error(
-        "사용법: node compareMatchStrategies.mjs <lostPostId> <targetAnimalId> [repeatBonus]"
+        "사용법: node compareMatchStrategies.mjs " +
+        "<lostPostId> <targetAnimalId> " +
+        "[repeatBonus] [repeatTopN] <modelVersionKey>"
     )
 
     process.exit(1)
@@ -337,18 +342,66 @@ function findTarget(
 }
 
 async function main() {
-    const vectors =
-        await findLostPostEmbeddings(
-            lostPostId
-        )
-
     const species =
         await findLostPostSpecies(
             lostPostId
         )
 
+    if (!species) {
+        throw new Error(
+            `실종 공고를 찾을 수 없습니다: ${lostPostId}`
+        )
+    }
+
+    const embeddingSpaces =
+        await findEmbeddingSpace(
+            modelVersionKey,
+            species
+        )
+
+    if (embeddingSpaces.length === 0) {
+        throw new Error(
+            "사용 가능한 임베딩 공간이 없습니다: " +
+            `model=${modelVersionKey}, ` +
+            `species=${species}`
+        )
+    }
+
+    if (embeddingSpaces.length > 1) {
+        throw new Error(
+            "사용 가능한 임베딩 공간이 여러 개입니다: " +
+            `model=${modelVersionKey}, ` +
+            `species=${species}`
+        )
+    }
+
+    const embeddingSpace =
+        embeddingSpaces[0]
+
+    const vectors =
+        await findLostPostEmbeddings(
+            lostPostId,
+            embeddingSpace.id
+        )
+
+    if (vectors.length === 0) {
+        throw new Error(
+            "선택한 모델 공간의 실종 임베딩이 없습니다: " +
+            `model=${modelVersionKey}, ` +
+            `space=${embeddingSpace.space_key}`
+        )
+    }
+
     console.log(
         `\n실종공고: ${lostPostId}`
+    )
+
+    console.log(
+        `모델 버전: ${modelVersionKey}`
+    )
+
+    console.log(
+        `임베딩 공간: ${embeddingSpace.space_key}`
     )
 
     console.log(
@@ -378,6 +431,7 @@ async function main() {
             await findNearestCandidates(
                 vectors[index],
                 species,
+                embeddingSpace.id,
                 CANDIDATE_LIMIT_PER_VECTOR
             )
 
