@@ -1,3 +1,5 @@
+import { useState } from "react"
+
 // 목록 하단 페이지네이션
 export default function Pagination({
     page,
@@ -5,6 +7,8 @@ export default function Pagination({
     size = 20,
     onChange
 }) {
+    const [pageInput, setPageInput] = useState("")
+
     const lastPage = Math.max(
         1,
         Math.ceil((total || 0) / size)
@@ -30,35 +34,62 @@ export default function Pagination({
     }
 
     function getPageItems() {
-        if (lastPage <= 6) {
+        if (lastPage <= 9) {
             return Array.from(
                 { length: lastPage },
                 (_, index) => index + 1
             )
         }
 
-        const items = [1, 2, 3, 4]
+        const visiblePages = new Set([
+            1,
+            2,
+            lastPage - 1,
+            lastPage
+        ])
 
-        if (
-            currentPage > 4 &&
-            currentPage < lastPage - 1
+        for (
+            let target = currentPage - 2;
+            target <= currentPage + 2;
+            target += 1
         ) {
-            if (currentPage > 5) {
-                items.push("ellipsis-middle-left")
+            if (target >= 1 && target <= lastPage) {
+                visiblePages.add(target)
             }
-
-            items.push(currentPage)
-
-            if (currentPage < lastPage - 2) {
-                items.push("ellipsis-middle-right")
-            }
-        } else {
-            items.push("ellipsis-middle")
         }
 
-        items.push(lastPage - 1, lastPage)
+        const pages = [...visiblePages].sort((a, b) => a - b)
+        const items = []
 
-        return [...new Set(items)]
+        pages.forEach((target, index) => {
+            const previous = pages[index - 1]
+
+            if (previous && target - previous > 1) {
+                items.push(`ellipsis-${previous}-${target}`)
+            }
+
+            items.push(target)
+        })
+
+        return items
+    }
+
+    function handlePageSearch(event) {
+        event.preventDefault()
+
+        const requestedPage = Number(pageInput)
+
+        if (!Number.isInteger(requestedPage)) {
+            return
+        }
+
+        const nextPage = Math.min(
+            Math.max(requestedPage, 1),
+            lastPage
+        )
+
+        setPageInput("")
+        changePage(nextPage)
     }
 
     const pageItems = getPageItems()
@@ -156,6 +187,44 @@ export default function Pagination({
                     aria-hidden="true"
                 />
             </button>
+
+            <form
+                className="pagination-search"
+                onSubmit={handlePageSearch}
+            >
+                <label
+                    className="sr-only"
+                    htmlFor="pagination-page-input"
+                >
+                    이동할 페이지 번호
+                </label>
+
+                <input
+                    id="pagination-page-input"
+                    type="number"
+                    min="1"
+                    max={lastPage}
+                    inputMode="numeric"
+                    value={pageInput}
+                    onChange={(event) =>
+                        setPageInput(event.target.value)
+                    }
+                    placeholder="페이지"
+                    aria-label={`이동할 페이지 번호, 전체 ${lastPage}페이지`}
+                />
+
+                <span aria-hidden="true">
+                    / {lastPage}
+                </span>
+
+                <button
+                    type="submit"
+                    className="pagination-search-button"
+                    disabled={!pageInput}
+                >
+                    이동
+                </button>
+            </form>
         </nav>
     )
 }
