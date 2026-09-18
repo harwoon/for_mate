@@ -82,9 +82,9 @@ function validateDate(value) {
 // 3.1 실종 공고 등록 (사진 최대 8장)
 export async function createPost({ userId, body, imageUrls }) {
   // upload 미들웨어가 만든 URL 배열을 확인한다.
-  // 등록 API는 최소 3장, 최대 8장의 사진을 요구한다.
-  if (!Array.isArray(imageUrls) || imageUrls.length < 3) {
-    throw serviceError("이미지를 3장 이상 등록해주세요.", 400, "MISSING_IMAGES")
+  // 등록 API는 최소 1장, 최대 8장의 사진을 요구한다.
+  if (!Array.isArray(imageUrls) || imageUrls.length < 1) {
+    throw serviceError("이미지를 1장 이상 등록해주세요.", 400, "MISSING_IMAGES")
   }
   if (imageUrls.length > 8) {
     throw serviceError("이미지는 최대 8장까지 등록할 수 있습니다.", 400, "TOO_MANY_IMAGES")
@@ -395,7 +395,7 @@ export async function updatePost({ postId, userId, body, imageUrls = [] }) {
   }
   if (result.outcome === "invalid_image_count") {
     throw serviceError(
-      "수정 완료 후 이미지는 3장 이상 8장 이하여야 합니다.",
+      "수정 완료 후 이미지는 1장 이상 8장 이하여야 합니다.",
       400,
       "INVALID_IMAGE_COUNT",
     )

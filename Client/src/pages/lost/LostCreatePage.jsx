@@ -33,7 +33,7 @@ const EMPTY_ERRORS = {
 }
 
 const MAX_IMAGES = 8
-const MIN_IMAGES = 3
+const MIN_IMAGES = 1
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"]
 const PHOTO_GUIDE_EXAMPLES = [
@@ -573,7 +573,7 @@ export default function LostCreatePage() {
                 <div className="card card-padded stack lost-photo-upload-card">
                     <div className="lost-photo-upload-heading">
                         <h2>사진 추가 <span aria-hidden="true">*</span></h2>
-                        <p>최소 3장, 권장 5장, 최대 8장 (JPG, PNG, WEBP)</p>
+                        <p>최소 1장, 권장 5장, 최대 8장 (JPG, PNG, WEBP)</p>
                     </div>
 
                     <div className="form-field lost-photo-input-field">
