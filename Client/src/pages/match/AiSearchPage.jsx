@@ -39,6 +39,7 @@ export default function AiSearchPage() {
     const [waiting, setWaiting] = useState(false)
     const [delayed, setDelayed] = useState(false)
     const [matchError, setMatchError] = useState(null)
+    const [similarImageWarning, setSimilarImageWarning] = useState(false)
     const [failedImages, setFailedImages] = useState({})
     const [messageIndex, setMessageIndex] = useState(0)
     const runRef = useRef(0)
@@ -58,6 +59,7 @@ export default function AiSearchPage() {
             setWaiting(false)
             setDelayed(false)
             setMatchError(null)
+            setSimilarImageWarning(false)
 
             try {
                 const result = await getMyLostPosts({
@@ -137,9 +139,10 @@ export default function AiSearchPage() {
         setWaiting(false)
         setDelayed(false)
         setMatchError(null)
+        setSimilarImageWarning(false)
     }
 
-    async function startMatching() {
+    async function startMatching(confirmSimilarImages = false) {
         if (!selectedPostId || matchingRef.current) return
 
         const run = ++runRef.current
@@ -169,7 +172,8 @@ export default function AiSearchPage() {
             const request = getMatches(
                 postId,
                 {
-                    limit: INITIAL_MATCH_LIMIT
+                    limit: INITIAL_MATCH_LIMIT,
+                    confirm_similar_images: confirmSimilarImages
                 }
             )
 
@@ -238,6 +242,11 @@ export default function AiSearchPage() {
                     }
 
                     setDelayed(true)
+                } else if (
+                    error.status === 409 &&
+                    error.code === "SIMILAR_LOST_POST_IMAGES"
+                ) {
+                    setSimilarImageWarning(true)
                 } else {
                     setMatchError(error)
                 }
@@ -436,7 +445,7 @@ export default function AiSearchPage() {
                                     matching ||
                                     matchingComplete
                                 }
-                                onClick={startMatching}
+                                onClick={() => startMatching(false)}
                             >
                                 {matching || matchingComplete
                                     ? "AI 매칭 진행 중"
@@ -464,7 +473,7 @@ export default function AiSearchPage() {
                                 <div>
                                     <button
                                         className="btn btn-outline"
-                                        onClick={startMatching}
+                                        onClick={() => startMatching(false)}
                                     >
                                         다시 시도
                                     </button>
@@ -481,10 +490,57 @@ export default function AiSearchPage() {
                                     }
                                     onRetry={
                                         canRetry
-                                            ? startMatching
+                                            ? () => startMatching(false)
                                             : undefined
                                     }
                                 />
+                            </div>
+                        )}
+
+                        {similarImageWarning && (
+                            <div
+                                className="ai-similar-warning-backdrop"
+                                role="presentation"
+                            >
+                                <section
+                                    className="ai-similar-warning-dialog"
+                                    role="dialog"
+                                    aria-modal="true"
+                                    aria-labelledby="similar-image-warning-title"
+                                >
+                                    <div className="ai-similar-warning-icon" aria-hidden="true">
+                                        !
+                                    </div>
+
+                                    <h2 id="similar-image-warning-title">
+                                        유사한 사진이 확인되었습니다
+                                    </h2>
+
+                                    <p>
+                                        유사하거나 동일한 사진이 포함되어 있어 AI 매칭 정확도가 낮아질 수 있습니다. 그래도 매칭을 진행하시겠습니까?
+                                    </p>
+
+                                    <div className="ai-similar-warning-actions">
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline"
+                                            onClick={() => setSimilarImageWarning(false)}
+                                        >
+                                            취소
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            onClick={() => {
+                                                setSimilarImageWarning(false)
+                                                startMatching(true)
+                                            }}
+                                        >
+                                            계속 진행
+                                        </button>
+                                    </div>
+                                </section>
                             </div>
                         )}
                     </div>

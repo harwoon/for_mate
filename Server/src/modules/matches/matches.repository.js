@@ -97,6 +97,40 @@ export async function findLostPostEmbeddings(
 }
 
 
+// 한 실종 공고에 등록된 이미지끼리 현재 임베딩 공간에서 가장 가까운 거리 조회
+export async function findClosestLostPostImagePair(
+    lostPostId,
+    embeddingSpaceId
+) {
+    const { rows } = await query(
+        `
+        SELECT
+            e1.image_id AS first_image_id,
+            e2.image_id AS second_image_id,
+            (e1.embedding <=> e2.embedding) AS distance
+        FROM embeddings e1
+        JOIN images i1
+            ON i1.id = e1.image_id
+        JOIN embeddings e2
+            ON e2.embedding_space_id = e1.embedding_space_id
+            AND e2.image_id > e1.image_id
+        JOIN images i2
+            ON i2.id = e2.image_id
+            AND i2.post_type = 'lost'
+            AND i2.lost_post_id = i1.lost_post_id
+        WHERE i1.post_type = 'lost'
+            AND i1.lost_post_id = $1
+            AND e1.embedding_space_id = $2
+        ORDER BY distance ASC
+        LIMIT 1
+        `,
+        [lostPostId, embeddingSpaceId]
+    )
+
+    return rows[0] ?? null
+}
+
+
 // 같은 임베딩 공간 안에서 가장 가까운 매칭 후보 K개 조회
 // "ORDER BY 거리 LIMIT" 형태를 유지해 pgvector HNSW 인덱스를 사용한다.
 export async function findNearestCandidates(

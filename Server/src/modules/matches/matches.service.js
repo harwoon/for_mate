@@ -262,6 +262,32 @@ export async function getMatches(lostPostId, userId, rawOptions) {
 
     const embeddingSpace = embeddingSpaces[0]
 
+    const similarImagesConfirmed =
+        String(rawOptions.confirm_similar_images).toLowerCase() === "true"
+
+    if (!similarImagesConfirmed) {
+        const closestImagePair =
+            await repository.findClosestLostPostImagePair(
+                lostPostId,
+                embeddingSpace.id
+            )
+
+        const similarity = closestImagePair
+            ? 1 - Number(closestImagePair.distance)
+            : null
+
+        if (similarity !== null && similarity >= 0.97) {
+            const error = new Error(
+                "유사하거나 동일한 사진이 포함되어 있어 AI 매칭 정확도가 낮아질 수 있습니다. 그래도 매칭을 진행하시겠습니까?"
+            )
+
+            error.status = 409
+            error.code = "SIMILAR_LOST_POST_IMAGES"
+
+            throw error
+        }
+    }
+
     const vectors =
         await repository.findLostPostEmbeddings(
             lostPostId,
