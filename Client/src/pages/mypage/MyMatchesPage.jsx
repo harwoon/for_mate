@@ -178,14 +178,6 @@ export default function MyMatchesPage() {
     }
 
     const filterChips = [
-        filters.source_type && {
-            key: "source_type",
-            label: `출처: ${SOURCE_LABELS[filters.source_type]}`,
-            onRemove: () => {
-                setFilters((current) => ({ ...current, source_type: "" }))
-                setPage(1)
-            }
-        },
         filters.sex && {
             key: "sex",
             label: `성별: ${SEX_LABELS[filters.sex]}`,

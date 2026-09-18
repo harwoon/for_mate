@@ -247,11 +247,6 @@ export async function findMyMatches({ userId, lostPostId, filters, sort, size, o
         conditions.push(`lp.id = $${params.length}`)
     }
 
-    if (filters.source_type) {
-        params.push(filters.source_type)
-        conditions.push(`m.source_type = $${params.length}`)
-    }
-
     if (filters.sex) {
         params.push(filters.sex)
         const param = `$${params.length}`
