@@ -13,6 +13,7 @@ import { notifyNewMatches } from "./notifyNewMatches.js"
 import { setGlobalDispatcher, Agent } from "undici"
 import { downloadAndUploadExternalImage } from "../utils/externalImage.js"
 import { deleteFromR2, extractR2Key } from "../utils/r2.js"
+import { markDuplicatePawinhandAnimals } from "./markDuplicateAnimals.js"
 
 setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }))
 
@@ -243,6 +244,9 @@ async function extractEmbeddings(processed) {
 
   if (pending.length === 0) {
     console.log("임베딩 추출 대상 없음")
+
+    await markDuplicatePawinhandAnimals()
+    
     return
   }
 
@@ -284,7 +288,12 @@ async function extractEmbeddings(processed) {
     }
   }
 
-  await notifyNewMatches("rescue", [...processedDesertionNos])
+  await markDuplicatePawinhandAnimals()
+
+  await notifyNewMatches(
+    "rescue", [...processedDesertionNos]
+  )
+
   console.log("임베딩 추출 전체 완료")
 }
 

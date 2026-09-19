@@ -494,6 +494,8 @@ async function extractEmbeddings() {
 
   if (pending.length === 0) {
     console.log("[pawinhand] 임베딩 추출 대상 없음")
+
+    await markDuplicatePawinhandAnimals()
     return
   }
 
@@ -525,8 +527,8 @@ async function extractEmbeddings() {
   }
 
   const animalIds = [...new Set(pending.map((row) => Number(row.pawinhand_animal_id)))]
-  await notifyNewMatches("pawinhand", animalIds)
   await markDuplicatePawinhandAnimals()
+  await notifyNewMatches("pawinhand", animalIds)
   console.log("[pawinhand] 임베딩 추출 전체 완료")
 }
 
