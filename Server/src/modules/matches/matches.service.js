@@ -15,8 +15,11 @@ const MAX_RESULT_LIMIT = 50
 // 실종사진별 반복 등장 여부를 판단할 후보 범위
 const REPEAT_TOP_N = 20
 
-// 반복 등장 1회당 가점
-const REPEAT_BONUS = 0.03
+// 종별 반복 등장 가점
+const REPEAT_BONUS_BY_SPECIES = {
+    개: 0.03,
+    고양이: 0
+}
 
 const MATCH_SORTS = new Set([
     "similarity_desc",
@@ -253,6 +256,8 @@ export async function getMatches(
         await repository.findLostPostSpecies(
             lostPostId
         )
+    
+    const repeatBonus = REPEAT_BONUS_BY_SPECIES[species] ?? 0
 
     if (
         species !== "개" &&
@@ -514,7 +519,7 @@ export async function getMatches(
                                 appeared_count - 1,
                                 0
                             ) *
-                            REPEAT_BONUS
+                            repeatBonus
                         )
 
                     return {
