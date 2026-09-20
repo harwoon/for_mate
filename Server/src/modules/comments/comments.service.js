@@ -45,8 +45,7 @@ function canViewSecret(row, post, viewer) {
     return !row.is_secret || (
         viewer.userId != null && (
             String(row.user_id) === String(viewer.userId) ||
-            String(post.user_id) === String(viewer.userId) ||
-            viewer.isAdmin
+            String(post.user_id) === String(viewer.userId)
         )
     )
 }
@@ -78,12 +77,12 @@ function toItem(row, post, viewer) {
     }
 }
 
-export async function getComments({ postType: rawType, postId: rawId, userId, isAdmin }) {
+export async function getComments({ postType: rawType, postId: rawId, userId }) {
     const postType = parsePostType(rawType)
     const postId = parseId(rawId, "게시글 ID")
     const post = await requirePost(postType, postId)
     const rows = await repository.findMany(postType, postId)
-    const viewer = { userId, isAdmin: Boolean(isAdmin) }
+    const viewer = { userId }
     const items = rows.map((row) => ({ ...toItem(row, post, viewer), replies: [] }))
     const byId = new Map(items.map((item) => [item.id, item]))
     const roots = []

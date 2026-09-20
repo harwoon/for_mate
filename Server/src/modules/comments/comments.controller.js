@@ -6,8 +6,7 @@ export async function getComments(req, res, next) {
         ok(res, await service.getComments({
             postType: req.params.postType,
             postId: req.params.postId,
-            userId: req.userId,
-            isAdmin: req.user?.is_admin
+            userId: req.userId
         }))
     } catch (error) {
         next(error)
