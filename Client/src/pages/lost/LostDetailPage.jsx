@@ -10,6 +10,7 @@ import ErrorState from "../../components/common/ErrorState.jsx"
 import Loading from "../../components/common/Loading.jsx"
 import PostNavigation from "../../components/common/PostNavigation.jsx"
 import ReportModal from "../../components/post/ReportModal.jsx"
+import CommentSection from "../../components/post/CommentSection.jsx"
 import { formatDate, formatTimestampDate } from "../../utils/date.js"
 
 const SEX_LABELS = {
@@ -567,6 +568,8 @@ export default function LostDetailPage() {
                     )}
                 </article>
             </section>
+
+            <CommentSection postType="lost" postId={id} />
 
             <PostNavigation
                 previousPost={post.previous_post}

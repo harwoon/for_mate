@@ -15,6 +15,7 @@ import inquiriesRouter from "./modules/inquiries/inquiries.router.js"
 import pagesRouter from "./modules/pages/pages.router.js"
 import adminRouter from "./modules/admin/admin.router.js"
 import faqsRouter from "./modules/faqs/faqs.router.js"
+import commentsRouter from "./modules/comments/comments.router.js"
 
 import { errorHandler } from "./middleware/error.middleware.js"
 
@@ -44,6 +45,7 @@ app.use("/notifications", notificationsRouter) // 9. 알림
 app.use("/reports", reportsRouter)        // 10. 신고
 app.use("/inquiries", inquiriesRouter)    // 11. 고객센터 문의
 app.use("/pages", pagesRouter)            // 12. 정적 페이지
+app.use("/comments", commentsRouter)      // 찾고있어요/발견제보 댓글
 app.use("/admin", adminRouter)            // 관리자
 
 // 없는 경로 처리

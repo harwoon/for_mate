@@ -11,6 +11,7 @@ import Empty from "../../components/common/Empty.jsx"
 import ErrorState from "../../components/common/ErrorState.jsx"
 import Loading from "../../components/common/Loading.jsx"
 import ReportModal from "../../components/post/ReportModal.jsx"
+import CommentSection from "../../components/post/CommentSection.jsx"
 import { formatDate, formatDateTime } from "../../utils/date.js"
 
 function displayValue(value) {
@@ -544,6 +545,8 @@ export default function FoundDetailPage() {
                     )}
                 </article>
             </section>
+
+            <CommentSection postType="found" postId={id} />
 
             {reportOpen && (
                 <ReportModal
