@@ -299,8 +299,6 @@ export default function Header() {
     async function handleBookmarkClick(
         notification
     ) {
-        if (notification.source_type === "found") return
-
         if (
             bookmarkingId ===
             notification.notification_id
@@ -344,12 +342,17 @@ export default function Header() {
                 return
             }
 
-            const result =
-                await addBookmark({
-                    source_type:
-                        notification.source_type,
-                    animal_id: animalId
-                })
+            const result = await addBookmark(
+                notification.source_type === "found"
+                    ? {
+                        source_type: "found",
+                        found_post_id: animalId
+                    }
+                    : {
+                        source_type: notification.source_type,
+                        animal_id: animalId
+                    }
+            )
 
             setBookmarks((current) => [
                 ...current,
@@ -669,8 +672,7 @@ export default function Header() {
 
                                                                 <div className="notification-dropdown-actions">
                                                                     <div className="notification-dropdown-icon-actions">
-                                                                        {notification.source_type !== "found" && (
-                                                                            <button
+                                                                        <button
                                                                                 type="button"
                                                                                 className={
                                                                                     bookmark
@@ -704,8 +706,7 @@ export default function Header() {
                                                                                     }
                                                                                     aria-hidden="true"
                                                                                 />
-                                                                            </button>
-                                                                        )}
+                                                                        </button>
 
                                                                         <button
                                                                             type="button"
