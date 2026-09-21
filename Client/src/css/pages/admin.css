@@ -145,15 +145,34 @@
 }
 .admin-summary-item {
     display: grid;
-    grid-template-columns: auto 1fr;
-    gap: var(--space-xs) var(--space-sm);
+    grid-template-columns: 44px 1fr;
+    gap: var(--space-xs) var(--space-12);
+    min-height: 132px;
     padding: var(--space-lg);
+    transition:
+        border-color var(--transition-base),
+        box-shadow var(--transition-base),
+        transform var(--transition-base);
+}
+
+.admin-summary-item:hover {
+    border-color: rgba(71, 120, 79, 0.28);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-2px);
 }
 .admin-summary-item > i {
+    display: flex;
     grid-row: span 2;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--color-primary-light);
     color: var(--color-primary);
-    font-size: 22px;
+    font-size: 20px;
 }
+
 .admin-summary-item span,
 .admin-summary-item small {
     color: var(--color-text-sub);
@@ -186,6 +205,130 @@
     font-size: var(--font-sm);
     line-height: 1.6;
 }
+.admin-placeholder-panel {
+    transition:
+        border-color var(--transition-base),
+        box-shadow var(--transition-base);
+}
+
+.admin-dashboard-grid .admin-placeholder-panel:hover {
+    border-color: rgba(71, 120, 79, 0.22);
+    box-shadow: var(--shadow-sm);
+}
+/* ============================= 관리자 대시보드 ============================= */
+
+.admin-dashboard-state {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    min-height: 72px;
+    margin-top: var(--space-32);
+    padding: var(--space-md) var(--space-lg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text-sub);
+    font-size: var(--font-sm);
+}
+
+.admin-dashboard-state > i {
+    color: var(--color-primary);
+    font-size: 20px;
+}
+
+.admin-dashboard-state.is-error {
+    border-color: var(--color-danger);
+    background: var(--color-danger-light);
+    color: var(--color-danger-dark);
+}
+
+.admin-dashboard-state.is-error > i {
+    color: var(--color-danger);
+}
+
+
+/* 하단 현황 카드 */
+
+.admin-panel-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.admin-panel-heading > div {
+    min-width: 0;
+}
+
+.admin-panel-heading h3 {
+    margin: 0;
+    color: var(--color-text);
+    font-size: var(--font-md);
+    font-weight: var(--weight-bold);
+}
+
+.admin-panel-heading p {
+    margin-top: var(--space-xs);
+    color: var(--color-text-sub);
+    font-size: var(--font-xs);
+}
+
+.admin-panel-heading > i {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    font-size: 18px;
+}
+
+
+/* 카드 내부 통계 */
+
+.admin-stat-list {
+    display: flex;
+    flex-direction: column;
+    margin-top: var(--space-md);
+}
+
+.admin-stat-list > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 42px;
+    padding: 8px 2px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.admin-stat-list > div:last-child {
+    border-bottom: 0;
+}
+
+.admin-stat-list span {
+    color: var(--color-text-sub);
+    font-size: var(--font-sm);
+}
+
+.admin-stat-list strong {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 28px;
+    padding: 0 9px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-bold);
+}
+
 .admin-page-placeholder {
     display: flex;
     flex-direction: column;
