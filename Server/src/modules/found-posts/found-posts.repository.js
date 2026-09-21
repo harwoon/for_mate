@@ -172,7 +172,7 @@ export async function findMany({ filters, sort, size, offset }) {
 }
 
 // 발견제보 상세 조회
-export async function findById(id) {
+export async function findById(id, userId = null) {
     const postResult = await pool.query(
         `
             SELECT
@@ -188,7 +188,14 @@ export async function findById(id) {
                 fp.status,
                 fp.created_at,
                 r.reason AS blind_reason,
-                u.name AS author_name
+                u.name AS author_name,
+                EXISTS (
+                    SELECT 1
+                    FROM bookmarks b
+                    WHERE b.user_id = $2
+                      AND b.source_type = 'found'
+                      AND b.found_post_id = fp.id
+                ) AS is_bookmarked
             FROM found_posts fp
             JOIN users u
                 ON u.id = fp.user_id
@@ -196,7 +203,7 @@ export async function findById(id) {
                 ON r.id = fp.blind_report_id
             WHERE fp.id = $1
         `,
-        [id]
+        [id, userId]
     )
 
     const post = postResult.rows[0]

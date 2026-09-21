@@ -5,6 +5,11 @@ import {
     deleteFoundPost,
     getFoundPost
 } from "../../api/foundPosts.api.js"
+import {
+    addBookmark,
+    getBookmarks,
+    removeBookmark
+} from "../../api/misc.api.js"
 import AlertModal from "../../components/common/AlertModal.jsx"
 import Breadcrumb from "../../components/common/Breadcrumb.jsx"
 import Empty from "../../components/common/Empty.jsx"
@@ -41,6 +46,8 @@ export default function FoundDetailPage() {
     const [retryCount, setRetryCount] = useState(0)
     const [deleting, setDeleting] = useState(false)
     const [reported, setReported] = useState(false)
+    const [bookmarkId, setBookmarkId] = useState(null)
+    const [bookmarking, setBookmarking] = useState(false)
 
     const [reportOpen, setReportOpen] = useState(false)
     const [alertOpen, setAlertOpen] = useState(false)
@@ -70,6 +77,7 @@ export default function FoundDetailPage() {
                 setCurrentImageIndex(0)
                 setFailedImages({})
                 setReported(false)
+                setBookmarkId(null)
             } catch (error) {
                 if (!cancelled) {
                     setPost(null)
@@ -138,6 +146,49 @@ export default function FoundDetailPage() {
             )
         } finally {
             setDeleting(false)
+        }
+    }
+
+    async function findBookmarkId() {
+        if (bookmarkId) return bookmarkId
+
+        const result = await getBookmarks()
+        const bookmark = result?.items?.find(
+            (item) => item.source_type === "found" &&
+                String(item.found_post_id || item.animal_id) === String(id)
+        )
+        return bookmark?.bookmark_id || null
+    }
+
+    async function handleBookmark() {
+        if (!post || bookmarking) return
+
+        setBookmarking(true)
+        setActionError("")
+
+        try {
+            if (!post.is_bookmarked) {
+                const result = await addBookmark({
+                    source_type: "found",
+                    found_post_id: id
+                })
+                setBookmarkId(result?.bookmark_id ?? null)
+                setPost((current) => ({ ...current, is_bookmarked: true }))
+                return
+            }
+
+            const currentBookmarkId = await findBookmarkId()
+            if (!currentBookmarkId) {
+                throw new Error("북마크 정보를 찾을 수 없습니다.")
+            }
+
+            await removeBookmark(currentBookmarkId)
+            setBookmarkId(null)
+            setPost((current) => ({ ...current, is_bookmarked: false }))
+        } catch (error) {
+            setActionError(error.message || "북마크 처리에 실패했습니다.")
+        } finally {
+            setBookmarking(false)
         }
     }
 
@@ -498,8 +549,22 @@ export default function FoundDetailPage() {
                         </p>
                     )}
 
-                    {post.is_owner ? (
-                        <div className="found-detail-actions">
+                    <div className="found-detail-actions">
+                        <button
+                            type="button"
+                            className={post.is_bookmarked ? "btn btn-primary" : "btn btn-outline"}
+                            onClick={handleBookmark}
+                            disabled={bookmarking}
+                        >
+                            <i
+                                className={post.is_bookmarked ? "ri-bookmark-fill" : "ri-bookmark-line"}
+                                aria-hidden="true"
+                            />
+                            {bookmarking ? "처리 중..." : post.is_bookmarked ? "북마크됨" : "북마크"}
+                        </button>
+
+                        {post.is_owner ? (
+                            <>
                             <button
                                 type="button"
                                 className="btn btn-outline"
@@ -522,9 +587,8 @@ export default function FoundDetailPage() {
                                     ? "삭제 중..."
                                     : "게시글 삭제"}
                             </button>
-                        </div>
-                    ) : (
-                        <div className="found-detail-actions">
+                            </>
+                        ) : (
                             <button
                                 type="button"
                                 className={
@@ -541,8 +605,8 @@ export default function FoundDetailPage() {
                                     ? "신고 완료"
                                     : "신고하기"}
                             </button>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </article>
             </section>
 

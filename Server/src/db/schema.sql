@@ -321,15 +321,19 @@ CREATE TABLE bookmarks (
   source_type   VARCHAR(10) NOT NULL DEFAULT 'rescue',
   desertion_no  BIGINT REFERENCES rescue_animals(desertion_no) ON DELETE CASCADE,
   pawinhand_animal_id BIGINT REFERENCES pawinhand_animals(id) ON DELETE CASCADE,
+  found_post_id BIGINT REFERENCES found_posts(id) ON DELETE CASCADE,
   created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (user_id, desertion_no),
   CONSTRAINT bookmarks_source_reference_check CHECK (
-    (source_type = 'rescue' AND desertion_no IS NOT NULL AND pawinhand_animal_id IS NULL) OR
-    (source_type = 'pawinhand' AND desertion_no IS NULL AND pawinhand_animal_id IS NOT NULL)
+    (source_type = 'rescue' AND desertion_no IS NOT NULL AND pawinhand_animal_id IS NULL AND found_post_id IS NULL) OR
+    (source_type = 'pawinhand' AND desertion_no IS NULL AND pawinhand_animal_id IS NOT NULL AND found_post_id IS NULL) OR
+    (source_type = 'found' AND desertion_no IS NULL AND pawinhand_animal_id IS NULL AND found_post_id IS NOT NULL)
   )
 );
 CREATE UNIQUE INDEX bookmarks_user_pawinhand_unique
   ON bookmarks (user_id, pawinhand_animal_id) WHERE source_type = 'pawinhand';
+CREATE UNIQUE INDEX bookmarks_user_found_unique
+  ON bookmarks (user_id, found_post_id) WHERE source_type = 'found';
 
 -- 알림 (새벽 배치가 생성)
 CREATE TABLE notifications (

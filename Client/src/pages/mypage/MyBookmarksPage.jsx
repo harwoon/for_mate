@@ -24,6 +24,10 @@ function formatDate(value) {
 }
 
 function getDetailPath(bookmark) {
+    if (bookmark.source_type === "found") {
+        return `/found-posts/${bookmark.found_post_id || bookmark.animal_id}`
+    }
+
     return (
         `/rescue-animals/${bookmark.source_type}/${bookmark.animal_id}`
     )
@@ -178,7 +182,7 @@ export default function MyBookmarksPage() {
                             </h1>
 
                             <p className="page-desc">
-                                관심 있는 보호동물을
+                                관심 있는 보호동물과 발견제보를
                                 모아볼 수 있습니다.
                             </p>
                         </div>
@@ -201,7 +205,7 @@ export default function MyBookmarksPage() {
 
                     {!loading &&
                         bookmarks.length === 0 && (
-                            <Empty message="북마크한 보호동물이 없습니다." />
+                            <Empty message="북마크한 공고가 없습니다." />
                         )}
 
                     {!loading &&
@@ -216,7 +220,35 @@ export default function MyBookmarksPage() {
                                                 }
                                                 className="post-card"
                                             >
-                                                {bookmark.is_expired ? (
+                                                {bookmark.source_type === "found" ? (
+                                                    <Link to={getDetailPath(bookmark)}>
+                                                        {bookmark.thumbnail_url && (
+                                                            <img
+                                                                className="post-card-thumb"
+                                                                src={imageUrl(bookmark.thumbnail_url)}
+                                                                alt=""
+                                                            />
+                                                        )}
+
+                                                        <div className="post-card-body">
+                                                            <Badge type="found">
+                                                                발견제보
+                                                            </Badge>
+
+                                                            <p className="post-card-title">
+                                                                {bookmark.title || bookmark.breed || bookmark.species || "발견동물"}
+                                                            </p>
+
+                                                            <p className="post-card-meta">
+                                                                {bookmark.region || "지역 정보 없음"}
+                                                            </p>
+
+                                                            <p className="post-card-meta">
+                                                                발견일 {formatDate(bookmark.find_date)}
+                                                            </p>
+                                                        </div>
+                                                    </Link>
+                                                ) : bookmark.is_expired ? (
                                                     <div>
                                                         {bookmark.thumbnail_url && (
                                                             <img

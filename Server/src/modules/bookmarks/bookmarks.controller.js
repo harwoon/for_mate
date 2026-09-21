@@ -8,7 +8,8 @@ export async function addBookmark(req, res, next) {
 			userId: req.userId,
 			desertionNo: req.body?.desertion_no,
             sourceType: req.body?.source_type,
-            animalId: req.body?.animal_id
+            animalId: req.body?.animal_id,
+            foundPostId: req.body?.found_post_id
 		})
 
 		created(res, bookmark)

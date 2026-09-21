@@ -10,6 +10,10 @@ import Loading from "../../components/common/Loading.jsx"
 import { formatDate } from "../../utils/date.js"
 
 function getBookmarkPath(bookmark) {
+    if (bookmark.source_type === "found") {
+        return `/found-posts/${bookmark.found_post_id || bookmark.animal_id}`
+    }
+
     if (bookmark.source_type && bookmark.animal_id) {
         return `/rescue-animals/${bookmark.source_type}/${bookmark.animal_id}`
     }
@@ -445,7 +449,7 @@ export default function MyPage() {
                                                     bookmark
                                                 )}
                                                 className="mypage-thumbnail-link"
-                                                aria-label="북마크한 보호동물 보기"
+                                                aria-label="북마크한 공고 보기"
                                             >
                                                 <PreviewImage
                                                     src={
@@ -458,12 +462,12 @@ export default function MyPage() {
                                 </div>
                             ) : (
                                 <p className="mypage-summary-empty">
-                                    아직 북마크한 보호동물이 없습니다.
+                                    아직 북마크한 공고가 없습니다.
                                 </p>
                             )}
 
                             <p className="mypage-summary-description">
-                                관심 있는 보호동물 공고를
+                                관심 있는 보호동물과 발견제보를
                                 모아볼 수 있습니다.
                             </p>
                         </section>

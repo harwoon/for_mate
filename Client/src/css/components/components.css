@@ -303,6 +303,10 @@
     background: var(--badge-rescue);
 }
 
+.badge-found {
+    background: var(--badge-found);
+}
+
 .badge-ending {
     background: var(--badge-ending);
 }

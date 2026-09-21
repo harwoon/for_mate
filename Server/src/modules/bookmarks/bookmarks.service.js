@@ -1,4 +1,4 @@
-import { validateSourceType, parseAnimalId } from "../rescue-animals/animal-source.js"
+import { parseAnimalId } from "../rescue-animals/animal-source.js"
 import * as repository from "./bookmarks.repository.js"
 
 function serviceError(message, status, code) {
@@ -26,17 +26,25 @@ function parseBookmarkId(bookmarkId) {
 
 
 // 7.1 북마크 등록
-export async function addBookmark({ userId, desertionNo, sourceType, animalId }) {
-    const legacy = sourceType === undefined && animalId === undefined
-    const source = validateSourceType(legacy ? "rescue" : sourceType)
-    const id = parseAnimalId(legacy ? desertionNo : animalId,
-        legacy ? "INVALID_DESERTION_NO" : "INVALID_ANIMAL_ID")
+export async function addBookmark({ userId, desertionNo, sourceType, animalId, foundPostId }) {
+    const legacy = sourceType === undefined && animalId === undefined && foundPostId === undefined
+    const source = legacy ? "rescue" : sourceType
+    if (!["rescue", "pawinhand", "found"].includes(source)) {
+        throw serviceError("지원하지 않는 북마크 종류입니다.", 400, "INVALID_SOURCE_TYPE")
+    }
+    const rawId = source === "found" ? (foundPostId ?? animalId) : (legacy ? desertionNo : animalId)
+    const id = parseAnimalId(rawId,
+        legacy ? "INVALID_DESERTION_NO" : source === "found" ? "INVALID_FOUND_POST_ID" : "INVALID_ANIMAL_ID")
     if (!legacy && desertionNo !== undefined &&
         (source !== "rescue" || BigInt(parseAnimalId(desertionNo)) !== BigInt(id))) {
         throw serviceError("동물 식별자가 서로 일치하지 않습니다.", 400, "INVALID_ANIMAL_ID")
     }
-    if (!await repository.findAnimal(id, source)) {
-        throw serviceError("구조동물 공고를 찾을 수 없습니다.", 404, "RESCUE_ANIMAL_NOT_FOUND")
+    if (!await repository.findTarget(id, source)) {
+        throw serviceError(
+            source === "found" ? "발견제보 게시글을 찾을 수 없습니다." : "구조동물 공고를 찾을 수 없습니다.",
+            404,
+            source === "found" ? "FOUND_POST_NOT_FOUND" : "RESCUE_ANIMAL_NOT_FOUND"
+        )
     }
     const bookmark = await repository.create(userId, id, source)
     if (!bookmark) {
@@ -47,6 +55,7 @@ export async function addBookmark({ userId, desertionNo, sourceType, animalId })
         source_type: bookmark.source_type,
         animal_id: bookmark.animal_id,
         desertion_no: bookmark.desertion_no,
+        found_post_id: bookmark.found_post_id,
         created_at: bookmark.created_at
     }
 }

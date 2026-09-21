@@ -405,7 +405,7 @@ export async function getPosts(query) {
 // 4.3 발견제보 상세 조회
 export async function getPost({ postId, userId }) {
     const id = parsePostId(postId)
-    const post = await repository.findById(id)
+    const post = await repository.findById(id, userId)
 
     if (!post) {
         throw serviceError(
@@ -440,6 +440,7 @@ export async function getPost({ postId, userId }) {
         status: post.status,
         blind_reason: post.blind_reason,
         is_owner: isOwner,
+        is_bookmarked: Boolean(post.is_bookmarked),
         author: {
             name: post.author_name
         },
