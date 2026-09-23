@@ -112,6 +112,9 @@ def main():
     ap.add_argument("--extra_distractor_src", default=None,
                     help="방해꾼 전용 추가 폴더(같은 <유기번호>_<n>.jpg 형식). 종별 하위폴더 있으면 그걸 씀")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--exclude_names", nargs="*", default=[],
+                    help="이미 선택/평가에 쓴 세트 이름(예: shelter_hard shelter_hard383). "
+                         "그 세트의 정답 개체는 이번 세트의 정답에서 제외 (방해꾼으로는 쓰일 수 있음)")
     args = ap.parse_args()
 
     src = Path(args.src)
@@ -126,6 +129,16 @@ def main():
             continue
         by_id = group_by_id(sp_dir)
         eligible = sorted(k for k, v in by_id.items() if len(v) >= args.min_photos)
+        excluded = set()
+        for nm in args.exclude_names:
+            mf = ML_DIR / "dataset" / "derived" / f"{nm}_{sp}s" / "manifest.csv"
+            if mf.exists():
+                with open(mf, encoding="utf-8-sig") as f:
+                    excluded |= {r["pid"] for r in csv.DictReader(f) if r["role"] == "real"}
+        if excluded:
+            before = len(eligible)
+            eligible = [k for k in eligible if k not in excluded]
+            print(f"[{sp}] 제외 목록 {len(excluded)}개체 적용: 정답 후보 {before} -> {len(eligible)}")
         demoted = []
         if args.n_real is not None and len(eligible) > args.n_real:
             random.Random(args.seed).shuffle(eligible)
