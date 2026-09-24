@@ -3,7 +3,6 @@ certifi==2026.7.22
 charset-normalizer==3.5.1
 click==8.5.0
 colorama==0.4.6
-dotenv==0.9.9
 fastapi
 filelock==3.32.5
 fsspec==2026.7.0
@@ -21,6 +20,7 @@ numpy==2.5.3
 onnxruntime==1.29.0
 opencv-python==5.0.0.93
 packaging==26.3
+pandas==3.0.5
 pillow==12.3.0
 psycopg2==2.9.12
 python-dotenv==1.2.3
@@ -35,5 +35,6 @@ torchvision==0.29.0
 tqdm==4.70.0
 transformers==5.16.1
 typing_extensions==4.16.0
+ultralytics==8.4.135
 urllib3==2.7.0
 uvicorn

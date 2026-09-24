@@ -4,7 +4,7 @@
 - 어디서 실행하든 무관 (경로는 이 파일 위치 기준 ML/ 로 고정):  python scripts/collect_dataset.py
 - 반복 실행 가능: desertionNo 폴더가 이미 있으면 건너뜀 (재개 가능)
 - 결과: dataset/raw/processed_animals/<desertionNo>/N.jpg  +  dataset/raw/dataset_manifest.csv
-- 필요: ML/.env (SERVICE_KEY, BASE_URL),  checkpoints/yolo11n.pt
+- 필요: ML/.env (SERVICE_KEY, BASE_URL)
 """
 import calendar
 import hashlib

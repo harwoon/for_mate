@@ -6,11 +6,11 @@
 - 임베딩: `facebook/dinov2-small`(마지막 1개 블록 파인튜닝) + 학습된 Linear projection(384→512, L2 정규화). 종별로 체크포인트가 다름 — `.env`의 `DOG_EMBEDDING_CHECKPOINT` / `CAT_EMBEDDING_CHECKPOINT` (기본 각각 `dinov2_proj_dog_small_selfdistill_rkd.pth`, `dinov2_proj_cat_small_circle_distill_gen2.pth`). 학습 코드는 `scripts/train_dinov2_projection.py`
 - 엔드포인트: `POST /embeddings/images`(실종공고/포인핸드용, 이미지 이미 존재), `POST /embeddings/rescue-animals`(공공데이터용, 이미지+임베딩 동시 생성)
 
-아래 `notebooks/`, `scripts/`는 이 운영 파이프라인에 이르기까지 시도한 후보 모델(MegaDescriptor/PetFace/ARBase/CLIP-ReID) 비교, 탐지기 선정, 손실함수·증류 실험 코드다. 최종 채택 기준은 `scripts/compare_backbones.py` (하드 eval 세트에서의 케이스 단위 Recall) 결과.
+아래 `scripts/`는 이 운영 파이프라인을 만든 학습·평가 코드다. 여기 이르기까지 시도한 후보 모델(MegaDescriptor/PetFace/ARBase/CLIP-ReID) 비교, 탐지기 선정, 손실함수·증류 실험 코드는 `experiments` 브랜치에 있다. 최종 채택 기준은 `scripts/compare_backbones.py` (하드 eval 세트에서의 케이스 단위 Recall) 결과.
 
 # ML/ 디렉토리 안내
 
-개·고양이 re-ID 실험 코드 + 데이터. 폴더별 역할은 아래 표 참고.
+개·고양이 re-ID 파이프라인 코드 + 데이터. 폴더별 역할은 아래 표 참고.
 
 | 폴더 | 역할 | git 추적 |
 |---|---|---|
@@ -32,9 +32,10 @@
 | `train_dinov2_projection.py` | 최종 학습 스크립트. `facebook/dinov2-{small,base,large}` 위에 Linear projection(+마지막 N개 블록 언프리즈)을 학습. ArcFace/Sub-center/CosFace/Circle Loss, RKD self-distillation, held-out + shelter 교차평가를 한 파일에서 `--loss_type`/`--teacher_ckpt` 등 인자로 선택 |
 | `extract_embeddings.py` | 서빙 임베딩 코드 — RT-DETR 크롭 → DINOv2-small → projection → L2정규화 512차원. `ai_server/main.py`가 이 파일을 그대로 import |
 | `compare_backbones.py` | 후보 모델(MegaDescriptor/PetFace/ARBase/CLIP-ReID/DINOv2 zero-shot/`ours`) 비교와 최종 모델 R@k 재측정에 계속 쓰는 평가 하네스 |
-| `collect_dataset.py` | 유기동물 API 수집 + 탐지기 관련 공용 유틸 — 아래 두 스크립트가 `import`해서 재사용 |
+| `collect_dataset.py` | 유기동물 API 수집 + 탐지기 관련 공용 유틸 — 아래 두 스크립트가 `import`해서 재사용. `.env`에 `SERVICE_KEY`/`BASE_URL`(data.go.kr OpenAPI 인증키) 필요 |
 | `collect_shelter_balanced.py` | 유기동물 API에서 종별 목표 개체 수만큼 균형 있게 수집 → `dataset/raw/shelter_raw/` |
-| `build_shelter_hard.py` | `shelter_raw`로 케이스 단위 평가 세트 생성 — 선택용(`shelter_hard`, 200개체)과 최종용(`shelter_test`, 383개체, `--exclude_names`로 선택용과 정답 개체 비중복 보장) |
+| `build_shelter_hard.py` | `shelter_raw`로 케이스 단위 평가 세트 생성 — 선택용(`shelter_hard`, 200개체)과 최종용(`shelter_test`, 383개체, `--exclude_names`로 선택용과 정답 개체 비중복 보장). `--crop rtdetr`(기본값)은 `compare_detectors.py`의 `RtDetrDet`을 씀 |
+| `compare_detectors.py` | 탐지기(YOLO/Faster R-CNN/RT-DETR) 정답 박스 대비 IoU 비교 CLI. `build_shelter_hard.py`가 `RtDetrDet` 클래스를 가져다 쓰는 의존성이라 main에 남겨둠 — 비교 자체는 탐지기 선정 실험(`experiments` 브랜치의 `detector_ablation.py` 등)의 일부 |
 
 여러 후보 모델·손실함수·탐지기를 비교해서 지금 조합(DINOv2-small + RT-DETR)을 골랐다. 비교 과정 전체(MegaDescriptor/PetFace/ARBase/CLIP-ReID 파인튜닝, 탐지기 IoU 비교, optimizer/margin/scale 스윕 등)는 `experiments` 브랜치의 `ML/experiments/`에 있다.
 
