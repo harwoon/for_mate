@@ -1,7 +1,9 @@
 """
 crop -> DINOv2 임베딩 추출 -> DB(images/embeddings) 저장.
 
-탐지기는 collect_dataset.py 와 동일 (torchvision Faster R-CNN v2, BSD-3).
+탐지기는 build_shelter_hard.py / compare_detectors.py 와 동일 (RT-DETR r50vd, Apache-2.0).
+IoU 비교(정답 박스 대비 평균 IoU: 개 0.949 / 고양이 0.894, Faster R-CNN은 0.892 / 0.821)에서
+가장 정확했고, 우리가 낸 모든 성능 지표(R@k·mAP)도 이 크롭 기준이라 서빙도 여기 맞춘다.
 """
 # MegaDescriptor모델 기준
 # 모델이 바뀔 경우 모델 로드, 전처리, db 벡터 차원수 변경 필요
@@ -16,12 +18,8 @@ import requests
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import AutoImageProcessor, AutoModel
+from transformers import AutoImageProcessor, AutoModel, RTDetrForObjectDetection, RTDetrImageProcessor
 from dotenv import load_dotenv
-from torchvision.models.detection import (
-    FasterRCNN_ResNet50_FPN_V2_Weights,
-    fasterrcnn_resnet50_fpn_v2,
-)
 
 ML_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(ML_DIR / ".env")
@@ -74,22 +72,29 @@ CAT_CKPT = (
     / CAT_CKPT_NAME
 )
 
-# ── 1. 탐지기 (collect_dataset.py 와 동일 설정) ──────────────
-_DET_WEIGHTS = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
-_det_model = fasterrcnn_resnet50_fpn_v2(weights=_DET_WEIGHTS, box_score_thresh=0.5)
+# ── 1. 탐지기 (build_shelter_hard.py / compare_detectors.py 와 동일 설정) ──────────────
+_DET_ID = "PekingU/rtdetr_r50vd"
+# build_shelter_hard.py 가 평가 세트(shelter_hard/shelter_test)를 만들 때 쓴 값과 동일 --
+# 다르게 두면 서빙 크롭이 우리가 잰 R@k·mAP 기준과 어긋난다.
+_DET_SCORE_THRESH = 0.25
+_det_processor = RTDetrImageProcessor.from_pretrained(_DET_ID)
+_det_model = RTDetrForObjectDetection.from_pretrained(_DET_ID)
 _det_model.eval().to(DEVICE)
-_det_preprocess = _DET_WEIGHTS.transforms()
-_COCO_CATEGORIES = _DET_WEIGHTS.meta["categories"]
+_DET_CATEGORIES = _det_model.config.id2label
 
 
 @torch.no_grad()
 def _detect_animals(img_bgr):
     rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-    t = torch.from_numpy(rgb).permute(2, 0, 1).contiguous()
-    out = _det_model([_det_preprocess(t).to(DEVICE)])[0]
+    inputs = _det_processor(images=rgb, return_tensors="pt").to(DEVICE)
+    out = _det_model(**inputs)
+    h, w = img_bgr.shape[:2]
+    result = _det_processor.post_process_object_detection(
+        out, target_sizes=[(h, w)], threshold=_DET_SCORE_THRESH
+    )[0]
     dets = []
-    for box, label, score in zip(out["boxes"], out["labels"], out["scores"]):
-        if _COCO_CATEGORIES[int(label)] in ANIMAL_CLASSES:
+    for box, label, score in zip(result["boxes"], result["labels"], result["scores"]):
+        if _DET_CATEGORIES[int(label)] in ANIMAL_CLASSES:
             x1, y1, x2, y2 = box.tolist()
             dets.append((x1, y1, x2, y2, float(score)))
     return dets

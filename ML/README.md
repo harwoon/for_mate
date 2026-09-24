@@ -1,16 +1,16 @@
-## ai_server/ (운영용 — 이 폴더만 실제 서비스에서 사용됨)
+## ai_server/ (운영용 — 이 폴더 + scripts/extract_embeddings.py 만 실제 서비스에서 사용됨)
 
 `main.py` — FastAPI 서버. Node 백엔드가 실종 공고 등록/새벽 배치 시점에 이 서버를 호출한다.
 
-- 크롭: `torchvision`의 Faster R-CNN v2 (`scripts/collect_dataset.py`와 동일 설정)
-- 임베딩: MegaDescriptor-B-224를 MPDD로 파인튜닝한 `checkpoints/megadescriptor_mpdd_best.pth` (1024차원, L2 정규화)
+- 크롭: RT-DETR r50vd(Apache-2.0, HF `PekingU/rtdetr_r50vd`), 신뢰도 0.25, 가장 큰 동물 박스 1개 -> 비율 유지 224 padding resize(letterbox). 손으로 라벨한 정답 박스 대비 평균 IoU가 개 0.949 / 고양이 0.894로 Faster R-CNN v2(0.892 / 0.821)보다 정확해서 교체함 — 자세한 비교는 `scripts/compare_detectors.py`
+- 임베딩: `facebook/dinov2-small`(마지막 1개 블록 파인튜닝) + 학습된 Linear projection(384→512, L2 정규화). 종별로 체크포인트가 다름 — `.env`의 `DOG_EMBEDDING_CHECKPOINT` / `CAT_EMBEDDING_CHECKPOINT` (기본 각각 `dinov2_proj_dog_small_selfdistill_rkd.pth`, `dinov2_proj_cat_small_circle_distill_gen2.pth`). 학습 코드는 `scripts/train_dinov2_projection.py`
 - 엔드포인트: `POST /embeddings/images`(실종공고/포인핸드용, 이미지 이미 존재), `POST /embeddings/rescue-animals`(공공데이터용, 이미지+임베딩 동시 생성)
 
-아래 `notebooks/`, `scripts/`는 이 운영 파이프라인을 만들기 위한 실험 코드이자, 향후 모델 교체(CLIP-ReID, ARBase 등) 실험용이다.
+아래 `notebooks/`, `scripts/`는 이 운영 파이프라인에 이르기까지 시도한 후보 모델(MegaDescriptor/PetFace/ARBase/CLIP-ReID) 비교, 탐지기 선정, 손실함수·증류 실험 코드다. 최종 채택 기준은 `scripts/compare_backbones.py` (하드 eval 세트에서의 케이스 단위 Recall) 결과.
 
 # ML/ 디렉토리 안내
 
-개(dog) re-ID 실험 코드 + 데이터. 폴더별 역할은 아래 표 참고.
+개·고양이 re-ID 실험 코드 + 데이터. 폴더별 역할은 아래 표 참고.
 
 | 폴더 | 역할 | git 추적 |
 |---|---|---|
