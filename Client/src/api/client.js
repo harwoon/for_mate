@@ -1,6 +1,6 @@
 // 백엔드와 통신하는 공통 함수.
 // 개발 중에는 vite.config.js의 proxy가 4000 포트로 넘겨주므로 주소를 비워둔다.
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "")
+export const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "")
 let refreshPromise = null
 let authGeneration = 0
 let refreshFailed = false
