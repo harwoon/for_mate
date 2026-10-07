@@ -48,7 +48,7 @@ for_mate/
 cd Server
 npm install
 cp ../.env.example .env   # 값 채워넣기 (아래 환경변수 참고)
-npm run dev                # http://localhost:4000
+npm run dev               # http://localhost:4000
 ```
 
 ### 2. AI 서버 (`ML/ai_server/`)
